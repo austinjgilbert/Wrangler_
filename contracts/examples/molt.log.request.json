@@ -1,0 +1,6 @@
+{
+  "text": "Sent follow-up to Jane about CMS modernization",
+  "channel": "slack",
+  "entityHints": ["Jane Doe", "Ubiquiti"],
+  "outcome": "pending"
+}

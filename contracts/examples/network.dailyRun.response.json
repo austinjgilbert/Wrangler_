@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "data": {
+    "signalsCreated": 4,
+    "startersCreated": 6,
+    "briefingId": "network.dailyBriefing.test"
+  },
+  "requestId": "request-123"
+}

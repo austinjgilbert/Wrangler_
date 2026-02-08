@@ -1,0 +1,22 @@
+# Scheduled health check - fails if worker is down
+# Add alerts via GitHub notifications or external monitoring (UptimeRobot, etc.)
+name: Health Check
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  workflow_dispatch: {}
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check health endpoint
+        run: |
+          RESP=$(curl -sf --max-time 15 https://website-scanner.austin-gilbert.workers.dev/health)
+          if echo "$RESP" | grep -q '"ok":true'; then
+            echo "Health check OK"
+          else
+            echo "Health check failed: $RESP"
+            exit 1
+          fi

@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "data": {
+    "eventId": "molt.event.request-123",
+    "jobsQueued": ["molt.job.request.request-123"],
+    "nextSuggestions": ["Double down on concise CTA messages"]
+  },
+  "requestId": "request-123"
+}

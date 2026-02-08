@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      background: #0a0a0a;
+      color: #e5e5e5;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+
+    .badge.connected     { background: #22c55e; color: #000; }
+    .badge.disconnected  { background: #ef4444; color: #fff; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: #18181b;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 7px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717a;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: #27272a;
+      color: #fff;
+    }
+
+    .tab:hover:not(.active) { color: #a1a1aa; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* URL display */
+    .url-display {
+      background: #18181b;
+      border: 1px solid #27272a;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+
+    .url-display .source {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+      margin-bottom: 3px;
+    }
+
+    .url-display .url {
+      font-size: 12px;
+      color: #71717a;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .options { margin-bottom: 14px; }
+
+    .option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .option input[type="checkbox"] {
+      margin-right: 8px;
+      accent-color: #22c55e;
+    }
+
+    .option label {
+      font-size: 13px;
+      color: #a1a1aa;
+    }
+
+    /* Entity preview */
+    .preview { margin-bottom: 14px; }
+
+    .preview h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #52525b;
+      margin: 0 0 8px;
+    }
+
+    .entities {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .entity {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: #18181b;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+    }
+
+    .entity .type {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    .entity .type.account  { background: #1e3a5f; color: #60a5fa; }
+    .entity .type.person   { background: #3b1f57; color: #c084fc; }
+    .entity .type.tech     { background: #1a3a2a; color: #4ade80; }
+    .entity .type.signal   { background: #3b3510; color: #facc15; }
+
+    .entity .name {
+      font-size: 13px;
+      color: #d4d4d8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .empty-preview {
+      text-align: center;
+      color: #3f3f46;
+      font-size: 12px;
+      padding: 12px;
+    }
+
+    /* Buttons */
+    .capture-button {
+      width: 100%;
+      padding: 12px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-bottom: 8px;
+    }
+
+    .capture-button:hover:not(:disabled) { background: #e5e5e5; }
+
+    .capture-button:disabled {
+      background: #27272a;
+      color: #52525b;
+      cursor: not-allowed;
+    }
+
+    .secondary-button {
+      width: 100%;
+      padding: 10px;
+      background: #18181b;
+      color: #a1a1aa;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+
+    .secondary-button:hover:not(:disabled) { background: #27272a; color: #e5e5e5; }
+    .secondary-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .settings-toggle {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #52525b;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .settings-toggle:hover { color: #a1a1aa; }
+
+    /* Status */
+    .status-msg {
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .status-msg.success { display: block; background: #052e16; color: #22c55e; border: 1px solid #14532d; }
+    .status-msg.error   { display: block; background: #450a0a; color: #ef4444; border: 1px solid #7f1d1d; }
+    .status-msg.loading { display: block; background: #18181b; color: #a1a1aa; border: 1px solid #27272a; }
+
+    /* Progress bar */
+    .progress-bar {
+      display: none;
+      height: 4px;
+      background: #27272a;
+      border-radius: 2px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .progress-bar.visible { display: block; }
+
+    .progress-bar .fill {
+      height: 100%;
+      background: #22c55e;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 8px;
+      background: #18181b;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+    }
+
+    .stat-number {
+      font-weight: 700;
+      color: #22c55e;
+      font-size: 16px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #52525b;
+      margin-top: 2px;
+    }
+
+    /* Settings panel */
+    .settings-panel {
+      display: none;
+      margin-top: 12px;
+      padding: 14px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+    }
+
+    .settings-panel.visible { display: block; }
+
+    .settings-panel label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #71717a;
+      margin-bottom: 4px;
+    }
+
+    .settings-panel input[type="text"],
+    .settings-panel input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      color: #e5e5e5;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+
+    .settings-panel input:focus { outline: none; border-color: #3f3f46; }
+
+    .save-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+      background: #22c55e;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .save-btn:hover { background: #16a34a; }
+
+    /* Text tab */
+    .text-input {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      color: #e5e5e5;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+
+    .text-input::placeholder { color: #3f3f46; }
+    .text-input:focus { outline: none; border-color: #3f3f46; }
+
+    .text-hint {
+      font-size: 11px;
+      color: #3f3f46;
+      margin-bottom: 10px;
+    }
+
+    /* Bulk tab */
+    .tab-list {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: #18181b;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      margin-bottom: 4px;
+    }
+
+    .tab-item input { accent-color: #22c55e; }
+
+    .tab-item .tab-title {
+      font-size: 12px;
+      color: #d4d4d8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .tab-item .tab-source {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #1e3a5f;
+      color: #60a5fa;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Sanity Grabber</h1>
+    <span id="badge" class="badge disconnected">Not configured</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="capture">Capture</button>
+    <button class="tab" data-tab="bulk">Bulk</button>
+    <button class="tab" data-tab="text">Paste Text</button>
+  </div>
+
+  <!-- ═══ Capture tab ═══ -->
+  <div id="tab-capture" class="tab-content active">
+    <div class="url-display">
+      <div class="source" id="source-label">Detecting...</div>
+      <div class="url" id="page-url">—</div>
+    </div>
+
+    <div class="options">
+      <div class="option">
+        <input type="checkbox" id="extract-entities" checked>
+        <label for="extract-entities">Auto-extract entities (accounts, people, tech)</label>
+      </div>
+      <div class="option">
+        <input type="checkbox" id="capture-metadata" checked>
+        <label for="capture-metadata">Include page metadata</label>
+      </div>
+    </div>
+
+    <div class="preview" id="preview-section">
+      <h3>Detected Entities</h3>
+      <div class="entities" id="entities-list">
+        <div class="empty-preview">Click Capture to extract data from this page.</div>
+      </div>
+    </div>
+
+    <div id="status-msg" class="status-msg"></div>
+
+    <button id="capture-btn" class="capture-button" disabled>Capture This Page</button>
+  </div>
+
+  <!-- ═══ Bulk tab ═══ -->
+  <div id="tab-bulk" class="tab-content">
+    <div class="preview">
+      <h3>Select tabs to capture</h3>
+      <div class="tab-list" id="bulk-tab-list">
+        <div class="empty-preview">Loading open tabs...</div>
+      </div>
+    </div>
+
+    <div id="bulk-progress" class="progress-bar">
+      <div class="fill" id="bulk-progress-fill"></div>
+    </div>
+
+    <div id="bulk-status" class="status-msg"></div>
+
+    <button id="bulk-capture-btn" class="capture-button" disabled>Capture Selected Tabs</button>
+    <button id="bulk-select-all" class="secondary-button">Select All</button>
+  </div>
+
+  <!-- ═══ Text tab ═══ -->
+  <div id="tab-text" class="tab-content">
+    <div class="text-hint">Paste any text — research notes, email threads, CRM data — and we'll extract entities and send them to Sanity.</div>
+    <textarea id="text-input" class="text-input" placeholder="Paste research text, email content, meeting notes, or any data containing accounts, people, or technology mentions..."></textarea>
+
+    <div id="text-status" class="status-msg"></div>
+
+    <button id="text-capture-btn" class="capture-button" disabled>Extract &amp; Send to Sanity</button>
+  </div>
+
+  <!-- ═══ Footer (shared) ═══ -->
+  <button id="settings-toggle" class="settings-toggle">Settings</button>
+
+  <div id="settings-panel" class="settings-panel">
+    <label for="api-url">Worker URL</label>
+    <input type="text" id="api-url" placeholder="https://website-scanner.austin-gilbert.workers.dev">
+    <label for="api-key">API Key (Bearer)</label>
+    <input type="password" id="api-key" placeholder="Paste your MOLT_API_KEY here">
+    <button class="save-btn" id="save-settings">Save</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div id="total-captures" class="stat-number">0</div>
+      <div class="stat-label">Total Captures</div>
+    </div>
+    <div class="stat">
+      <div id="today-captures" class="stat-number">0</div>
+      <div class="stat-label">Today</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

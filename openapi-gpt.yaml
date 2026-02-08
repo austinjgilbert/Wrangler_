@@ -1,0 +1,646 @@
+# OpenAPI schema for Custom GPT Actions (max 30 operations).
+# Use this file when configuring your Custom GPT; the full openapi.yaml exceeds the 30-op limit.
+openapi: 3.1.0
+info:
+  title: Website Scanner API (GPT)
+  version: 1.0.0
+  description: Website scanner and sales intelligence API — 30 operations for Custom GPT.
+
+servers:
+  - url: https://website-scanner.austin-gilbert.workers.dev
+
+components:
+  securitySchemes:
+    MoltApiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Bearer token. In Custom GPT use Authentication > API Key > Bearer with MOLT_API_KEY."
+  
+  schemas:
+    GenericResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      additionalProperties: true
+
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { ok: { type: boolean } } }
+
+  /scan:
+    get:
+      operationId: scanHomepage
+      summary: Scan a website homepage
+      description: Deep scan for tech stack, AI readiness, performance. Auto-saves to Sanity.
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema: { type: string, format: uri }
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /scan-batch:
+    get:
+      operationId: scanBatchAccounts
+      summary: Batch scan multiple URLs
+      description: Comma-separated urls. mode=light (default) or full. Rank by opportunity.
+      parameters:
+        - name: urls
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mode
+          in: query
+          schema: { type: string, enum: [light, full], default: light }
+      responses:
+        "200":
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /linkedin-profile:
+    post:
+      operationId: scanLinkedInProfile
+      summary: Scan LinkedIn profile
+      description: Provide linkedinUrl or profileHtml/profileText. May be blocked by LinkedIn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                linkedinUrl: { type: string }
+                profileHtml: { type: string }
+                profileText: { type: string }
+      responses:
+        "200":
+          description: Profile analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /extract:
+    post:
+      operationId: extractEvidence
+      summary: Extract evidence pack from URL(s)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                urls: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Evidence pack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /search:
+    post:
+      operationId: searchWeb
+      summary: Web search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                q: { type: string }
+                limit: { type: integer }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /discover:
+    post:
+      operationId: discoverPages
+      summary: Discover pages on a site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+      responses:
+        "200":
+          description: Discovered URLs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /crawl/smart:
+    post:
+      operationId: smartCrawl
+      summary: Smart crawl from seed URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                maxPages: { type: integer }
+      responses:
+        "200":
+          description: Crawl results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /brief:
+    post:
+      operationId: generateBrief
+      summary: Generate research brief
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                accountKey: { type: string }
+                domain: { type: string }
+      responses:
+        "200":
+          description: Brief
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /research/complete:
+    post:
+      operationId: researchComplete
+      summary: One-click complete research
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                domain: { type: string }
+      responses:
+        "200":
+          description: Research result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /research/quick:
+    get:
+      operationId: researchQuick
+      summary: Quick lookup (account, search, etc.)
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: url
+          in: query
+          schema: { type: string }
+        - name: accountKey
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Quick result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /research/intelligence:
+    get:
+      operationId: researchIntelligence
+      summary: Get full intelligence for account
+      parameters:
+        - name: accountKey
+          in: query
+          schema: { type: string }
+        - name: domain
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Intelligence payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /orchestrate:
+    post:
+      operationId: orchestrateAccount
+      summary: Run full orchestration pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                domain: { type: string }
+                accountKey: { type: string }
+      responses:
+        "200":
+          description: Orchestration result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /orchestrate/status:
+    get:
+      operationId: orchestrateStatus
+      summary: Get orchestration status
+      parameters:
+        - name: jobId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /person/brief:
+    post:
+      operationId: generatePersonBrief
+      summary: Generate person intelligence brief
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                company: { type: string }
+                domain: { type: string }
+                linkedinUrl: { type: string }
+      responses:
+        "200":
+          description: Person brief
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /verify:
+    post:
+      operationId: verifyClaims
+      summary: Verify claims against sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claims: { type: array, items: { type: object } }
+                sources: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /store/{type}:
+    post:
+      operationId: storeData
+      summary: Store data in Sanity (scan, brief, interaction, etc.)
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+                $ref: '#/components/schemas/GenericResponse'
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /query:
+    get:
+      operationId: queryData
+      summary: Query Sanity or get context (recall/summarize)
+      description: type=context with accountKey/domain, contextType=all, fullInsights=true for recall.
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: accountKey
+          in: query
+          schema: { type: string }
+        - name: domain
+          in: query
+          schema: { type: string }
+        - name: contextType
+          in: query
+          schema: { type: string, enum: [summary, interactions, learnings, followUps, all] }
+        - name: contextLimit
+          in: query
+          schema: { type: integer }
+        - name: fullInsights
+          in: query
+          schema: { type: boolean }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Query or context result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /update/{docId}:
+    put:
+      operationId: updateDocument
+      summary: Update a Sanity document
+      parameters:
+        - name: docId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: '#/components/schemas/GenericResponse'
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+    delete:
+      operationId: deleteDocument
+      summary: Delete a Sanity document
+      parameters:
+        - name: docId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /osint/queue:
+    post:
+      operationId: queueOsintJob
+      summary: Queue OSINT year-ahead intelligence job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string }
+                domain: { type: string }
+                accountKey: { type: string }
+      responses:
+        "200":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /osint/status:
+    get:
+      operationId: getOsintStatus
+      summary: Get OSINT job status
+      parameters:
+        - name: accountKey
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /osint/report:
+    get:
+      operationId: getOsintReport
+      summary: Get OSINT report
+      parameters:
+        - name: accountKey
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /competitors/research:
+    post:
+      operationId: competitorsResearch
+      summary: Research competitors for an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKey: { type: string }
+                domain: { type: string }
+      responses:
+        "200":
+          description: Competitor research
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /competitors/opportunities:
+    post:
+      operationId: competitorOpportunities
+      summary: Get displacement opportunities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKey:
+                  type: string
+                domain:
+                  type: string
+      responses:
+        "200":
+          description: Opportunities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /enrich/run:
+    post:
+      operationId: enrichRun
+      summary: Trigger enrichment for an account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKey: { type: string }
+                domain: { type: string }
+      responses:
+        "200":
+          description: Enrichment triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /enrich/status:
+    get:
+      operationId: enrichStatus
+      summary: Get enrichment pipeline status
+      parameters:
+        - name: accountKey
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /enrich/queue:
+    post:
+      operationId: enrichQueue
+      summary: Queue enrichment job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKey: { type: string }
+      responses:
+        "200":
+          description: Queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /molt/run:
+    post:
+      operationId: moltRun
+      summary: Run MoltBot orchestration
+      security:
+        - MoltApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestText]
+              properties:
+                requestText: { type: string }
+      responses:
+        "200":
+          description: MoltBot result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+
+  /analytics/compare:
+    post:
+      operationId: analyticsCompare
+      summary: Compare multiple accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKeys: { type: array, items: { type: string } }
+                domains: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Comparison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'

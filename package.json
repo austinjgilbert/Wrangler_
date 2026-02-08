@@ -1,0 +1,36 @@
+{
+  "name": "website-scanner-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for website scanning and research",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "predeploy": "node scripts/inline-openapi.js",
+    "deploy": "wrangler deploy --env=production",
+    "deploy:default": "wrangler deploy --env=\"\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run-complete-system-test.js",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
+    "seed:molt-config": "node --loader ts-node/esm scripts/seed-molt-config.ts",
+    "smoke-test": "node --loader ts-node/esm scripts/smoke-test.ts",
+    "test:playwright": "playwright test",
+    "test:playwright:ui": "playwright test --ui",
+    "test:playwright:report": "playwright show-report",
+    "sanity:check": "node scripts/check-sanity.js",
+    "sanity:open-token": "node scripts/sanity-open-token-page.js",
+    "health-check": "curl -sf https://website-scanner.austin-gilbert.workers.dev/health",
+    "health-check:local": "curl -sf http://localhost:8787/health"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260207.0",
+    "@playwright/test": "^1.58.2",
+    "@vitest/coverage-v8": "^4.0.18",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.63.0"
+  }
+}

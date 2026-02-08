@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Sanity Grabber",
+  "version": "3.0.0",
+  "description": "Unified capture extension: LinkedIn profiles/companies, Salesforce, HubSpot, Outreach, Common Room, Apollo, ZoomInfo, 6sense, Gong, and any website. Bulk tab capture, text paste analysis. All data flows to Sanity Content OS via Cloudflare Worker for entity resolution, enrichment, and pattern matching.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "*://*.salesforce.com/*",
+    "*://*.lightning.force.com/*",
+    "*://*.outreach.io/*",
+    "*://*.commonroom.io/*",
+    "*://*.looker.com/*",
+    "*://*.cloud.google.com/*",
+    "*://*.hubspot.com/*",
+    "*://*.gong.io/*",
+    "*://*.apollo.io/*",
+    "*://*.zoominfo.com/*",
+    "*://*.6sense.com/*",
+    "*://*/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sanity Grabber — Capture Page Data",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

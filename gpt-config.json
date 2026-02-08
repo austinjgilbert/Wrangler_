@@ -1,0 +1,31 @@
+{
+  "name": "Website Scanner",
+  "description": "Expert at analyzing websites, identifying technology stacks, and generating year-ahead company intelligence. Scans websites to detect CMS platforms, web servers, CDNs, frameworks, and provides comprehensive OSINT (Open Source Intelligence) reports for strategic planning.",
+  "instructions_file": "gpt-instructions.md",
+  "conversation_starters": [
+    "Scan example.com and tell me what technology it uses",
+    "Analyze the tech stack of my website",
+    "What CMS is this site running?",
+    "Generate year-ahead intelligence for example.com",
+    "What are example.com's plans for 2027?",
+    "Get OSINT report for a company",
+    "Generate my daily SDR plan",
+    "Generate person brief for [name] at [company]"
+  ],
+  "capabilities": {
+    "web_browsing": false,
+    "code_interpreter": false,
+    "actions": true
+  },
+  "actions": {
+    "openapi_schema": "openapi.yaml",
+    "base_url": "https://website-scanner.austin-gilbert.workers.dev"
+  },
+  "metadata": {
+    "author": "Your Name",
+    "version": "1.1.0",
+    "created": "2024-01-15",
+    "updated": "2026-01-10"
+  }
+}
+

@@ -1,0 +1,82 @@
+/**
+ * Sanity schema index (manual export list).
+ * Assumption: used by Sanity Studio schema builder.
+ */
+
+import moltbotConfig from './moltbot.config';
+import accountAssumed from './accountAssumed';
+import personAssumed from './personAssumed';
+import technology from './technology';
+import moltEvent from './moltEvent';
+import moltJob from './moltJob';
+import moltApproval from './moltApproval';
+import moltPattern from './moltPattern';
+import moltMetricSnapshot from './moltMetricSnapshot';
+import moltStrategyBrief from './moltStrategyBrief';
+import moltNotification from './moltNotification';
+import dqRule from './dqRule';
+import dqFinding from './dqFinding';
+import enrichJob from './enrichJob';
+import enrichProposal from './enrichProposal';
+import crawlSnapshot from './crawlSnapshot';
+import callSession from './callSession';
+import callInsight from './callInsight';
+import callTask from './callTask';
+import callCoaching from './callCoaching';
+import callFollowupDraft from './callFollowupDraft';
+import networkPerson from './networkPerson';
+import signal from './signal';
+import conversationStarter from './conversationStarter';
+import touch from './touch';
+import networkDailyBriefing from './networkDailyBriefing';
+import communitySource from './communitySource';
+import communityPostRaw from './communityPostRaw';
+import communityPostSanitized from './communityPostSanitized';
+import opportunity from './opportunity';
+import opportunityBrief from './opportunityBrief';
+import draftAction from './draftAction';
+import company from './company';
+import session from './session';
+import interaction from './interaction';
+import learning from './learning';
+
+export const schemaTypes = [
+  moltbotConfig,
+  accountAssumed,
+  personAssumed,
+  technology,
+  moltEvent,
+  moltJob,
+  moltApproval,
+  moltPattern,
+  moltMetricSnapshot,
+  moltStrategyBrief,
+  moltNotification,
+  dqRule,
+  dqFinding,
+  enrichJob,
+  enrichProposal,
+  crawlSnapshot,
+  callSession,
+  callInsight,
+  callTask,
+  callCoaching,
+  callFollowupDraft,
+  networkPerson,
+  signal,
+  conversationStarter,
+  touch,
+  networkDailyBriefing,
+  communitySource,
+  communityPostRaw,
+  communityPostSanitized,
+  opportunity,
+  opportunityBrief,
+  draftAction,
+  company,
+  session,
+  interaction,
+  learning,
+];
+
+export default schemaTypes;

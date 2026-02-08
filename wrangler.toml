@@ -1,0 +1,105 @@
+# Deploy default (top-level) config: wrangler deploy --env=""
+# Set secrets for default env: wrangler secret put SANITY_TOKEN --env=""
+name = "website-scanner"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Free-tier background scheduling (UTC).
+[triggers]
+crons = [
+  "*/15 * * * *",  # frequent job runner
+  "0 */6 * * *",   # DQ scan + enrich run
+  "15 13 * * *",   # network daily run
+  "30 13 * * *"    # opportunities daily
+]
+
+# Non-secret vars (override in env.* as needed)
+# MOLT_API_KEY is set via: wrangler secret put MOLT_API_KEY (production)
+# For local dev, set MOLT_API_KEY in .dev.vars
+[vars]
+BASE_URL = "http://localhost:8787"
+MOLT_TOOL_BASE_URL = "http://localhost:8787"
+WRANGLER_API_URL = ""
+# CORS_ORIGINS: optional comma-separated allowed origins; "*" or unset = allow all
+
+# Rate limiting (KV namespaces created)
+kv_namespaces = [
+  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" }
+]
+
+# NOTE: Queues require Workers Paid plan. If on free plan, OSINT will use sync endpoint instead.
+# Queue producer binding for OSINT jobs (uncomment when on paid plan)
+# [[queues.producers]]
+# queue = "osint-queue"
+# binding = "OSINT_QUEUE"
+
+# Queue consumer for OSINT jobs (uncomment when on paid plan)
+# [[queues.consumers]]
+# queue = "osint-queue"
+# max_batch_size = 1
+# max_batch_timeout = 30
+
+# Durable Object for OSINT job state tracking
+# NOTE: Durable Objects also require Workers Paid plan. If on free plan, job state uses D1 or in-memory.
+# [[durable_objects.bindings]]
+# name = "OSINT_JOBS_DO"
+# class_name = "OsintJobState"
+# script_name = "website-scanner"
+
+# Sanity CMS configuration (set via environment variables or secrets)
+# wrangler secret put SANITY_PROJECT_ID
+# wrangler secret put SANITY_TOKEN
+# wrangler secret put SANITY_DATASET (optional, defaults to "production")
+# wrangler secret put SANITY_API_VERSION (optional, defaults to "2023-10-01")
+# wrangler secret put ADMIN_TOKEN (optional, for write operation protection)
+# wrangler secret put ADMIN_API_KEY (optional, for /osint/run endpoint)
+# wrangler secret put MOLT_API_KEY (optional; when set, required for /molt/* and /wrangler/ingest - use from ChatGPT/Custom GPTs via Bearer or X-API-Key)
+# wrangler secret put CHATGPT_API_KEY (alias for MOLT_API_KEY - same purpose)
+
+# Search provider (Brave Search API — free tier: 2000 queries/month)
+# Get a free key at: https://brave.com/search/api/
+# wrangler secret put BRAVE_SEARCH_API_KEY
+
+# Sanity webhook auto-enrichment (optional; secures POST /webhooks/sanity)
+# Generate a random secret, set it here AND in Sanity webhook config
+# wrangler secret put SANITY_WEBHOOK_SECRET
+
+# Telegram bot (optional; for POST /webhooks/telegram)
+# Create bot via @BotFather on Telegram, then:
+# wrangler secret put TELEGRAM_BOT_TOKEN
+# Set webhook: curl "https://api.telegram.org/bot<TOKEN>/setWebhook" -d "url=https://website-scanner.austin-gilbert.workers.dev/webhooks/telegram"
+
+# OSINT configuration (set via environment variables or secrets)
+# wrangler secret put OSINT_DEFAULT_RECENCY_DAYS (optional, defaults to 365)
+# wrangler secret put OSINT_MAX_SOURCES (optional, defaults to 25)
+# wrangler secret put OSINT_MAX_EXTRACT (optional, defaults to 15)
+# wrangler secret put OSINT_YEAR (optional, defaults to current year + 1)
+
+[env.production]
+name = "website-scanner"
+kv_namespaces = [
+  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" }
+]
+
+# Production overrides
+[env.production.vars]
+BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+MOLT_TOOL_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+WRANGLER_API_URL = ""
+
+# Production environment inherits top-level config
+# Uncomment these when on Workers Paid plan:
+# [[env.production.queues.producers]]
+# queue = "osint-queue"
+# binding = "OSINT_QUEUE"
+#
+# [[env.production.queues.consumers]]
+# queue = "osint-queue"
+# max_batch_size = 1
+# max_batch_timeout = 30
+#
+# [[env.production.durable_objects.bindings]]
+# name = "OSINT_JOBS_DO"
+# class_name = "OsintJobState"
+# script_name = "website-scanner"
+
