@@ -81,10 +81,10 @@ SKIP_WEB_SERVER=1 TEST_URL=http://localhost:8787 npx playwright test account-pag
 ```bash
 npm run build          # dry-run build
 npm run test:unit      # unit tests
-npm run deploy         # deploys to Cloudflare (default env)
+npm run deploy         # deploys to production (--env=production)
 ```
 
-Deploy uses the default Wrangler env (no `--env`). If you use a named env (e.g. `production`), run `wrangler deploy --env=production` and set secrets for that env.
+Deploy targets **production** (`wrangler deploy --env=production`). Set production secrets with `wrangler secret put <NAME> --env=production`. For the default env use `npm run deploy:default` and `--env=""`.
 
 ### Custom GPT: update schema and instructions
 
@@ -124,21 +124,39 @@ If the worker or Sanity build fails, fix any new type or API breakages before de
 
 ---
 
-## 4. Production deploy and secrets
+## 4. GitHub and CI (optional)
+
+The project is saved at **https://github.com/austinjgilbert/-website-scanner-worker** (private).
+
+- **Clone (new machine):**  
+  `git clone https://github.com/austinjgilbert/-website-scanner-worker.git`  
+  Then `npm install`, `cd sanity && npm install`, copy `.env.example` to `.dev.vars`, and set secrets.
+
+- **Push/pull:**  
+  `git push origin main` / `git pull origin main`. Use a Personal Access Token with **repo** and **workflow** scopes for push (see [GITHUB-PUSH.md](GITHUB-PUSH.md)).
+
+- **GitHub Actions:**  
+  - **Deploy** (`.github/workflows/deploy.yml`): on push to `main`, runs tests and deploys the worker with `--env=production`.  
+  - **Health check** (`.github/workflows/health-check.yml`): runs every 30 minutes and fails if `/health` is down.  
+  To enable deploy from GitHub, add repo secrets: **CLOUDFLARE_API_TOKEN**, **CLOUDFLARE_ACCOUNT_ID** (create token at [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) with “Edit Cloudflare Workers” permission).
+
+---
+
+## 5. Production deploy and secrets
 
 ### One-time: set production secrets
 
-Use the script (it prompts for each secret):
+Use the script (it prompts for each secret; use `--env=production`):
 
 ```bash
 ./scripts/set-production-secrets.sh
 ```
 
-Or set them manually (use `--env=""` for default env, or `--env=production` if you use that name):
+Or set them manually for production:
 
 ```bash
-wrangler secret put SANITY_PROJECT_ID --env=""
-wrangler secret put SANITY_TOKEN --env=""
+wrangler secret put SANITY_PROJECT_ID --env=production
+wrangler secret put SANITY_TOKEN --env=production
 # Optional: ADMIN_TOKEN, MOLT_API_KEY, BRAVE_SEARCH_API_KEY, TELEGRAM_BOT_TOKEN, SANITY_WEBHOOK_SECRET
 ```
 
@@ -159,7 +177,7 @@ See [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) for the full checklist (K
 
 ---
 
-## 5. When you change Sanity schemas
+## 6. When you change Sanity schemas
 
 If you add or change document types in `schemas/` (e.g. in the repo’s `schemas/` or `sanity/schemas/`):
 
@@ -182,7 +200,7 @@ The worker talks to Sanity via the API; it doesn’t need a redeploy for schema 
 | Unit tests | `npm run test:unit` |
 | Playwright (account page) | `SKIP_WEB_SERVER=1 TEST_URL=http://localhost:8787 npx playwright test account-page --project=chromium` |
 | Deploy worker | `npm run deploy` |
-| Set production secrets | `./scripts/set-production-secrets.sh` or `wrangler secret put <NAME>` |
+| Set production secrets | `./scripts/set-production-secrets.sh` or `wrangler secret put <NAME> --env=production` |
 | Update Custom GPT schema | Re-import **openapi-gpt.yaml** in GPT Actions; set server URL |
 | Update Custom GPT instructions | Paste **gpt-instructions.md** into GPT Instructions |
 | Health check (prod) | `curl https://<your-worker>.workers.dev/health` |

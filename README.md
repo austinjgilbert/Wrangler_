@@ -70,12 +70,16 @@ src/
 ### Installation
 
 ```bash
-# Clone repository
-git clone <repository-url>
+# Clone repository (private repo)
+git clone https://github.com/austinjgilbert/-website-scanner-worker.git
 cd website-scanner-worker
 
 # Install dependencies
 npm install
+cd sanity && npm install && cd ..
+
+# Copy env template and add secrets to .dev.vars (see .env.example)
+cp .env.example .dev.vars
 
 # Authenticate with Cloudflare
 wrangler login
@@ -499,20 +503,25 @@ The OSINT report includes comprehensive benchmarking:
 - ✅ Input size limits
 - ✅ Admin token for write operations (optional)
 
+## Repository and CI
+
+- **GitHub:** https://github.com/austinjgilbert/-website-scanner-worker (private)
+- **Push:** Use a Personal Access Token with **repo** + **workflow** scopes — see [GITHUB-PUSH.md](GITHUB-PUSH.md).
+- **CI:** Pushes to `main` run tests and deploy to **production** (`--env=production`). Add repo secrets **CLOUDFLARE_API_TOKEN** and **CLOUDFLARE_ACCOUNT_ID** to enable deploy from GitHub. Health check runs every 30 minutes.
+
 ## Deployment
 
 ### Cloudflare Workers
 
 ```bash
-# Deploy to production (uses top-level env; avoids "multiple environments" warning)
+# Deploy to production (default for this project)
 npm run deploy
 
-# Deploy to a named environment
-wrangler deploy --env production
-wrangler deploy --env preview
+# Deploy default env only
+npm run deploy:default
 ```
 
-When `wrangler.toml` defines multiple environments, target the default with `--env=""` (already set in `npm run deploy`).
+Production URL: **https://website-scanner.austin-gilbert.workers.dev**
 
 ### Environment Variables
 
@@ -547,6 +556,8 @@ Free agentic control layer via Telegram:
 ## Documentation
 
 - [**UPDATE-INSTRUCTIONS.md**](UPDATE-INSTRUCTIONS.md) - Get everything working: setup, deploy, update Custom GPT
+- [**PROJECT-STATUS.md**](PROJECT-STATUS.md) - What’s connected (GitHub, worker, Sanity, CI)
+- [**GITHUB-PUSH.md**](GITHUB-PUSH.md) - Push to GitHub (PAT, workflow scope)
 - [API Reference](docs/api/)
 - [Intelligence Memory System Examples](docs/INTELLIGENCE-MEMORY-EXAMPLES.md) - Usage examples and best practices
 - [Sanity Setup Guide](docs/SANITY-SETUP.md) - Sanity CMS configuration
