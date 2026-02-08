@@ -22,7 +22,7 @@ import {
 
 export async function handleOpportunitiesDaily(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const dateIso = body.date || new Date().toISOString();
     const sinceIso = new Date(new Date(dateIso).getTime() - 24 * 60 * 60 * 1000).toISOString();
 

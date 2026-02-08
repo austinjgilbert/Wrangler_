@@ -25,6 +25,7 @@
     "sanity:open-token": "node scripts/sanity-open-token-page.js",
     "health-check": "curl -sf https://website-scanner.austin-gilbert.workers.dev/health",
     "health-check:local": "curl -sf http://localhost:8787/health",
+    "test:moltbook": "BASE_URL=http://localhost:8787 ./scripts/test-moltbook-api.sh",
     "tail": "wrangler tail --env=production"
   },
   "devDependencies": {

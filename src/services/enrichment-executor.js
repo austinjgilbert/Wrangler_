@@ -9,6 +9,7 @@ import {
   buildCompleteResearchSet,
   PIPELINE_STAGES,
 } from './research-pipeline.js';
+import { getDocument } from '../sanity-client.js';
 
 /**
  * Execute enrichment pipeline stages automatically
@@ -79,23 +80,33 @@ export async function executeEnrichmentPipeline(
         // Store in accountPack
         const packId = `accountPack-${currentJob.accountKey}`;
         try {
-          // Get existing pack to preserve payload structure
           const existingPack = await getDocument(client, packId);
-          
-          // Merge researchSet into existing payload
           const existingPayload = existingPack?.payload || {};
           const updatedPayload = {
             ...existingPayload,
             researchSet: researchSet,
             enrichmentCompletedAt: new Date().toISOString(),
           };
-          
-          await patchDocument(client, packId, {
-            set: {
+          const now = new Date().toISOString();
+          if (existingPack && existingPack._id) {
+            await patchDocument(client, packId, {
+              set: {
+                payload: updatedPayload,
+                updatedAt: now,
+              },
+            });
+          } else {
+            await upsertDocument(client, {
+              _type: 'accountPack',
+              _id: packId,
+              accountKey: currentJob.accountKey,
+              canonicalUrl: currentJob.canonicalUrl || '',
+              domain: (currentJob.canonicalUrl && new URL(currentJob.canonicalUrl).hostname) || '',
               payload: updatedPayload,
-              updatedAt: new Date().toISOString(),
-            },
-          });
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         } catch (e) {
           console.error('Failed to store research set:', e);
         }

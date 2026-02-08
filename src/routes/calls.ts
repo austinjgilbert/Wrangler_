@@ -36,7 +36,7 @@ function buildFollowupDraft(insight: any) {
 
 export async function handleCallsIngest(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const transcript = body.transcript;
     const meetingType = body.meetingType || 'discovery';
     const accountHint = body.accountHint || '';
@@ -164,7 +164,7 @@ export async function handleCallsIngest(request: Request, requestId: string, env
 
 export async function handleCallsReact(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const sessionId = body.sessionId;
     if (!sessionId) {
       return createErrorResponse('VALIDATION_ERROR', 'sessionId required', {}, 400, requestId);

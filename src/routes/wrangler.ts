@@ -11,7 +11,7 @@ import { createMoltEvent } from '../lib/sanity.ts';
 
 export async function handleWranglerIngest(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const userPrompt = body.userPrompt || body.prompt;
     const gptResponse = body.gptResponse || body.response;
     const sessionId = body.sessionId || null;

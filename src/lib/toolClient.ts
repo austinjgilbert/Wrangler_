@@ -187,7 +187,7 @@ export class ToolClient {
           throw new Error(`Tool ${toolName} error: ${response.status} ${errorText}`);
         }
 
-        const result = await response.json();
+        const result = (await response.json()) as Record<string, unknown>;
         validateSchema(tool.outputSchema, result, `tool:${toolName}.response`);
 
         if (result.traceId && result.traceId !== traceId) {

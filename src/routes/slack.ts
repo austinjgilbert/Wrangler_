@@ -89,6 +89,6 @@ export async function handleSlackCommand(request: Request, requestId: string, en
   const text = params.get('text') || '';
   const { intent, payload } = parseSlackCommand(text);
   const result = await routeSlackIntent(intent, payload, requestId, env);
-  const data = await result.json().catch(() => ({}));
+  const data = (await result.json().catch(() => ({}))) as { data?: unknown };
   return new Response(`OK: ${JSON.stringify(data.data || {})}`, { status: 200 });
 }

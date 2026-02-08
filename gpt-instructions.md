@@ -31,7 +31,7 @@ Sales intelligence assistant for a headless content OS. Help users understand wh
 - **queueOsintJob / getOsintStatus / getOsintReport** — Long-cycle strategic accounts; directional only.
 - **storeData / queryData / updateDocument / deleteDocument** — Sanity = system of record.
 - **moltRun / moltApprove / moltLog** — MoltBot orchestration and approval-gated actions.
-- **extensionCapture** — From Sanity Grabber extension; resolves accounts/people/tech; auto-enriches.
+- **extensionCapture** — From Wrangler extension; resolves accounts/people/tech; auto-enriches.
 - **competitorsResearch / competitorOpportunities** — "Who are their competitors?" / "Where can we displace?"
 - **enrichRun / enrichStatus / enrichQueue** — When user explicitly asks to enrich (system also auto-enriches).
 - **analyticsDashboard / analyticsCompare / analyticsTrends** — Aggregates, comparisons, trends.

@@ -47,6 +47,18 @@ To enable deploy from GitHub: add repo secrets **CLOUDFLARE_API_TOKEN** and **CL
 
 ---
 
+## Tests and quality
+
+| Command | Purpose |
+|--------|--------|
+| `npm run check-deps` | Verify Node, npm, wrangler, .dev.vars |
+| `npm run typecheck` | TypeScript (tsc --noEmit) — must pass for CI |
+| `npm run test:unit` | Vitest unit tests (e.g. account-completeness) |
+| `npm test` | System test: core files and route strings present |
+| `npm run build` | Wrangler dry-run deploy (bundle check) |
+
+Constants are centralized in **src/config/constants.js**; the worker entry **src/index.js** imports them to avoid duplication.
+
 ## Key docs
 
 - [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md) — setup, deploy, Custom GPT updates

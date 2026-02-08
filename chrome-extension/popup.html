@@ -188,6 +188,14 @@
 
     .capture-button:hover:not(:disabled) { background: #e5e5e5; }
 
+    .connect-hint {
+      font-size: 11px;
+      color: #a1a1aa;
+      margin: 0 0 10px 0;
+      line-height: 1.4;
+    }
+    .connect-hint.hidden { display: none; }
+
     .capture-button:disabled {
       background: #27272a;
       color: #52525b;
@@ -335,6 +343,14 @@
 
     .save-btn:hover { background: #16a34a; }
 
+    .settings-hint {
+      font-size: 10px;
+      color: #71717a;
+      margin: 8px 0 0 0;
+      line-height: 1.4;
+    }
+    .settings-hint code { font-size: 9px; color: #a1a1aa; }
+
     /* Text tab */
     .text-input {
       width: 100%;
@@ -405,8 +421,8 @@
 <body>
 
   <div class="header">
-    <h1>Sanity Grabber</h1>
-    <span id="badge" class="badge disconnected">Not configured</span>
+    <h1>Wrangler</h1>
+    <span id="badge" class="badge disconnected">Not connected</span>
   </div>
 
   <!-- Tabs -->
@@ -437,12 +453,13 @@
     <div class="preview" id="preview-section">
       <h3>Detected Entities</h3>
       <div class="entities" id="entities-list">
-        <div class="empty-preview">Click Capture to extract data from this page.</div>
+        <div class="empty-preview" id="capture-empty-msg">Click Capture to extract data from this page.</div>
       </div>
     </div>
 
     <div id="status-msg" class="status-msg"></div>
 
+    <p id="connect-hint" class="connect-hint">Open <strong>Settings</strong> and add your Worker URL + API key, then Save to enable capture.</p>
     <button id="capture-btn" class="capture-button" disabled>Capture This Page</button>
   </div>
 
@@ -467,7 +484,7 @@
 
   <!-- ═══ Text tab ═══ -->
   <div id="tab-text" class="tab-content">
-    <div class="text-hint">Paste any text — research notes, email threads, CRM data — and we'll extract entities and send them to Sanity.</div>
+    <div class="text-hint">Paste any text — research notes, email threads, CRM data — and we'll extract entities and send them to Sanity. If the text includes technologies and you have a webpage open, that tech list is applied to that page's account.</div>
     <textarea id="text-input" class="text-input" placeholder="Paste research text, email content, meeting notes, or any data containing accounts, people, or technology mentions..."></textarea>
 
     <div id="text-status" class="status-msg"></div>
@@ -481,8 +498,9 @@
   <div id="settings-panel" class="settings-panel">
     <label for="api-url">Worker URL</label>
     <input type="text" id="api-url" placeholder="https://website-scanner.austin-gilbert.workers.dev">
-    <label for="api-key">API Key (Bearer)</label>
-    <input type="password" id="api-key" placeholder="Paste your MOLT_API_KEY here">
+    <label for="api-key">API Key</label>
+    <input type="password" id="api-key" placeholder="Same value as MOLT_API_KEY in the worker">
+    <p class="settings-hint">Production: set <code>wrangler secret put MOLT_API_KEY --env=production</code>, then paste that value here.</p>
     <button class="save-btn" id="save-settings">Save</button>
   </div>
 

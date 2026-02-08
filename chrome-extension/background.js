@@ -1,5 +1,5 @@
 /**
- * Sanity Grabber – Background Service Worker
+ * Wrangler – Background Service Worker
  *
  * Handles:
  *   - Extension install / update lifecycle
@@ -50,7 +50,7 @@ chrome.storage.onChanged.addListener((changes) => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const stored = await chrome.storage.local.get(['workerUrl', 'apiKey']);
   if (!stored.apiKey) {
-    console.warn('[Sanity Grabber] No API key configured — open the extension popup to set it.');
+    console.warn('[Wrangler] No API key configured — open the extension popup to set it.');
     return;
   }
 
@@ -104,9 +104,9 @@ async function sendPayload(workerUrl, apiKey, payload) {
       body: JSON.stringify(payload),
     });
 
-    const data = await resp.json();
+    const data = await resp.json().catch(() => ({}));
 
-    if (data.ok) {
+    if (data && data.ok) {
       // Increment stats
       const stored = await chrome.storage.local.get(['totalCaptures', 'todayCaptures', 'lastCaptureDate']);
       const today = new Date().toDateString();
@@ -117,7 +117,7 @@ async function sendPayload(workerUrl, apiKey, payload) {
 
     return data;
   } catch (err) {
-    console.error('[Sanity Grabber] Send failed:', err.message);
+    console.error('[Wrangler] Send failed:', err.message);
     return { ok: false, error: err.message };
   }
 }

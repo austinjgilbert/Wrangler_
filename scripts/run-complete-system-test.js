@@ -16,9 +16,9 @@ const requiredFiles = [
   'src/routes/calls.ts',
   'src/routes/network.ts',
   'src/routes/opportunities.ts',
-  'src/lib/toolRegistry.js',
-  'src/lib/toolClient.js',
-  'src/lib/riskEngine.js',
+  'src/lib/toolRegistry.ts',
+  'src/lib/toolClient.ts',
+  'src/lib/riskEngine.ts',
   'src/lib/entityResolver.ts',
   'src/lib/jobs.ts',
   'src/lib/dqRules.ts',
@@ -30,7 +30,7 @@ const requiredFiles = [
   'src/lib/briefing.ts',
   'src/lib/callCoaching.ts',
   'src/lib/callInsight.ts',
-  'src/lib/notify.js',
+  'src/lib/notify.ts',
 ];
 
 const missing = requiredFiles.filter((f) => !fs.existsSync(path.join(root, f)));

@@ -116,7 +116,7 @@ export async function handleImportConnections(request: Request, requestId: strin
     let csvText = '';
 
     if (contentType.includes('application/json')) {
-      const body = await request.json();
+      const body = (await request.json()) as Record<string, any>;
       csvText = body.csvText || body.text || '';
     } else {
       csvText = await request.text();

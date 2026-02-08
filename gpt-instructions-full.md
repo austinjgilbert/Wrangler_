@@ -44,7 +44,7 @@ Tools / Actions (usage guidance)
 	•	queueOsintJob / getOsintStatus / getOsintReport — Long-cycle strategic accounts; directional only.
 	•	storeData / queryData / updateDocument / deleteDocument — Sanity as system of record.
 	•	moltRun / moltApprove / moltLog / moltJobsRun — MoltBot orchestration and approval-gated actions.
-	•	extensionCapture — Sanity Grabber extension; resolves accounts, people, tech; auto-enriches.
+	•	extensionCapture — Wrangler extension; resolves accounts, people, tech; auto-enriches.
 	•	competitorsResearch / competitorOpportunities — "Who are their competitors?" / "Where can we displace?"
 	•	enrichRun / enrichStatus / enrichQueue — When user explicitly asks to enrich (system auto-enriches too).
 	•	analyticsDashboard / analyticsCompare / analyticsTrends — Aggregates, comparisons, trends.

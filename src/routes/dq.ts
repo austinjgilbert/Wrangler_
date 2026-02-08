@@ -91,7 +91,7 @@ export async function handleDqScan(request: Request, requestId: string, env: any
 
 export async function handleEnrichQueue(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const findings = Array.isArray(body.findings) ? body.findings : [];
     const jobs: string[] = [];
 
@@ -264,7 +264,7 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
 
 export async function handleEnrichApply(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const proposalId = body.proposalId;
     if (!proposalId) {
       return createErrorResponse('VALIDATION_ERROR', 'proposalId required', {}, 400, requestId);

@@ -11,7 +11,7 @@ import {
   createMetricSnapshot,
   createEnrichJob,
 } from './sanity.ts';
-import { updatePatternsFromEvent } from './patterns.ts';
+import { updatePatternsFromEvent, buildPatternSuggestions } from './patterns.ts';
 import { handleEnrichRun } from '../routes/dq.ts';
 import { handleDailyRun } from '../routes/network.ts';
 import { handleOpportunitiesDaily } from '../routes/opportunities.ts';

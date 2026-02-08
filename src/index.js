@@ -3,6 +3,24 @@
  * Provides tech stack detection and basic website analysis
  */
 
+import {
+  BLOCKED_HOSTS,
+  BLOCKED_TLDS,
+  ALLOWED_HEADERS,
+  MAX_HTML_SIZE,
+  HTML_SNIPPET_SIZE,
+  MAX_SCRIPTS,
+  MAX_LINKS,
+  SITEMAP_SNIPPET_SIZE,
+  BATCH_MAX_URLS_LIGHT,
+  BATCH_MAX_URLS_FULL,
+  BATCH_CONCURRENCY_LIGHT,
+  BATCH_CONCURRENCY_FULL,
+  BATCH_FETCH_TIMEOUT_MS_LIGHT,
+  BATCH_FETCH_TIMEOUT_MS_FULL,
+  BATCH_MAX_HTML_SIZE,
+} from './config/constants.js';
+
 /**
  * Get browser-like headers to bypass Cloudflare bot protection
  */
@@ -83,51 +101,6 @@ function getLinkedInHeaders(referer = null) {
   
   return headers;
 }
-
-// SSRF protection: block localhost and private IPs
-const BLOCKED_HOSTS = [
-  'localhost',
-  '127.0.0.1',
-  '0.0.0.0',
-  '::1',
-  '[::1]',
-];
-
-const BLOCKED_TLDS = ['.local'];
-
-// Allowed headers to return (security: don't leak sensitive info)
-const ALLOWED_HEADERS = [
-  'server',
-  'x-powered-by',
-  'content-type',
-  'cache-control',
-  'via',
-  'cf-ray',
-  'cf-cache-status',
-  'x-vercel-id',
-  'x-vercel-cache',
-  'x-served-by',
-  'x-cache',
-  'x-amz-cf-id',
-  'x-amz-cf-pop',
-  'strict-transport-security',
-];
-
-// Size limits
-const MAX_HTML_SIZE = 250 * 1024; // 250KB
-const HTML_SNIPPET_SIZE = 20 * 1024; // 20KB
-const MAX_SCRIPTS = 300;
-const MAX_LINKS = 300;
-const SITEMAP_SNIPPET_SIZE = 20 * 1024; // 20KB
-
-// Batch scanning limits (avoid Cloudflare 1102 resource limit errors)
-const BATCH_MAX_URLS_LIGHT = 10;
-const BATCH_MAX_URLS_FULL = 3;
-const BATCH_CONCURRENCY_LIGHT = 2;
-const BATCH_CONCURRENCY_FULL = 1;
-const BATCH_FETCH_TIMEOUT_MS_LIGHT = 8000;
-const BATCH_FETCH_TIMEOUT_MS_FULL = 12000;
-const BATCH_MAX_HTML_SIZE = 150 * 1024; // smaller than MAX_HTML_SIZE to reduce CPU/memory in batch
 
 function clampArray(arr, max) {
   if (!Array.isArray(arr)) return [];
@@ -7346,6 +7319,12 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (!auth.allowed) return auth.errorResponse;
         const { handleWranglerIngest } = await import('./routes/wrangler.ts');
         return await handleWranglerIngest(request, requestId, env);
+      } else if (url.pathname === '/extension/check') {
+        { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        return createSuccessResponse({ ok: true, message: 'Extension connected' }, requestId);
       } else if (url.pathname === '/extension/capture') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { checkMoltApiKey } = await import('./utils/molt-auth.js');
@@ -7422,6 +7401,14 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleDailyRun } = await import('./routes/network.ts');
         return await handleDailyRun(request, requestId, env);
+      } else if (url.pathname === '/moltbook/api/activity') {
+        const { handleMoltbookApiActivityGet, handleMoltbookApiActivityPost } = await import('./routes/moltbook.ts');
+        if (request.method === 'GET') return await handleMoltbookApiActivityGet(request, requestId, env);
+        if (request.method === 'POST') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleMoltbookApiActivityPost(request, requestId, env);
+        }
+        return new Response('Method Not Allowed', { status: 405 });
       } else if (url.pathname === '/moltbook/fetch') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleMoltbookFetch } = await import('./routes/moltbook.ts');

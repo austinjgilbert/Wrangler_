@@ -1,5 +1,5 @@
 /**
- * Sanity Grabber – Popup Script
+ * Wrangler – Popup Script
  *
  * Consolidated from all extension projects. Features:
  *   - Single page capture  (content.js DOM extraction → worker)
@@ -19,6 +19,7 @@ const settingsToggle   = document.getElementById('settings-toggle');
 const settingsPanel    = document.getElementById('settings-panel');
 const saveBtn          = document.getElementById('save-settings');
 const badge            = document.getElementById('badge');
+const connectHint      = document.getElementById('connect-hint');
 const statusMsg        = document.getElementById('status-msg');
 const sourceLabel      = document.getElementById('source-label');
 const pageUrlEl        = document.getElementById('page-url');
@@ -68,10 +69,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   apiKeyInput.value = stored.apiKey || '';
 
   if (stored.apiKey) {
-    badge.textContent = 'Connected';
-    badge.className = 'badge connected';
-    captureBtn.disabled = false;
-    textBtn.disabled = false;
+    checkConnection(stored.workerUrl || DEFAULT_WORKER_URL, stored.apiKey, badge, () => {
+      captureBtn.disabled = false;
+      textBtn.disabled = false;
+      bulkBtn.disabled = false;
+      if (connectHint) connectHint.classList.add('hidden');
+      const emptyMsg = document.getElementById('capture-empty-msg');
+      if (emptyMsg) emptyMsg.textContent = 'Click Capture to extract data from this page.';
+    });
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className = 'badge disconnected';
+    if (connectHint) connectHint.classList.remove('hidden');
+    const emptyMsg = document.getElementById('capture-empty-msg');
+    if (emptyMsg) emptyMsg.textContent = 'Connect in Settings (Worker URL + API key), then click Capture.';
   }
 
   const today = new Date().toDateString();
@@ -100,14 +111,28 @@ saveBtn.addEventListener('click', async () => {
 
   await chrome.storage.local.set({ workerUrl: url, apiKey: key });
 
-  if (key) {
-    badge.textContent = 'Connected';
-    badge.className = 'badge connected';
-    captureBtn.disabled = false;
-    textBtn.disabled = false;
-  }
+  captureBtn.disabled = true;
+  textBtn.disabled = true;
+  bulkBtn.disabled = true;
 
-  showStatus(statusMsg, 'Settings saved', 'success');
+  if (key) {
+    if (connectHint) connectHint.classList.add('hidden');
+    await checkConnection(url, key, badge, () => {
+      captureBtn.disabled = false;
+      textBtn.disabled = false;
+      bulkBtn.disabled = false;
+    });
+    const emptyMsg = document.getElementById('capture-empty-msg');
+    if (emptyMsg) emptyMsg.textContent = 'Click Capture to extract data from this page.';
+    showStatus(statusMsg, badge.className.includes('connected') ? 'Connected. Settings saved.' : 'Settings saved. Check API key and worker URL.', badge.className.includes('connected') ? 'success' : 'error');
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className = 'badge disconnected';
+    if (connectHint) connectHint.classList.remove('hidden');
+    const emptyMsg = document.getElementById('capture-empty-msg');
+    if (emptyMsg) emptyMsg.textContent = 'Connect in Settings (Worker URL + API key), then click Capture.';
+    showStatus(statusMsg, 'Settings saved. Set an API key to connect.', 'success');
+  }
   settingsPanel.classList.remove('visible');
   settingsToggle.textContent = 'Settings';
 });
@@ -265,7 +290,16 @@ textBtn.addEventListener('click', async () => {
   showStatus(textStatus, 'Extracting entities from text...', 'loading');
 
   try {
-    // Build a lightweight payload from raw text
+    // If user has a normal page open, treat pasted tech list as belonging to that URL
+    let contextUrl = null;
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+        contextUrl = tab.url;
+      }
+    } catch (_) {}
+
+    const technologies = extractTechFromText(text);
     const payload = {
       url: 'manual://text-paste',
       title: 'Manual text paste',
@@ -273,11 +307,12 @@ textBtn.addEventListener('click', async () => {
       capturedAt: new Date().toISOString(),
       accounts: extractAccountsFromText(text),
       people: extractPeopleFromText(text),
-      technologies: extractTechFromText(text),
+      technologies,
       signals: [],
       metadata: {},
       rawText: text.substring(0, 15000),
     };
+    if (contextUrl) payload.contextUrl = contextUrl;
 
     const result = await sendToWorker(payload);
 
@@ -300,6 +335,58 @@ textBtn.addEventListener('click', async () => {
   textBtn.textContent = 'Extract & Send to Sanity';
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONNECTION CHECK (uses GET /extension/check with Bearer auth)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function checkConnection(workerUrl, apiKey, badgeEl, onConnected) {
+  const base = (workerUrl || DEFAULT_WORKER_URL).replace(/\/+$/, '');
+  badgeEl.textContent = 'Checking...';
+  badgeEl.className = 'badge disconnected';
+
+  try {
+    const resp = await fetch(`${base}/extension/check`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey,
+      },
+    });
+    const data = await resp.json().catch(() => ({}));
+    // Worker returns { ok: true, data: { ok: true, message: '...' } }
+    const connected = resp.ok && (data.ok === true || (data.data && data.data.ok === true));
+    if (connected) {
+      badgeEl.textContent = 'Connected';
+      badgeEl.className = 'badge connected';
+      if (typeof onConnected === 'function') onConnected();
+      return;
+    }
+    // Show reason in status so user can fix it
+    const statusEl = document.getElementById('status-msg');
+    if (statusEl) {
+      if (resp.status === 401) {
+        statusEl.textContent = 'Invalid API key. Use the same value as MOLT_API_KEY in the worker.';
+        statusEl.className = 'status-msg error';
+      } else if (resp.status >= 500) {
+        statusEl.textContent = 'Worker error. Try again in a moment.';
+        statusEl.className = 'status-msg error';
+      } else if (!resp.ok) {
+        statusEl.textContent = `Connection failed (${resp.status}). Check Worker URL and API key.`;
+        statusEl.className = 'status-msg error';
+      }
+    }
+  } catch (err) {
+    const statusEl = document.getElementById('status-msg');
+    if (statusEl) {
+      statusEl.textContent = 'Network error. Check Worker URL and that the worker is reachable.';
+      statusEl.className = 'status-msg error';
+    }
+  }
+
+  badgeEl.textContent = 'Not connected';
+  badgeEl.className = 'badge disconnected';
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  SHARED HELPERS
@@ -352,7 +439,8 @@ async function sendToWorker(payload) {
     body: JSON.stringify(payload),
   });
 
-  return await resp.json();
+  const data = await resp.json().catch(() => ({ ok: false, error: { message: 'Invalid response from worker' } }));
+  return data;
 }
 
 function resetBtn(btn, text) {

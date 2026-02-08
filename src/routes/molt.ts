@@ -18,7 +18,7 @@ import {
 
 export async function handleMoltLog(request: Request, requestId: string, env: any) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, any>;
     const text = body.text;
     const channel = body.channel || 'manual';
     const outcome = body.outcome || null;

@@ -4,6 +4,17 @@ name = "website-scanner"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
+# Rate limiting (KV — top-level so all envs inherit)
+# Moltbook activity: GET/POST /moltbook/api/activity (preview namespace created; for production run: npx wrangler kv namespace create MOLTBOOK_ACTIVITY and set id)
+kv_namespaces = [
+  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" },
+  { binding = "MOLTBOOK_ACTIVITY_KV", id = "b8e25007b3ac45a8ab28c7953de9e914", preview_id = "081c52d2ad3a4bed810c664fd3adaeda" }
+]
+
+# Local dev: use 8787 so it matches BASE_URL / MOLTBOOK_BASE_URL in [vars]
+[dev]
+port = 8787
+
 # Free-tier background scheduling (UTC).
 [triggers]
 crons = [
@@ -19,13 +30,9 @@ crons = [
 [vars]
 BASE_URL = "http://localhost:8787"
 MOLT_TOOL_BASE_URL = "http://localhost:8787"
+MOLTBOOK_BASE_URL = "http://localhost:8787"
 WRANGLER_API_URL = ""
 # CORS_ORIGINS: optional comma-separated allowed origins; "*" or unset = allow all
-
-# Rate limiting (KV namespaces created)
-kv_namespaces = [
-  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" }
-]
 
 # NOTE: Queues require Workers Paid plan. If on free plan, OSINT will use sync endpoint instead.
 # Queue producer binding for OSINT jobs (uncomment when on paid plan)
@@ -85,6 +92,7 @@ kv_namespaces = [
 [env.production.vars]
 BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 MOLT_TOOL_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+MOLTBOOK_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 WRANGLER_API_URL = ""
 
 # Production environment inherits top-level config

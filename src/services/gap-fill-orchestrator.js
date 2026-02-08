@@ -117,6 +117,50 @@ export async function triggerGapFill(opts) {
       return { triggered: false, reason: 'Cannot resolve URL for account' };
     }
 
+    // ── 3b. Ensure account + accountPack exist (e.g. Telegram /enrich on new domain) ───
+
+    let accountToUse = account;
+    let packToUse = accountPack;
+
+    if (!account || !accountPack) {
+      try {
+        const { findOrCreateMasterAccount, normalizeDomain } = await import('./sanity-account.js');
+        const created = await findOrCreateMasterAccount(
+          groqQuery,
+          upsertDocument,
+          patchDocument,
+          client,
+          resolvedUrl,
+          null,
+          null,
+        );
+        accountToUse = await safeQuery(groqQuery, client,
+          `*[_type == "account" && accountKey == $key][0]`,
+          { key: created.accountKey }) || account;
+        packToUse = await safeQuery(groqQuery, client,
+          `*[_type == "accountPack" && accountKey == $key][0]`,
+          { key: created.accountKey });
+        if (!packToUse) {
+          const packId = `accountPack-${created.accountKey}`;
+          const now = new Date().toISOString();
+          await upsertDocument(client, {
+            _type: 'accountPack',
+            _id: packId,
+            accountKey: created.accountKey,
+            canonicalUrl: resolvedUrl,
+            domain: normalizeDomain(resolvedUrl),
+            payload: {},
+            createdAt: now,
+            updatedAt: now,
+          });
+          packToUse = { _id: packId, accountKey: created.accountKey, payload: {} };
+        }
+      } catch (ensureErr) {
+        console.error('Gap-fill ensure account/pack error:', ensureErr?.message);
+        return { triggered: false, reason: ensureErr?.message || 'Failed to create account' };
+      }
+    }
+
     // ── 4. Queue enrichment job with all missing stages ─────────────────
 
     const { queueEnrichmentJob } = await import('./enrichment-service.js');

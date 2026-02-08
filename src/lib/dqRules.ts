@@ -179,21 +179,21 @@ export function runDqRules(entities: {
   for (const account of entities.accounts) {
     for (const rule of DQ_RULES.filter((r) => r.id.startsWith('account.'))) {
       const result = rule.check(account);
-      if (result) findings.push(result);
+      if (result) findings.push(result as DqFinding);
     }
   }
 
   for (const person of entities.people) {
     for (const rule of DQ_RULES.filter((r) => r.id.startsWith('person.'))) {
       const result = rule.check(person);
-      if (result) findings.push(result);
+      if (result) findings.push(result as DqFinding);
     }
   }
 
   for (const tech of entities.technologies) {
     for (const rule of DQ_RULES.filter((r) => r.id.startsWith('technology.'))) {
       const result = rule.check(tech);
-      if (result) findings.push(result);
+      if (result) findings.push(result as DqFinding);
     }
   }
 

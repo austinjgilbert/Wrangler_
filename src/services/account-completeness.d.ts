@@ -4,11 +4,17 @@
 
 import type { CompletenessScore, EnrichmentStage } from '../../shared/types';
 
+export interface CompletenessDimension {
+  present: boolean;
+  weight: number;
+  label: string;
+}
+
 export interface CompletenessAnalysis {
   score: number;
-  filled: Record<string, boolean>;
+  dimensions: Record<string, CompletenessDimension>;
   gaps: string[];
-  nextStages: EnrichmentStage[];
+  nextStages: string[];
 }
 
 export interface CompletenessSummary {
@@ -25,6 +31,6 @@ export interface WorkNeeded {
   gaps: string[];
 }
 
-export function analyseCompleteness(account: any, accountPack: any): CompletenessAnalysis;
+export function analyseCompleteness(account: any, accountPack: any, enrichmentJob?: any): CompletenessAnalysis;
 export function buildCompletenessSummary(analysis: CompletenessAnalysis): CompletenessSummary;
 export function needsBackgroundWork(account: any, accountPack: any): WorkNeeded;

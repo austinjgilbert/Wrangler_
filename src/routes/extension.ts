@@ -72,6 +72,8 @@ interface CapturePayload {
   signals: any[];
   metadata: Record<string, string>;
   rawText?: string;
+  /** When set (e.g. from Paste Text with a tab open), pasted tech list is applied to this URL's account */
+  contextUrl?: string;
 }
 
 export async function handleExtensionCapture(request: Request, requestId: string, env: any) {
@@ -93,6 +95,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
       groqQuery,
       upsertDocument,
       patchDocument,
+      getDocument,
       generateAccountKey,
       normalizeCanonicalUrl,
       extractDomain,
@@ -112,7 +115,9 @@ export async function handleExtensionCapture(request: Request, requestId: string
       entitiesResolved: 0,
     };
 
-    // ── 1. Process accounts ─────────────────────────────────────────────
+    const pasteContext = classifyPasteContext(body);
+
+    // ── 1. Process accounts (merge with existing when present) ───────────
     const accounts = body.accounts || [];
     for (const acct of accounts) {
       try {
@@ -127,7 +132,6 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
         const accountId = `account-${accountKey}`;
 
-        // Upsert account with captured data
         const accountDoc: Record<string, any> = {
           _type: 'account',
           _id: accountId,
@@ -147,13 +151,11 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (acct.linkedinUrl) accountDoc.linkedinUrl = acct.linkedinUrl;
         if (acct.specialties?.length) accountDoc.specialties = acct.specialties;
 
-        // Classification from CRM data
         if (acct.industry) {
           accountDoc.classification = accountDoc.classification || {};
           accountDoc.classification.industry = acct.industry;
         }
 
-        // Benchmarks from CRM data
         if (acct.employeeCount || acct.employees || acct.revenue || acct.headquarters) {
           accountDoc.benchmarks = {
             estimatedEmployees: acct.employeeCount || acct.employees || null,
@@ -163,19 +165,21 @@ export async function handleExtensionCapture(request: Request, requestId: string
           };
         }
 
-        await upsertDocument(client, accountDoc);
+        const existingAccount = await getDocument(client, accountId) as Record<string, any> | null;
+        const merged = mergeAccountForExtension(existingAccount, accountDoc);
+        await upsertDocument(client, merged);
 
         results.accountsResolved.push({
           accountKey,
           domain,
-          name: acct.name || domain,
+          name: merged.companyName || merged.name || acct.name || domain,
         });
       } catch (err: any) {
         console.error('Extension: account upsert error:', err?.message);
       }
     }
 
-    // ── 2. Process people ───────────────────────────────────────────────
+    // ── 2. Process people (merge with existing when present) ────────────
     const people = body.people || [];
     for (const person of people) {
       try {
@@ -216,13 +220,11 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (person.connections != null) personDoc.connections = typeof person.connections === 'number' ? person.connections : parseInt(String(person.connections), 10) || null;
         if (person.email) personDoc.email = person.email;
 
-        // Classify role and seniority
         const titleStr = person.currentTitle || person.title || person.headline || '';
         personDoc.roleCategory = classifyRole(titleStr);
         personDoc.seniorityLevel = classifySeniority(titleStr);
         personDoc.isDecisionMaker = ['c-suite', 'vp', 'director'].includes(personDoc.seniorityLevel);
 
-        // Link to account if we resolved one
         if (person.currentCompany) {
           const matchedAccount = results.accountsResolved.find(
             a => a.name?.toLowerCase() === person.currentCompany?.toLowerCase()
@@ -234,12 +236,14 @@ export async function handleExtensionCapture(request: Request, requestId: string
           }
         }
 
-        await upsertDocument(client, personDoc);
+        const existingPerson = await getDocument(client, personId) as Record<string, any> | null;
+        const merged = mergePersonForExtension(existingPerson, personDoc);
+        await upsertDocument(client, merged);
 
         results.peopleResolved.push({
           personKey,
-          name: person.name,
-          company: person.currentCompany || '',
+          name: merged.name || person.name,
+          company: merged.currentCompany || person.currentCompany || '',
         });
       } catch (err: any) {
         console.error('Extension: person upsert error:', err?.message);
@@ -248,6 +252,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
     // ── 3. Process technologies ─────────────────────────────────────────
     const technologies = body.technologies || [];
+    const techRefsCreated: { _ref: string; _key: string }[] = [];
     for (const tech of technologies) {
       try {
         const name = typeof tech === 'string' ? tech : (tech as any).name;
@@ -265,9 +270,66 @@ export async function handleExtensionCapture(request: Request, requestId: string
           lastEnrichedAt: new Date().toISOString(),
         });
 
+        techRefsCreated.push({ _ref: techId, _key: slug });
         results.technologiesLinked++;
       } catch (err: any) {
         console.error('Extension: technology upsert error:', err?.message);
+      }
+    }
+
+    // ── 3b. Text-paste with contextUrl + technologies → attach tech list to that URL's account ──
+    if (
+      body.source === 'text_paste' &&
+      body.contextUrl &&
+      body.contextUrl.startsWith('http') &&
+      techRefsCreated.length > 0
+    ) {
+      try {
+        const canonicalUrl = normalizeCanonicalUrl(body.contextUrl);
+        const domain = extractDomain(body.contextUrl);
+        if (canonicalUrl && domain) {
+          const contextAccountKey = await generateAccountKey(canonicalUrl);
+          if (contextAccountKey) {
+            const contextAccountId = `account-${contextAccountKey}`;
+            const existingAccount = await getDocument(client, contextAccountId) as Record<string, any> | null;
+            const existingRefs = (existingAccount?.technologies || []).map((r: { _ref?: string }) => ({ _ref: r._ref || r, _key: (r._ref || r).toString().replace('technology-', '') }));
+            const seen = new Set(existingRefs.map((r: { _ref: string }) => r._ref));
+            for (const r of techRefsCreated) {
+              if (!seen.has(r._ref)) {
+                existingRefs.push(r);
+                seen.add(r._ref);
+              }
+            }
+            const techRefsSanity = existingRefs.map((r: { _ref: string; _key: string }) => ({
+              _type: 'reference' as const,
+              _ref: r._ref,
+              _key: r._key,
+            }));
+
+            const minimalAccount: Record<string, any> = {
+              _type: 'account',
+              _id: contextAccountId,
+              accountKey: contextAccountKey,
+              canonicalUrl,
+              domain,
+              rootDomain: domain,
+              updatedAt: new Date().toISOString(),
+            };
+            const mergedAccount = mergeAccountForExtension(existingAccount, minimalAccount);
+            mergedAccount.technologies = techRefsSanity;
+            await upsertDocument(client, mergedAccount);
+
+            if (!results.accountsResolved.some((a) => a.accountKey === contextAccountKey)) {
+              results.accountsResolved.push({
+                accountKey: contextAccountKey,
+                domain,
+                name: domain,
+              });
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('Extension: contextUrl tech link error:', err?.message);
       }
     }
 
@@ -285,12 +347,12 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
     const eventDoc = buildEventDoc({
       type: 'extension.capture',
-      text: `Captured from ${body.source}: ${body.title || body.url}`,
+      text: `Captured from ${body.source}: ${body.title || body.url}${pasteContext !== 'capture' ? ` (${pasteContext})` : ''}`,
       channel: 'extension',
       actor: 'chrome_extension',
       entities,
       outcome: null,
-      tags: ['extension', body.source],
+      tags: ['extension', body.source, pasteContext],
       traceId: requestId,
       idempotencyKey: `ext.${(body.capturedAt || new Date().toISOString()).replace(/[^a-zA-Z0-9]/g, '')}`,
     });
@@ -350,4 +412,69 @@ function classifySeniority(title: string): string {
   if (/director|head of/i.test(t)) return 'director';
   if (/manager|lead|principal|senior/i.test(t)) return 'manager';
   return 'ic';
+}
+
+/** Infer paste context for sorting/storing (tech_list, people_list, accounts, mixed) */
+function classifyPasteContext(body: CapturePayload): string {
+  if (body.source !== 'text_paste') return 'capture';
+  const t = (body.technologies || []).length;
+  const p = (body.people || []).length;
+  const a = (body.accounts || []).length;
+  const raw = (body.rawText || '').trim();
+  if (t > 0 && p === 0 && a === 0) return 'tech_list';
+  if (p > 0 && t === 0 && a === 0) return 'people_list';
+  if (a > 0 && t === 0 && p === 0) return 'accounts';
+  if (t > 0 || p > 0 || a > 0) return 'mixed';
+  if (raw.length > 50 && /@|\.com|company|tech|stack|react|salesforce/i.test(raw)) return 'general';
+  return 'snippet';
+}
+
+/** Best-value merge: prefer non-empty, longer string; merge arrays (union); merge objects by key */
+function bestString(existing: string | null | undefined, incoming: string | null | undefined): string | undefined {
+  if (incoming == null || incoming === '') return existing ?? undefined;
+  if (existing == null || existing === '') return incoming;
+  return incoming.length >= existing.length ? incoming : existing;
+}
+
+function mergeAccountForExtension(existing: Record<string, any> | null, incoming: Record<string, any>): Record<string, any> {
+  const out = { ...incoming };
+  if (!existing) return out;
+  for (const k of ['companyName', 'name', 'domain', 'industry', 'description', 'linkedinUrl', 'canonicalUrl']) {
+    if (out[k] != null && out[k] !== '') continue;
+    if (existing[k] != null && existing[k] !== '') out[k] = existing[k];
+  }
+  if (Array.isArray(existing.specialties) && existing.specialties.length) {
+    const combined = [...new Set([...(out.specialties || []), ...existing.specialties])];
+    out.specialties = combined;
+  }
+  if (existing.benchmarks && typeof existing.benchmarks === 'object') {
+    out.benchmarks = {
+      ...existing.benchmarks,
+      ...(out.benchmarks || {}),
+      updatedAt: new Date().toISOString(),
+    };
+    for (const key of Object.keys(out.benchmarks)) {
+      if (out.benchmarks[key] == null && existing.benchmarks[key] != null) out.benchmarks[key] = existing.benchmarks[key];
+    }
+  }
+  if (existing.classification && typeof existing.classification === 'object') {
+    out.classification = { ...existing.classification, ...(out.classification || {}) };
+  }
+  return out;
+}
+
+function mergePersonForExtension(existing: Record<string, any> | null, incoming: Record<string, any>): Record<string, any> {
+  const out = { ...incoming };
+  if (!existing) return out;
+  for (const k of ['name', 'headline', 'currentCompany', 'currentTitle', 'linkedinUrl', 'email', 'location', 'about']) {
+    if (out[k] != null && out[k] !== '') continue;
+    if (existing[k] != null && existing[k] !== '') out[k] = existing[k];
+  }
+  if (Array.isArray(existing.skills) && existing.skills.length) {
+    const combined = [...new Set([...(out.skills || []), ...existing.skills])];
+    out.skills = combined;
+  }
+  if (Array.isArray(existing.experience) && existing.experience.length && !(out.experience?.length)) out.experience = existing.experience;
+  if (Array.isArray(existing.education) && existing.education.length && !(out.education?.length)) out.education = existing.education;
+  return out;
 }

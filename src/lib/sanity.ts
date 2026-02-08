@@ -457,6 +457,28 @@ export async function fetchCommunityPostRawSince(env: any, sinceIso: string): Pr
   return Array.isArray(result) ? result : [];
 }
 
+/** Recent community posts (raw + sanitized summary when present) for network insights. */
+export async function fetchRecentCommunityPostsForSummary(
+  env: any,
+  opts: { limit?: number; sinceHours?: number } = {},
+): Promise<any[]> {
+  const client = getSanityClient(env);
+  const limit = Math.min(opts.limit ?? 15, 50);
+  const sinceHours = opts.sinceHours ?? 168; // 7 days default
+  const sinceIso = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
+  const query = `*[_type == "communityPostRaw" && fetchedAt >= $since] | order(fetchedAt desc)[0...$limit]{
+    _id,
+    externalId,
+    author,
+    rawText,
+    fetchedAt,
+    url,
+    "sanitized": *[_type == "communityPostSanitized" && rawRef._ref == ^._id][0]{ sanitizedSummary, extractedTopics, riskLevel }
+  }`;
+  const result = await groqQuery(client, query, { since: sinceIso, limit });
+  return Array.isArray(result) ? result : [];
+}
+
 export async function createCommunitySource(env: any, doc: any): Promise<any> {
   const client = getSanityClient(env);
   await upsertDocument(client, doc);

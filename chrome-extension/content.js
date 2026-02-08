@@ -1,5 +1,5 @@
 /**
- * Sanity Grabber – Content Script
+ * Wrangler – Content Script
  *
  * Consolidated from:
  *   - SDR research/linkedin-extension  (LinkedInExtractor with fallback selectors)
