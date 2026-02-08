@@ -6631,6 +6631,12 @@ const workerHandler = {
       return handleCorsPreflight();
     }
 
+    // Early 404 for common bot/asset requests so we skip heavy setup
+    const pathname = url.pathname;
+    if (pathname === '/robots.txt' || pathname === '/favicon.ico') {
+      return createErrorResponse('NOT_FOUND', 'Endpoint not found', { path: pathname }, 404, requestId);
+    }
+
     let requestForLogging = request;
     let requestForEnrichment = request;
     try {
@@ -6660,12 +6666,14 @@ const workerHandler = {
     }
     try {
       const bizMod = await import('./services/business-analyzer.js');
-      analyzeBusinessScale = bizMod.analyzeBusinessScale;
-      detectBusinessUnits = bizMod.detectBusinessUnits;
+      analyzeBusinessScale = typeof bizMod?.analyzeBusinessScale === 'function' ? bizMod.analyzeBusinessScale : () => ({});
+      detectBusinessUnits = typeof bizMod?.detectBusinessUnits === 'function' ? bizMod.detectBusinessUnits : () => ({});
     } catch {
       analyzeBusinessScale = () => ({});
       detectBusinessUnits = () => ({});
     }
+    if (typeof analyzeBusinessScale !== 'function') analyzeBusinessScale = () => ({});
+    if (typeof detectBusinessUnits !== 'function') detectBusinessUnits = () => ({});
     try {
       const aiMod = await import('./services/ai-readiness.js');
       calculateAIReadinessScore = aiMod.calculateAIReadinessScore;

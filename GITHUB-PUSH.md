@@ -1,6 +1,35 @@
 # Push this repo to GitHub (private)
 
-Your code is committed locally. To save it on GitHub as a **private** repo:
+Your code is committed locally. The remote is set to:
+
+**https://github.com/austinjgilbert/-website-scanner-worker.git**
+
+---
+
+## If push says "Permission denied" or "Authentication failed"
+
+GitHub no longer accepts account passwords over HTTPS. Use a **Personal Access Token (PAT)** as the password.
+
+### 1. Create a token
+
+1. Open **https://github.com/settings/tokens**
+2. Click **Generate new token** → **Generate new token (classic)**
+3. Name it (e.g. `website-scanner-worker`), set an expiry, check **repo**
+4. Click **Generate token** and **copy the token** (you won’t see it again)
+
+### 2. Push using the token
+
+In Terminal (in this project folder):
+
+```bash
+cd /Users/austin.gilbert/website-scanner-worker
+git push -u origin main
+```
+
+- **Username:** `austinjgilbert`
+- **Password:** paste the token (not your GitHub password)
+
+macOS may save the token in Keychain so you don’t have to enter it every time.
 
 ---
 
