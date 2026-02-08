@@ -1,5 +1,6 @@
 # Scheduled health check - fails if worker is down
 # Add alerts via GitHub notifications or external monitoring (UptimeRobot, etc.)
+# For your own fork: set repo secret HEALTH_CHECK_URL to your worker URL, or edit the URL below.
 name: Health Check
 
 on:
@@ -12,8 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check health endpoint
+        env:
+          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
         run: |
-          RESP=$(curl -sf --max-time 15 https://website-scanner.austin-gilbert.workers.dev/health)
+          BASE="${HEALTH_CHECK_URL:-https://website-scanner.austin-gilbert.workers.dev}"
+          RESP=$(curl -sf --max-time 15 "$BASE/health")
           if echo "$RESP" | grep -q '"ok":true'; then
             echo "Health check OK"
           else

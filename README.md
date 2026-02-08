@@ -5,6 +5,26 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare)](https://workers.cloudflare.com)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+## Deploy in minimal clicks (new users)
+
+**Prerequisites:** Node.js 18+ and a [Cloudflare account](https://dash.cloudflare.com/sign-up).
+
+```bash
+git clone https://github.com/YOUR_USERNAME/website-scanner-worker.git
+cd website-scanner-worker
+npm run setup
+```
+
+Then:
+
+1. **Check dependencies:** `npm run check-deps` — fixes any missing tools.
+2. **Configure:** Edit `.dev.vars` (add `SANITY_PROJECT_ID`, `SANITY_TOKEN`). See [.env.example](.env.example).
+3. **Cloudflare login:** `npx wrangler login`
+4. **Run locally:** `npm run dev` → http://localhost:8787
+5. **Deploy:** `npm run deploy` — set production secrets with `wrangler secret put SANITY_PROJECT_ID --env=production` (and `SANITY_TOKEN`, etc.) before or after first deploy.
+
+Optional: [Chrome extension](CHROME-EXTENSION-SETUP.md), [Telegram bot](TELEGRAM-BOT-SETUP.md), [Custom GPT](UPDATE-INSTRUCTIONS.md). Full details: [SETUP.md](SETUP.md).
+
 ## Overview
 
 A comprehensive website scanning and research API built on Cloudflare Workers. Provides tech stack detection, business intelligence, LinkedIn profile analysis, and seamless integration with Sanity CMS for data persistence.
@@ -23,6 +43,7 @@ A comprehensive website scanning and research API built on Cloudflare Workers. P
 - 🧩 **Intelligence Memory System**: Context-aware briefs with "we said this last time" functionality
 - ⚡ **High Performance**: Optimized for Cloudflare Workers with concurrency control
 - 🔒 **Security**: SSRF protection, input validation, CORS handling
+- 📎 **Chrome extension**: Capture pages from the browser and send to the worker for enrichment (see [CHROME-EXTENSION-SETUP.md](CHROME-EXTENSION-SETUP.md))
 
 ## Architecture
 
@@ -65,24 +86,24 @@ src/
 
 - Node.js 18+ and npm
 - Cloudflare account
-- Wrangler CLI: `npm install -g wrangler`
+- Wrangler is installed automatically via `npm run setup` (devDependency); or use `npx wrangler`
 
 ### Installation
 
 ```bash
-# Clone repository (private repo)
-git clone https://github.com/austinjgilbert/-website-scanner-worker.git
+# Clone and one-command setup
+git clone https://github.com/YOUR_USERNAME/website-scanner-worker.git
 cd website-scanner-worker
+npm run setup
 
-# Install dependencies
-npm install
-cd sanity && npm install && cd ..
+# Verify environment (optional)
+npm run check-deps
 
 # Copy env template and add secrets to .dev.vars (see .env.example)
-cp .env.example .dev.vars
+# Setup already creates .dev.vars from .env.example if missing.
 
 # Authenticate with Cloudflare
-wrangler login
+npx wrangler login
 ```
 
 ### Configuration
@@ -505,9 +526,11 @@ The OSINT report includes comprehensive benchmarking:
 
 ## Repository and CI
 
-- **GitHub:** https://github.com/austinjgilbert/-website-scanner-worker (private)
-- **Push:** Use a Personal Access Token with **repo** + **workflow** scopes — see [GITHUB-PUSH.md](GITHUB-PUSH.md).
-- **CI:** Pushes to `main` run tests and deploy to **production** (`--env=production`). Add repo secrets **CLOUDFLARE_API_TOKEN** and **CLOUDFLARE_ACCOUNT_ID** to enable deploy from GitHub. Health check runs every 30 minutes.
+- **GitHub:** Clone or fork from your repo. Push via HTTPS (use a [Personal Access Token](https://github.com/settings/tokens) with **repo** + **workflow** scopes) or SSH — see [GITHUB-PUSH.md](GITHUB-PUSH.md).
+- **CI (optional):** Pushes to `main` run tests; deploy to Cloudflare runs if repo secrets are set. To enable deploy from GitHub Actions, add **Settings → Secrets and variables → Actions**:
+  - `CLOUDFLARE_API_TOKEN` — Cloudflare API token (with Workers permissions)
+  - `CLOUDFLARE_ACCOUNT_ID` — Your Cloudflare account ID  
+  Then pushes to `main` will run tests and deploy with `wrangler deploy --env=production`. Health check workflow runs every 30 minutes if configured.
 
 ## Deployment
 

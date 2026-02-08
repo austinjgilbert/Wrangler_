@@ -4,6 +4,8 @@
   "description": "Cloudflare Worker for website scanning and research",
   "type": "module",
   "scripts": {
+    "setup": "node scripts/setup.js",
+    "check-deps": "node scripts/check-deps.js",
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run --outdir dist",
     "predeploy": "node scripts/inline-openapi.js",
@@ -22,7 +24,8 @@
     "sanity:check": "node scripts/check-sanity.js",
     "sanity:open-token": "node scripts/sanity-open-token-page.js",
     "health-check": "curl -sf https://website-scanner.austin-gilbert.workers.dev/health",
-    "health-check:local": "curl -sf http://localhost:8787/health"
+    "health-check:local": "curl -sf http://localhost:8787/health",
+    "tail": "wrangler tail --env=production"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
