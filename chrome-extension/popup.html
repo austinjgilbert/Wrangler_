@@ -421,15 +421,68 @@
 <body>
 
   <div class="header">
-    <h1>Wrangler</h1>
+    <h1>Rabbit</h1>
     <span id="badge" class="badge disconnected">Not connected</span>
   </div>
 
   <!-- Tabs -->
   <div class="tabs">
+    <button class="tab" data-tab="rabbit">Rabbit</button>
     <button class="tab active" data-tab="capture">Capture</button>
     <button class="tab" data-tab="bulk">Bulk</button>
     <button class="tab" data-tab="text">Paste Text</button>
+  </div>
+
+  <!-- ═══ Rabbit tab ═══ -->
+  <div id="tab-rabbit" class="tab-content">
+    <div class="url-display">
+      <div class="source">Always-on Browser Assist</div>
+      <div class="url">Rabbit watches supported pages, surfaces opportunities, and keeps the same worker/Sanity flywheel updated in the background.</div>
+    </div>
+
+    <div class="options">
+      <div class="option">
+        <input type="checkbox" id="rabbit-auto-observe" checked>
+        <label for="rabbit-auto-observe">Always observe page changes</label>
+      </div>
+      <div class="option">
+        <input type="checkbox" id="rabbit-overlay-enabled" checked>
+        <label for="rabbit-overlay-enabled">Show in-page Rabbit overlay</label>
+      </div>
+      <div class="option">
+        <input type="checkbox" id="rabbit-store-important" checked>
+        <label for="rabbit-store-important">Quietly store important page intelligence</label>
+      </div>
+      <div class="option">
+        <input type="checkbox" id="rabbit-learn-mode">
+        <label for="rabbit-learn-mode">Learn this app/site structure while I browse</label>
+      </div>
+    </div>
+
+    <div class="preview">
+      <h3>Learn Mode</h3>
+      <div class="entities" id="rabbit-learn-status">
+        <div class="empty-preview">Learn Mode will map visible fields, page structure, consensus assumptions, and validation signals here.</div>
+      </div>
+    </div>
+
+    <div class="preview">
+      <h3>Last Rabbit Insight</h3>
+      <div class="entities" id="rabbit-latest-insight">
+        <div class="empty-preview">Rabbit will surface the latest high-signal page insight here.</div>
+      </div>
+    </div>
+
+    <div class="text-hint">Ask about the current page, person, account, next move, or what Rabbit sees across your systems.</div>
+    <textarea id="rabbit-prompt-input" class="text-input" placeholder="Ask Rabbit: who is the best entry point here? what opportunity do you see? what should I do next?"></textarea>
+    <div id="rabbit-status" class="status-msg"></div>
+    <button id="rabbit-ask-btn" class="capture-button" disabled>Ask Rabbit About This Page</button>
+    <div class="preview">
+      <h3>Rabbit Answer</h3>
+      <div class="entities" id="rabbit-answer">
+        <div class="empty-preview">Rabbit answers will appear here.</div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ Capture tab ═══ -->

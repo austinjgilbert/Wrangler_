@@ -109,6 +109,15 @@ Trigger MoltBot from the CLI:
 BASE_URL=http://localhost:8787 ./scripts/molt-run.sh "research Ubiquiti CMS stack"
 ```
 
+## Gmail Tool Setup
+For real Gmail read/draft/send instead of compose-link fallback, add:
+
+- `GMAIL_CLIENT_ID`
+- `GMAIL_CLIENT_SECRET`
+- `GMAIL_REFRESH_TOKEN`
+
+If these are not set, the Gmail tool can still generate outreach drafts and return a Gmail compose URL for final user review/send.
+
 ## Slack Webhook (Mobile Testing)
 If you wire Slack:
 1. Create a Slack incoming webhook.

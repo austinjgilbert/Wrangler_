@@ -29,6 +29,9 @@ async function sendChatAction(token: string, chatId: number, action: string = 't
   }
 }
 
+/** Telegram message length limit (API will reject longer) */
+const TELEGRAM_MAX_MESSAGE_LENGTH = 4096;
+
 /** Send a text message with optional inline keyboard (Bot API: reply_markup) */
 async function sendTelegramMessage(
   token: string,
@@ -37,9 +40,12 @@ async function sendTelegramMessage(
   opts?: { reply_markup?: { inline_keyboard?: Array<Array<{ text: string; url?: string; callback_data?: string }>> } },
 ): Promise<boolean> {
   try {
+    const truncated = text.length > TELEGRAM_MAX_MESSAGE_LENGTH
+      ? text.slice(0, TELEGRAM_MAX_MESSAGE_LENGTH - 20) + '\n\n… (truncated)'
+      : text;
     const body: Record<string, unknown> = {
       chat_id: chatId,
-      text,
+      text: truncated,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
     };
@@ -144,6 +150,9 @@ export async function handleTelegramWebhook(request: Request, requestId: string,
         '/briefing — daily SDR briefing\n' +
         '/jobs — recent enrichment jobs\n' +
         '/network — Moltbook & network updates\n' +
+        '/teach — research network & explain cutting edge\n' +
+        '/trends — rising/falling themes\n' +
+        '/moltbook [post <message>] — feed or post to Moltbook\n' +
         '/status — system health\n\n' +
         'Or just say: "what do we know about example.com", "good morning", etc.',
     );
@@ -245,6 +254,25 @@ export async function handleTelegramWebhook(request: Request, requestId: string,
     }
     if (cmd === 'network') {
       await run({ intent: 'network_updates' });
+      return new Response('OK', { status: 200 });
+    }
+    if (cmd === 'teach') {
+      await run({ intent: 'network_teach' });
+      return new Response('OK', { status: 200 });
+    }
+    if (cmd === 'trends') {
+      await run({ intent: 'network_trends' });
+      return new Response('OK', { status: 200 });
+    }
+    if (cmd === 'moltbook') {
+      const sub = (argList[0] || '').toLowerCase();
+      if (sub === 'post' && argList.length > 1) {
+        await run({ intent: 'moltbook_post', moltbookMessage: argList.slice(1).join(' ').trim() });
+      } else if (!args || sub === 'feed' || sub === '') {
+        await run({ intent: 'network_updates' });
+      } else {
+        await reply('Usage: /moltbook — show feed\n/moltbook post <message> — post to Moltbook');
+      }
       return new Response('OK', { status: 200 });
     }
   }

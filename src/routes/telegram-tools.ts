@@ -19,6 +19,9 @@ export type Intent =
   | 'sdr_briefing'
   | 'jobs_list'
   | 'network_updates'
+  | 'network_teach'
+  | 'network_trends'
+  | 'moltbook_post'
   | 'status'
   | 'help'
   | 'unknown';
@@ -28,6 +31,8 @@ export interface ParsedIntent {
   domains?: string[];
   tech?: string;
   industry?: string;
+  /** Message to post to Moltbook (for moltbook_post intent) */
+  moltbookMessage?: string;
 }
 
 /** Optional conversational prefix (can you, please, I need, etc.) */
@@ -68,6 +73,12 @@ const INTENT_PATTERNS: { intent: Intent; patterns: RegExp[] }[] = [
   { intent: 'jobs_list', patterns: [/^jobs?$/i, /(?:list\s+)?(?:enrichment\s+)?jobs?/i, /recent\s+jobs?/i, /(?:what\s+)?jobs?\s+(?:are\s+)?(?:running|pending|recent)/i] },
   // Network / Moltbook updates (what bots are doing, insights)
   { intent: 'network_updates', patterns: [/what(?:'s|\s+is)\s+(?:happening\s+)?(?:in\s+)?(?:the\s+)?network/i, /moltbook\s+(?:updates?|insights?|activity)/i, /(?:what\s+)?(?:are\s+)?(?:the\s+)?bots?\s+(?:doing|finding|learning)/i, /network\s+(?:updates?|insights?|activity|news)/i, /(?:latest|recent)\s+(?:from\s+)?(?:moltbook|the\s+network)/i, /(?:any\s+)?(?:new\s+)?(?:network|moltbook)\s+updates?/i, new RegExp(P + '(?:network|moltbook)\\s+(?:updates?|insights?)', 'i')] },
+  // Teach me / cutting edge (research network and explain)
+  { intent: 'network_teach', patterns: [/what(?:'s|\s+is)\s+(?:on\s+)?(?:the\s+)?cutting\s+edge/i, /teach\s+me\s+(?:what\s+)?(?:the\s+)?network\s+(?:knows|is\s+learning|learned)/i, /explain\s+(?:the\s+)?network/i, /what\s+is\s+the\s+network\s+learning/i, /research\s+(?:the\s+)?network/i, /cutting\s+edge/i, /(?:what\s+)?(?:are\s+)?(?:we\s+)?(?:learning|seeing)\s+(?:from\s+)?(?:the\s+)?network/i, new RegExp(P + '(?:teach|explain|summarize)\\s+(?:the\\s+)?(?:network|moltbook)', 'i')] },
+  // Network trends (rising/falling themes over last 7d vs 7–14d)
+  { intent: 'network_trends', patterns: [/network\s+trends?/i, /(?:what\s+)?(?:are\s+)?(?:the\s+)?trends?/i, /(?:show\s+)?(?:me\s+)?trends?/i, /rising\s+(?:themes?|topics?)/i, /(?:what\s+)?(?:is\s+)?(?:trending|rising|falling)\s+(?:in\s+)?(?:the\s+)?network/i, /(?:see|gather)\s+(?:data\s+and\s+)?(?:see\s+)?trends?/i, new RegExp(P + '(?:trends?|rising|falling)\\s+(?:in\\s+)?(?:network|moltbook)', 'i')] },
+  // Post to Moltbook / network (must come after network_updates so "moltbook post X" is not read as updates)
+  { intent: 'moltbook_post', patterns: [/post\s+to\s+(?:moltbook|the\s+network)\s*[:\-]?\s*(.+)/i, /moltbook\s+post\s+(.+)/i, /share\s+with\s+(?:moltbook|the\s+network)\s*[:\-]?\s*(.+)/i, /(?:tell|announce)\s+(?:to\s+)?(?:moltbook|the\s+network)\s*[:\-]?\s*(.+)/i, new RegExp(P + '(?:post|share)\\s+(?:to\\s+)?(?:moltbook|network)\\s*[:\\-]?\\s*(.+)', 'i')] },
   // Status
   { intent: 'status', patterns: [/^status$/i, /^health$/i, /system\s+status/i, /(?:are\s+you\s+)?(?:there|up)/i, /how\s+are\s+we\s+doing/i, /(?:everything\s+)?(?:ok|working)/i, /ping/i] },
   // Help
@@ -106,6 +117,9 @@ export function parseIntent(text: string): ParsedIntent {
         const d1 = extractDomains(m[1])[0] || m[1].trim();
         const d2 = extractDomains(m[2])[0] || m[2].trim();
         return { intent, domains: [d1, d2] };
+      }
+      if (intent === 'moltbook_post' && m[1]) {
+        return { intent, moltbookMessage: m[1].trim().slice(0, 2000) };
       }
       if (intent === 'competitors' || intent === 'enrich_account' || intent === 'account_lookup' || intent === 'person_lookup') {
         domainFromCapture = m[1]?.trim();
@@ -151,12 +165,18 @@ export function getHelpText(): string {
     '/briefing — daily SDR briefing\n' +
     '/jobs — recent enrichment jobs\n' +
     '/network — Moltbook & network updates\n' +
+    '/teach — research network & explain cutting edge\n' +
+    '/trends — rising/falling themes in the network\n' +
+    '/moltbook [post <message>] — feed or post to Moltbook\n' +
     '/status — system health\n\n' +
     '<b>Or just say it</b>\n' +
     '• "what do we know about example.com"\n' +
     '• "enrich fleetfeet.com" • "competitors of Acme"\n' +
     '• "compare X and Y" • "people at example.com"\n' +
-    '• "accounts using React" • "good morning" • "recent captures"\n\n' +
+    '• "accounts using React" • "good morning" • "recent captures"\n' +
+    '• "post to moltbook: your message" • "/moltbook post &lt;message&gt;"\n' +
+    '• "what\'s on the cutting edge" • "teach me what the network knows" • /teach\n' +
+    '• "network trends" • "what are the trends" • /trends\n\n' +
     'You can also say: "can you look up X", "info on example.com", "who competes with X", "what\'s my briefing", "how are we doing".'
   );
 }
@@ -178,6 +198,9 @@ export function getProgressMessage(parsed: ParsedIntent): string {
     case 'patterns': return '🔍 Loading patterns...';
     case 'jobs_list': return '🔍 Loading recent jobs...';
     case 'network_updates': return '🔍 Fetching network updates...';
+    case 'network_teach': return '🔬 Researching the network and summarizing...';
+    case 'network_trends': return '📈 Analyzing network trends...';
+    case 'moltbook_post': return '📤 Posting to Moltbook...';
     case 'status': return '🔍 Checking status...';
     default: return '🔍 Working on it...';
   }
@@ -205,11 +228,128 @@ export function getViewUrl(parsed: ParsedIntent, baseUrl: string): string | null
     case 'jobs_list':
     case 'network_updates':
       return `${base}/account-page`;
+    case 'network_teach':
+    case 'network_trends':
+    case 'moltbook_post':
+      return null;
     case 'accounts_by_tech':
       return `${base}/account-page`;
     default:
       return null;
   }
+}
+
+/** Build a "teaching" summary from live + stored network posts (themes, takeaways, go-deeper). */
+function buildTeachingSummary(
+  live: { rawText: string; author: string }[],
+  stored: { rawText?: string; author?: string; sanitized?: { sanitizedSummary?: string }; fetchedAt?: string }[],
+): string {
+  const stopwords = new Set(
+    'a an the and or but of to in on at by for with is are was were be been being have has had do does did will would could should may might must can it its we they our your i you he she'.split(/\s+/),
+  );
+  const allText: { author: string; text: string }[] = [];
+  for (const p of live) {
+    const t = (p.rawText || '').trim();
+    if (t) allText.push({ author: p.author || 'bot', text: t });
+  }
+  for (const p of stored) {
+    const t = (p.sanitized?.sanitizedSummary || p.rawText || '').trim();
+    if (t) allText.push({ author: p.author || 'agent', text: t });
+  }
+  if (allText.length === 0) {
+    return (
+      "<b>Cutting edge (network research)</b>\n\n" +
+      "No network activity to summarize yet. Post from Telegram with /moltbook post &lt;message&gt;, or connect an external Moltbook (MOLTBOOK_BASE_URL). " +
+      "Then ask again: \"what's on the cutting edge\" or /teach."
+    );
+  }
+
+  const wordCount: Record<string, number> = {};
+  const fullText = allText.map((x) => x.text).join(' ').toLowerCase();
+  for (const w of fullText.match(/\b[a-z0-9]{3,}\b/g) || []) {
+    if (!stopwords.has(w)) wordCount[w] = (wordCount[w] || 0) + 1;
+  }
+  const themes = Object.entries(wordCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([w]) => w)
+    .join(', ');
+
+  const contributors = new Set(allText.map((x) => x.author)).size;
+  const takeaways = allText.slice(0, 5).map((x) => {
+    const one = (x.text.split(/[.!?]/)[0] || x.text).trim().slice(0, 100);
+    return one + (one.length >= 100 ? '…' : '');
+  });
+
+  const intro =
+    `<b>What's on the cutting edge</b>\n\n` +
+    `I pulled the latest from the Moltbook network (${allText.length} update(s), ${contributors} contributor(s)). ` +
+    `Here's the distilled view.\n\n`;
+  const themeBlock = themes ? `<b>Themes:</b> ${themes}\n\n` : '';
+  const takeawayBlock =
+    '<b>Key takeaways</b>\n' + takeaways.map((t) => `• ${t.replace(/</g, '&lt;')}`).join('\n') + '\n\n';
+  const deeper = 'To see raw updates and who said what: /network or ask "what\'s happening in the network".';
+  return intro + themeBlock + takeawayBlock + deeper;
+}
+
+/** Build rising/falling theme trends from stored community posts (last 7d vs 7–14d). */
+async function buildTrendsSummary(env: any): Promise<string> {
+  const { fetchCommunityPostRawSince } = await import('../lib/sanity.ts');
+  const stopwords = new Set(
+    'a an the and or but of to in on at by for with is are was were be been being have has had do does did will would could should may might must can it its we they our your i you he she'.split(/\s+/),
+  );
+  const since14 = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  let posts: { fetchedAt?: string; rawText?: string }[] = [];
+  try {
+    posts = await fetchCommunityPostRawSince(env, since14);
+  } catch (_) {
+    return (
+      '<b>Network trends</b>\n\n' +
+      'No stored network data yet. The worker crawls Moltbook every 6 hours and stores posts here. ' +
+      'Post with /moltbook post &lt;message&gt; or wait for the next crawl, then ask /trends again.'
+    );
+  }
+  const recent = posts.filter((p) => (p.fetchedAt || '') >= since7);
+  const older = posts.filter((p) => {
+    const t = p.fetchedAt || '';
+    return t >= since14 && t < since7;
+  });
+  const wordFreq = (list: { rawText?: string }[]): Record<string, number> => {
+    const out: Record<string, number> = {};
+    const text = list.map((x) => (x.rawText || '').toLowerCase()).join(' ');
+    for (const w of text.match(/\b[a-z0-9]{3,}\b/g) || []) {
+      if (!stopwords.has(w)) out[w] = (out[w] || 0) + 1;
+    }
+    return out;
+  };
+  const recentFreq = wordFreq(recent);
+  const olderFreq = wordFreq(older);
+  const allWords = new Set([...Object.keys(recentFreq), ...Object.keys(olderFreq)]);
+  const delta: { word: string; recent: number; older: number; diff: number }[] = [];
+  for (const w of allWords) {
+    const r = recentFreq[w] || 0;
+    const o = olderFreq[w] || 0;
+    delta.push({ word: w, recent: r, older: o, diff: r - o });
+  }
+  const rising = delta.filter((d) => d.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, 7).map((d) => d.word);
+  const falling = delta.filter((d) => d.diff < 0).sort((a, b) => a.diff - b.diff).slice(0, 7).map((d) => d.word);
+
+  const intro =
+    '<b>Network trends</b> (last 7 days vs previous 7 days)\n\n' +
+    `Based on ${recent.length} recent post(s) and ${older.length} older post(s) in the network.\n\n`;
+  const risingBlock =
+    rising.length > 0
+      ? '<b>📈 Rising</b> ' + rising.join(', ') + '\n\n'
+      : '';
+  const fallingBlock =
+    falling.length > 0
+      ? '<b>📉 Falling</b> ' + falling.join(', ') + '\n\n'
+      : '';
+  if (rising.length === 0 && falling.length === 0) {
+    return intro + 'Not enough data yet to show trends. Post more or run /moltbook post to seed the feed, and use /network to see updates.';
+  }
+  return intro + risingBlock + fallingBlock + 'Data is gathered by the worker every 6h (GET /moltbook/crawl). Use /teach for a summary of what\'s on the cutting edge.';
 }
 
 /** Create a synthetic POST Request with JSON body */
@@ -536,7 +676,77 @@ export async function executeTool(
             '3. Or run <code>POST /moltbook/fetch</code> with <code>{"topics":["network"]}</code> to seed from the adapter.'
           );
         }
-        return '<b>Network updates & insights</b>\n\n' + sections.join('\n\n');
+        const totalPosts = live.length + (stored?.length || 0);
+        const takeaway = `📡 ${totalPosts} update(s) from the network. Ask "/teach" or "what's on the cutting edge" for a research summary.\n\n`;
+        return '<b>Network updates & insights</b>\n\n' + takeaway + sections.join('\n\n');
+      }
+
+      case 'network_teach': {
+        const { fetchMoltbookActivity } = await import('../lib/moltbookAdapter.ts');
+        const { fetchRecentCommunityPostsForSummary, createCommunitySource, createCommunityPostRaw } = await import('../lib/sanity.ts');
+        const live = await fetchMoltbookActivity(env);
+        if (live.length > 0) {
+          try {
+            await createCommunitySource(env, {
+              _type: 'communitySource',
+              _id: 'communitySource.moltbook',
+              name: 'Moltbook',
+              type: 'moltbook',
+              baseUrl: (env?.MOLTBOOK_BASE_URL || 'https://moltbook.local').toString().replace(/\/$/, ''),
+              topics: ['network'],
+            });
+            for (const post of live.slice(0, 15)) {
+              try {
+                await createCommunityPostRaw(env, {
+                  _type: 'communityPostRaw',
+                  _id: `communityPostRaw.${post.externalId}`,
+                  sourceRef: { _type: 'reference', _ref: 'communitySource.moltbook' },
+                  externalId: post.externalId,
+                  url: post.url,
+                  author: post.author,
+                  createdAt: post.createdAt,
+                  rawText: post.rawText,
+                  rawJson: post.rawJson || {},
+                  fetchedAt: new Date().toISOString(),
+                });
+              } catch (_) {}
+            }
+          } catch (_) {}
+        }
+        let stored: any[] = [];
+        try {
+          stored = await fetchRecentCommunityPostsForSummary(env, { limit: 12, sinceHours: 168 });
+        } catch (_) {}
+        return buildTeachingSummary(live, stored);
+      }
+
+      case 'network_trends': {
+        return await buildTrendsSummary(env);
+      }
+
+      case 'moltbook_post': {
+        const msg = parsed.moltbookMessage?.trim();
+        if (!msg || msg.length === 0) {
+          return 'Nothing to post. Try: /moltbook post <message> or "post to moltbook: your message"';
+        }
+        const { handleMoltbookApiActivityPost } = await import('../routes/moltbook.ts');
+        const req = new Request('https://internal/moltbook/api/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: msg.slice(0, 2000),
+            author: 'telegram',
+            createdAt: new Date().toISOString(),
+          }),
+        });
+        const res = await handleMoltbookApiActivityPost(req, requestId, env);
+        const json = (await res.json()) as { ok?: boolean; error?: string; data?: { appended?: number; total?: number } };
+        if (!res.ok || !json.ok) {
+          return json.error || 'Failed to post to Moltbook. (Is MOLTBOOK_ACTIVITY_KV bound?)';
+        }
+        const appended = json.data?.appended ?? 1;
+        const total = json.data?.total ?? 0;
+        return `Posted to Moltbook. (${appended} item(s); ${total} total in feed.)`;
       }
 
       case 'status':

@@ -165,7 +165,7 @@ async function groqQuery(client, query, params = {}) {
     queryParams.append('query', processedQuery);
     
     const result = await sanityFetch(client, `${client.queryUrl}?${queryParams.toString()}`);
-    return result.result || [];
+    return result.result ?? null;
   });
 }
 
@@ -173,6 +173,26 @@ async function groqQuery(client, query, params = {}) {
  * Execute mutations with retry
  */
 async function mutate(client, mutations) {
+  // Validate all mutations have document IDs
+  for (const m of mutations) {
+    if (m.createIfNotExists && !m.createIfNotExists._id) {
+      console.error('[mutate] createIfNotExists missing _id:', JSON.stringify(m.createIfNotExists).substring(0, 200));
+      throw new Error(`Mutation createIfNotExists missing _id (type: ${m.createIfNotExists._type})`);
+    }
+    if (m.createOrReplace && !m.createOrReplace._id) {
+      console.error('[mutate] createOrReplace missing _id:', JSON.stringify(m.createOrReplace).substring(0, 200));
+      throw new Error(`Mutation createOrReplace missing _id (type: ${m.createOrReplace._type})`);
+    }
+    if (m.create && !m.create._id) {
+      console.error('[mutate] create missing _id:', JSON.stringify(m.create).substring(0, 200));
+      throw new Error(`Mutation create missing _id (type: ${m.create._type})`);
+    }
+    if (m.patch && !m.patch.id) {
+      console.error('[mutate] patch missing id');
+      throw new Error('Mutation patch missing document id');
+    }
+  }
+
   const { retrySanityOperation } = await import('./utils/retry.js');
   
   return retrySanityOperation(async () => {
@@ -188,24 +208,26 @@ async function mutate(client, mutations) {
  * Upsert document (create if not exists, otherwise patch)
  */
 async function upsertDocument(client, doc) {
+  if (!doc || !doc._id) {
+    console.error('[upsertDocument] Missing _id, doc type:', doc?._type, 'keys:', Object.keys(doc || {}));
+    throw new Error(`upsertDocument requires a document with _id (got type: ${doc?._type})`);
+  }
+  
   const mutations = [
     {
       createIfNotExists: doc,
     },
   ];
   
-  // If _id exists, also patch to ensure latest data
-  if (doc._id) {
-    mutations.push({
-      patch: {
-        id: doc._id,
-        set: {
-          ...doc,
-          _updatedAt: new Date().toISOString(),
-        },
+  mutations.push({
+    patch: {
+      id: doc._id,
+      set: {
+        ...doc,
+        _updatedAt: new Date().toISOString(),
       },
-    });
-  }
+    },
+  });
   
   return await mutate(client, mutations);
 }
@@ -214,6 +236,10 @@ async function upsertDocument(client, doc) {
  * Patch document with set/unset/inc/append operations
  */
 async function patchDocument(client, id, operations = {}) {
+  if (!id) {
+    throw new Error('patchDocument requires a valid document id');
+  }
+  
   const { set = {}, unset = [], inc = {}, append = null } = operations;
   
   const patch = { id };
@@ -330,9 +356,9 @@ async function storeAccountPack(client, accountKey, canonicalUrl, type, data, me
  * Store/update account summary
  */
 async function upsertAccountSummary(client, accountKey, canonicalUrl, companyName, scanData) {
-  const accountId = `account-${accountKey}`;
+  const accountId = `account.${accountKey}`;
   
-  // Extract signals from tech stack
+  // Extract signals from tech stack (all categories)
   const signals = [];
   if (scanData?.technologyStack) {
     const ts = scanData.technologyStack;
@@ -342,6 +368,17 @@ async function upsertAccountSummary(client, accountKey, canonicalUrl, companyNam
     if (ts.pimSystems?.length) signals.push(...ts.pimSystems.map(p => `PIM: ${p}`));
     if (ts.damSystems?.length) signals.push(...ts.damSystems.map(d => `DAM: ${d}`));
     if (ts.lmsSystems?.length) signals.push(...ts.lmsSystems.map(l => `LMS: ${l}`));
+    if (ts.analytics?.length) signals.push(...ts.analytics.map(a => `Analytics: ${a}`));
+    if (ts.ecommerce?.length) signals.push(...ts.ecommerce.map(e => `E-commerce: ${e}`));
+    if (ts.hosting?.length) signals.push(...ts.hosting.map(h => `Hosting: ${h}`));
+    if (ts.marketing?.length) signals.push(...ts.marketing.map(m => `Marketing: ${m}`));
+    if (ts.payments?.length) signals.push(...ts.payments.map(p => `Payments: ${p}`));
+    if (ts.chat?.length) signals.push(...ts.chat.map(c => `Chat: ${c}`));
+    if (ts.monitoring?.length) signals.push(...ts.monitoring.map(m => `Monitoring: ${m}`));
+    if (ts.authProviders?.length) signals.push(...ts.authProviders.map(a => `Auth: ${a}`));
+    if (ts.searchTech?.length) signals.push(...ts.searchTech.map(s => `Search: ${s}`));
+    if (ts.cssFrameworks?.length) signals.push(...ts.cssFrameworks.map(c => `CSS: ${c}`));
+    if (ts.cdnMedia?.length) signals.push(...ts.cdnMedia.map(c => `CDN: ${c}`));
   }
   
   const accountDoc = {
@@ -356,7 +393,7 @@ async function upsertAccountSummary(client, accountKey, canonicalUrl, companyNam
     opportunityScore: scanData?.technologyStack?.opportunityScore || null,
     performance: scanData?.performance ? { performanceScore: scanData.performance.performanceScore } : null,
     businessScale: scanData?.businessScale ? { businessScale: scanData.businessScale.businessScale } : null,
-    signals: signals.slice(0, 20), // Limit to 20 signals
+    signals: signals.slice(0, 50),
     lastScannedAt: new Date().toISOString(),
     sourceRefs: {
       packId: `accountPack-${accountKey}`,

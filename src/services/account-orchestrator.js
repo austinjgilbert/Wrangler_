@@ -84,12 +84,11 @@ export async function orchestrateAccountResearch(params) {
         result.companyName = account.companyName;
         result.account = account;
       }
-    } else if (inputType === 'url') {
-      // Scan and create account
-      canonicalUrl = input;
+    } else if (inputType === 'url' || inputType === 'domain') {
+      canonicalUrl = input.startsWith('http') ? input : `https://${input}`;
       const scanResult = await createAccountFromUrl(
         canonicalUrl,
-        { handleScan, requestId, env, groqQuery, upsertDocument, client }
+        { handleScan, requestId, env, groqQuery, upsertDocument, patchDocument, client }
       );
       
       if (scanResult.success) {
@@ -278,8 +277,8 @@ async function createAccountFromUrl(url, context) {
   const { handleScan, requestId, env, groqQuery, upsertDocument, patchDocument, client } = context;
   
   try {
-    // Scan URL
-    const scanRequest = new Request(`https://worker/scan?url=${encodeURIComponent(url)}`);
+    // Scan URL (orchestrate=false prevents recursive orchestration from handleScan)
+    const scanRequest = new Request(`https://worker/scan?url=${encodeURIComponent(url)}&orchestrate=false`);
     const scanResponse = await handleScan(scanRequest, requestId, env);
     const scanData = await scanResponse.json();
     
@@ -314,19 +313,31 @@ async function createAccountFromUrl(url, context) {
       };
     }
     
-    // Store scan in accountPack
-    const packId = `accountPack-${accountResult.accountKey}`;
-    await patchDoc(client, packId, {
-      set: {
-        'payload.scan': scanResult,
+    // Store scan in accountPack (upsert to handle first-time creation)
+    try {
+      const packId = `accountPack.${accountResult.accountKey}`;
+      await upsertDocument(client, {
+        _type: 'accountPack',
+        _id: packId,
+        accountKey: accountResult.accountKey,
+        canonicalUrl: finalUrl,
+        payload: { scan: scanResult },
         updatedAt: new Date().toISOString(),
-      },
-    });
+      });
+    } catch (packErr) {
+      console.warn('[createAccountFromUrl] accountPack upsert failed:', packErr?.message);
+    }
+    
+    // Fetch the full account if not already returned
+    let account = accountResult.account;
+    if (!account || !account._id) {
+      account = await getMasterAccount(groqQuery, client, accountResult.accountKey);
+    }
     
     return {
       success: true,
       accountKey: accountResult.accountKey,
-      account: accountResult.account,
+      account: account || accountResult.account,
       canonicalUrl: finalUrl,
       companyName: scanResult.businessUnits?.companyName || null,
       scanData: scanResult,
@@ -435,9 +446,4 @@ export async function getCompleteAccountIntelligence(groqQuery, client, accountK
   }
 }
 
-// Import patchDocument helper
-async function patchDocument(client, id, patch) {
-  // This will be passed from context
-  throw new Error('patchDocument must be provided in context');
-}
 

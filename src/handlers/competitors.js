@@ -49,15 +49,11 @@ export async function handleResearchCompetitors(
     let accountResearchSet = null;
     
     if (accountKey) {
-      // Get account by key
-      const accountId = `account-${accountKey}`;
-      const accountQuery = `*[_id == $id][0]`;
-      account = await groqQuery(client, accountQuery, { id: accountId });
+      const accountQuery = `*[_type == "account" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
+      account = await groqQuery(client, accountQuery, { dotId: `account.${accountKey}`, dashId: `account-${accountKey}`, key: accountKey });
       
-      // Get research set
-      const packId = `accountPack-${accountKey}`;
-      const packQuery = `*[_id == $packId][0]`;
-      const pack = await groqQuery(client, packQuery, { packId });
+      const packQuery = `*[_type == "accountPack" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
+      const pack = await groqQuery(client, packQuery, { dotId: `accountPack.${accountKey}`, dashId: `accountPack-${accountKey}`, key: accountKey });
       accountResearchSet = pack?.payload?.researchSet || null;
       
         // Merge scan data from accountPack into account object for competitor discovery
@@ -84,14 +80,11 @@ export async function handleResearchCompetitors(
       accountKeyFinal = await generateAccountKey(canonicalUrl);
       
       if (accountKeyFinal) {
-        const accountId = `account-${accountKeyFinal}`;
-        const accountQuery = `*[_id == $id][0]`;
-        account = await groqQuery(client, accountQuery, { id: accountId });
+        const accountQuery = `*[_type == "account" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
+        account = await groqQuery(client, accountQuery, { dotId: `account.${accountKeyFinal}`, dashId: `account-${accountKeyFinal}`, key: accountKeyFinal });
         
-        // Get research set
-        const packId = `accountPack-${accountKeyFinal}`;
-        const packQuery = `*[_id == $packId][0]`;
-        const pack = await groqQuery(client, packQuery, { packId });
+        const packQuery = `*[_type == "accountPack" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
+        const pack = await groqQuery(client, packQuery, { dotId: `accountPack.${accountKeyFinal}`, dashId: `accountPack-${accountKeyFinal}`, key: accountKeyFinal });
         accountResearchSet = pack?.payload?.researchSet || null;
         
         // Merge scan data from accountPack into account object for competitor discovery

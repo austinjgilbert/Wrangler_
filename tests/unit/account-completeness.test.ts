@@ -49,13 +49,18 @@ describe('analyseCompleteness', () => {
     expect(result.dimensions.painPoints?.present).toBe(true);
     expect(result.dimensions.benchmarks?.present).toBe(true);
 
-    // 10 + 8 + 7 + 5 = 30
-    expect(result.score).toBe(30);
+    // technologies 6 + leadership 8 + painPoints 5 + benchmarks 5 = 24
+    expect(result.score).toBe(24);
   });
 
   it('returns 100% for fully enriched account', () => {
     const account = {
       technologies: [{ _ref: 'tech-1' }],
+      technologyStack: {
+        analytics: ['GA4'],
+        ecommerce: ['Shopify'],
+        hosting: ['Cloudflare'],
+      },
       leadership: [{ _ref: 'person-1' }],
       painPoints: [{ category: 'tech-debt', description: 'Legacy CMS' }],
       benchmarks: { estimatedEmployees: '200' },
@@ -152,6 +157,11 @@ describe('needsBackgroundWork', () => {
   it('returns needed=false for fully enriched account', () => {
     const account = {
       technologies: [{ _ref: 'tech-1' }],
+      technologyStack: {
+        analytics: ['GA4'],
+        ecommerce: ['Shopify'],
+        hosting: ['Cloudflare'],
+      },
       leadership: [{ _ref: 'person-1' }],
       painPoints: [{ category: 'tech-debt', description: 'Legacy' }],
       benchmarks: { estimatedEmployees: '200' },

@@ -332,6 +332,14 @@ function buildClassification(account, accountPack) {
   if (techStack.pimSystems?.length) tags.add('has-pim');
   if (techStack.damSystems?.length) tags.add('has-dam');
   if (techStack.lmsSystems?.length) tags.add('has-lms');
+  if (techStack.analytics?.length) tags.add('has-analytics');
+  if (techStack.ecommerce?.length) tags.add('has-ecommerce');
+  if (techStack.payments?.length) tags.add('has-payments');
+  if (techStack.marketing?.length) tags.add('has-martech');
+  if (techStack.chat?.length) tags.add('has-chat');
+  if (techStack.monitoring?.length) tags.add('has-monitoring');
+  if (techStack.authProviders?.length) tags.add('has-auth');
+  if (techStack.searchTech?.length) tags.add('has-search');
 
   // Scale tags
   const scale = scan.businessScale?.businessScale || account?.businessScale?.businessScale;
@@ -347,13 +355,18 @@ function buildClassification(account, accountPack) {
   if (aiScore >= 70) tags.add('ai-ready');
   else if (aiScore <= 30) tags.add('ai-laggard');
 
-  // Industry (simple heuristic from CMS + signals)
+  // Industry (heuristic from tech stack + signals)
   let industry = brief?.industry || null;
   if (!industry) {
     const signals = account?.signals || [];
-    if (signals.some(s => /shopify|woocommerce|magento|bigcommerce/i.test(s))) industry = 'E-commerce';
+    const ecomTech = techStack.ecommerce || [];
+    const marketingTech = techStack.marketing || [];
+
+    if (ecomTech.length > 0 || signals.some(s => /shopify|woocommerce|magento|bigcommerce/i.test(s))) industry = 'E-commerce';
     else if (signals.some(s => /wordpress|drupal|contentful/i.test(s))) industry = 'Content/Media';
-    else if (signals.some(s => /salesforce|hubspot|marketo/i.test(s))) industry = 'SaaS/Tech';
+    else if (marketingTech.length >= 2 || signals.some(s => /salesforce|hubspot|marketo/i.test(s))) industry = 'SaaS/Tech';
+    else if (techStack.lmsSystems?.length) industry = 'Education';
+    else if (techStack.authProviders?.length && techStack.payments?.length) industry = 'Fintech/SaaS';
   }
 
   // Segment based on scale + tech signals

@@ -1,5 +1,5 @@
 /**
- * Wrangler – Popup Script
+ * Rabbit – Popup Script
  *
  * Consolidated from all extension projects. Features:
  *   - Single page capture  (content.js DOM extraction → worker)
@@ -26,6 +26,16 @@ const pageUrlEl        = document.getElementById('page-url');
 const entitiesList     = document.getElementById('entities-list');
 const apiUrlInput      = document.getElementById('api-url');
 const apiKeyInput      = document.getElementById('api-key');
+const rabbitAutoObserve = document.getElementById('rabbit-auto-observe');
+const rabbitOverlayEnabled = document.getElementById('rabbit-overlay-enabled');
+const rabbitStoreImportant = document.getElementById('rabbit-store-important');
+const rabbitLearnMode = document.getElementById('rabbit-learn-mode');
+const rabbitLearnStatus = document.getElementById('rabbit-learn-status');
+const rabbitLatestInsight = document.getElementById('rabbit-latest-insight');
+const rabbitPromptInput = document.getElementById('rabbit-prompt-input');
+const rabbitAskBtn = document.getElementById('rabbit-ask-btn');
+const rabbitStatus = document.getElementById('rabbit-status');
+const rabbitAnswer = document.getElementById('rabbit-answer');
 
 // Bulk
 const bulkBtn          = document.getElementById('bulk-capture-btn');
@@ -63,16 +73,25 @@ tabButtons.forEach(btn => {
 document.addEventListener('DOMContentLoaded', async () => {
   const stored = await chrome.storage.local.get([
     'workerUrl', 'apiKey', 'totalCaptures', 'todayCaptures', 'lastCaptureDate',
+    'rabbitAutoObserve', 'rabbitOverlayEnabled', 'rabbitStoreImportant', 'rabbitLearnMode',
+    'rabbitLastInsight', 'rabbitLastIntel', 'rabbitLearnStatus',
   ]);
 
   apiUrlInput.value = stored.workerUrl || DEFAULT_WORKER_URL;
   apiKeyInput.value = stored.apiKey || '';
+  rabbitAutoObserve.checked = stored.rabbitAutoObserve !== false;
+  rabbitOverlayEnabled.checked = stored.rabbitOverlayEnabled !== false;
+  rabbitStoreImportant.checked = stored.rabbitStoreImportant !== false;
+  rabbitLearnMode.checked = stored.rabbitLearnMode === true;
+  renderRabbitInsight(stored.rabbitLastIntel || stored.rabbitLastInsight || null);
+  renderLearnStatus(stored.rabbitLearnStatus || null);
 
   if (stored.apiKey) {
     checkConnection(stored.workerUrl || DEFAULT_WORKER_URL, stored.apiKey, badge, () => {
       captureBtn.disabled = false;
       textBtn.disabled = false;
       bulkBtn.disabled = false;
+      rabbitAskBtn.disabled = false;
       if (connectHint) connectHint.classList.add('hidden');
       const emptyMsg = document.getElementById('capture-empty-msg');
       if (emptyMsg) emptyMsg.textContent = 'Click Capture to extract data from this page.';
@@ -81,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     badge.textContent = 'Not connected';
     badge.className = 'badge disconnected';
     if (connectHint) connectHint.classList.remove('hidden');
+    rabbitAskBtn.disabled = true;
     const emptyMsg = document.getElementById('capture-empty-msg');
     if (emptyMsg) emptyMsg.textContent = 'Connect in Settings (Worker URL + API key), then click Capture.';
   }
@@ -96,6 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentTabId = tab.id;
     pageUrlEl.textContent = tab.url;
     sourceLabel.textContent = detectSource(tab.url);
+    await refreshRabbitIntel(tab.id);
   }
 });
 
@@ -109,11 +130,19 @@ saveBtn.addEventListener('click', async () => {
   const url = apiUrlInput.value.trim().replace(/\/+$/, '');
   const key = apiKeyInput.value.trim();
 
-  await chrome.storage.local.set({ workerUrl: url, apiKey: key });
+  await chrome.storage.local.set({
+    workerUrl: url,
+    apiKey: key,
+    rabbitAutoObserve: rabbitAutoObserve.checked,
+    rabbitOverlayEnabled: rabbitOverlayEnabled.checked,
+    rabbitStoreImportant: rabbitStoreImportant.checked,
+    rabbitLearnMode: rabbitLearnMode.checked,
+  });
 
   captureBtn.disabled = true;
   textBtn.disabled = true;
   bulkBtn.disabled = true;
+  rabbitAskBtn.disabled = true;
 
   if (key) {
     if (connectHint) connectHint.classList.add('hidden');
@@ -121,6 +150,7 @@ saveBtn.addEventListener('click', async () => {
       captureBtn.disabled = false;
       textBtn.disabled = false;
       bulkBtn.disabled = false;
+      rabbitAskBtn.disabled = false;
     });
     const emptyMsg = document.getElementById('capture-empty-msg');
     if (emptyMsg) emptyMsg.textContent = 'Click Capture to extract data from this page.';
@@ -135,6 +165,17 @@ saveBtn.addEventListener('click', async () => {
   }
   settingsPanel.classList.remove('visible');
   settingsToggle.textContent = 'Settings';
+});
+
+[rabbitAutoObserve, rabbitOverlayEnabled, rabbitStoreImportant, rabbitLearnMode].forEach((input) => {
+  input?.addEventListener('change', async () => {
+    await chrome.storage.local.set({
+      rabbitAutoObserve: rabbitAutoObserve.checked,
+      rabbitOverlayEnabled: rabbitOverlayEnabled.checked,
+      rabbitStoreImportant: rabbitStoreImportant.checked,
+      rabbitLearnMode: rabbitLearnMode.checked,
+    });
+  });
 });
 
 
@@ -271,6 +312,37 @@ bulkBtn.addEventListener('click', async () => {
 
   const msg = `Bulk complete: ${totalAccounts} accounts, ${totalPeople} people, ${totalTechs} techs.${errors > 0 ? ` ${errors} tabs failed.` : ''}`;
   showStatus(bulkStatus, msg, errors > 0 ? 'error' : 'success');
+});
+
+rabbitAskBtn.addEventListener('click', async () => {
+  const prompt = rabbitPromptInput.value.trim();
+  if (!prompt) {
+    showStatus(rabbitStatus, 'Ask Rabbit a question first.', 'error');
+    return;
+  }
+
+  rabbitAskBtn.disabled = true;
+  rabbitAskBtn.textContent = 'Asking...';
+  showStatus(rabbitStatus, 'Rabbit is grounding an answer in this page and your worker memory...', 'loading');
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'rabbit:ask',
+      payload: { prompt, tabId: currentTabId },
+    });
+
+    if (!response?.ok) {
+      throw new Error(response?.error || 'Question failed');
+    }
+
+    renderRabbitAnswer(response.data);
+    showStatus(rabbitStatus, 'Rabbit answered with grounded page context.', 'success');
+  } catch (err) {
+    showStatus(rabbitStatus, `Rabbit failed: ${err.message}`, 'error');
+  }
+
+  rabbitAskBtn.disabled = false;
+  rabbitAskBtn.textContent = 'Ask Rabbit About This Page';
 });
 
 
@@ -523,6 +595,87 @@ function renderEntities(data) {
       <span class="name">${esc(i.name)}</span>
     </div>
   `).join('');
+}
+
+async function refreshRabbitIntel(tabId) {
+  if (!tabId) return;
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'rabbit:getLatestIntel', tabId });
+    if (response?.ok && response.data) {
+      renderRabbitInsight(response.data.intel || response.data);
+      renderLearnStatus(response.data.learnIntel || null);
+    }
+  } catch {}
+}
+
+function renderRabbitInsight(intel) {
+  if (!rabbitLatestInsight) return;
+  if (!intel) {
+    rabbitLatestInsight.innerHTML = '<div class="empty-preview">Rabbit will surface the latest high-signal page insight here.</div>';
+    return;
+  }
+
+  const summary = typeof intel === 'string' ? intel : intel.summary;
+  const opportunities = typeof intel === 'object' && Array.isArray(intel.opportunities) ? intel.opportunities : [];
+  rabbitLatestInsight.innerHTML = `
+    <div class="entity">
+      <span class="type signal">signal</span>
+      <span class="name">${esc(summary || 'Rabbit is watching this page.')}</span>
+    </div>
+    ${opportunities.slice(0, 3).map((item) => `
+      <div class="entity">
+        <span class="type account">opportunity</span>
+        <span class="name">${esc(item.title || item)}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderLearnStatus(status) {
+  if (!rabbitLearnStatus) return;
+  if (!status) {
+    rabbitLearnStatus.innerHTML = '<div class="empty-preview">Learn Mode will map visible fields, page structure, consensus assumptions, and validation signals here.</div>';
+    return;
+  }
+
+  const mappedFields = Array.isArray(status.mappedFields) ? status.mappedFields : [];
+  const findings = Array.isArray(status.validationFindings) ? status.validationFindings : [];
+  rabbitLearnStatus.innerHTML = `
+    <div class="entity">
+      <span class="type signal">learn</span>
+      <span class="name">${esc(status.summary || 'Learn Mode is building a consensus model for this app.')}</span>
+    </div>
+    ${mappedFields.slice(0, 4).map((field) => `
+      <div class="entity">
+        <span class="type tech">field</span>
+        <span class="name">${esc(field)}</span>
+      </div>
+    `).join('')}
+    ${findings.slice(0, 3).map((item) => `
+      <div class="entity">
+        <span class="type person">check</span>
+        <span class="name">${esc(item)}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderRabbitAnswer(answerData) {
+  if (!rabbitAnswer) return;
+  const answer = answerData?.answer || 'Rabbit did not return an answer.';
+  const bullets = answerData?.nextActions || [];
+  rabbitAnswer.innerHTML = `
+    <div class="entity">
+      <span class="type signal">answer</span>
+      <span class="name">${esc(answer)}</span>
+    </div>
+    ${bullets.map((item) => `
+      <div class="entity">
+        <span class="type person">next</span>
+        <span class="name">${esc(item)}</span>
+      </div>
+    `).join('')}
+  `;
 }
 
 function esc(s) {

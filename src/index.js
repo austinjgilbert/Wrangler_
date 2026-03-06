@@ -2880,9 +2880,9 @@ async function handleBrief(request, requestId, env) {
       // Try to treat companyOrSite as URL if it looks like one
       if (companyOrSite.startsWith('http://') || companyOrSite.startsWith('https://')) {
         effectiveSeedUrl = companyOrSite;
+      } else if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(companyOrSite.trim())) {
+        effectiveSeedUrl = `https://${companyOrSite.trim().toLowerCase()}`;
       } else {
-        // Treat as company name - search for it and use first result
-        // For now, construct a likely URL from company name
         const normalized = companyOrSite.toLowerCase().replace(/[^a-z0-9]/g, '');
         effectiveSeedUrl = `https://${normalized}.com`;
       }
@@ -2909,15 +2909,16 @@ async function handleBrief(request, requestId, env) {
       
       if (effectiveSeedUrl && validation.valid) {
         // Discover and crawl (small budget for brief)
+        // Always include the homepage as first priority
         const candidates = await discoverPages(validation.url, 5);
-        const prioritized = candidates.length > 0
-          ? candidates.slice(0, 3)
-          : [{ url: validation.url }];
+        const prioritized = [{ url: validation.url }, ...candidates.slice(0, 3)]
+          .filter((c, i, arr) => arr.findIndex(x => x.url === c.url) === i)
+          .slice(0, 4);
         
-        // Crawl with concurrency
-        const { results } = await crawlWithConcurrency(
+        // Crawl with concurrency — 15s timeout for brief (pages can be large)
+        const { results: briefCrawlResults, errors: briefCrawlErrors } = await crawlWithConcurrency(
           prioritized.map(c => c.url),
-          2, // Concurrency
+          2,
           async (targetUrl) => {
             const browserHeaders = getBrowserHeaders();
             const response = await fetch(targetUrl, {
@@ -2943,12 +2944,17 @@ async function handleBrief(request, requestId, env) {
               title,
               excerpts,
               signals,
+              mainText: mainTextLimited,
             };
           },
-          8000 // Timeout
+          15000
         );
         
-        fetchedData = results.map(r => r.data).filter(d => d);
+        fetchedData = briefCrawlResults.map(r => r.data).filter(d => d);
+        
+        if (fetchedData.length === 0 && briefCrawlErrors.length > 0) {
+          console.error(`[brief] All crawls failed for ${effectiveSeedUrl}:`, briefCrawlErrors.map(e => e.reason).join(', '));
+        }
       }
     } else if (query || (!effectiveSeedUrl && companyOrSite)) {
       // Use companyOrSite as query if no seedUrl
@@ -3058,7 +3064,7 @@ async function handleBrief(request, requestId, env) {
     let stored = null;
     if (env) {
       try {
-        const { initSanityClient, generateAccountKey, storeAccountPack } = await import('./sanity-client.js');
+        const { initSanityClient, generateAccountKey, storeAccountPack, upsertDocument, extractDomain } = await import('./sanity-client.js');
         const client = initSanityClient(env);
         if (client && effectiveSeedUrl) {
           const accountKey = await generateAccountKey(effectiveSeedUrl);
@@ -3071,6 +3077,21 @@ async function handleBrief(request, requestId, env) {
               brief,
               { requestId, autoSaved: true, companyOrSite }
             );
+            // Ensure account document exists so brief is discoverable via domain lookup
+            try {
+              const accountDoc = {
+                _type: 'account',
+                _id: `account.${accountKey}`,
+                accountKey,
+                canonicalUrl: effectiveSeedUrl,
+                domain: extractDomain(effectiveSeedUrl),
+                companyName: companyOrSite || brief?.evidencePack?.companyName || null,
+                lastScannedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                sourceRefs: { packId: `accountPack-${accountKey}` },
+              };
+              await upsertDocument(client, accountDoc);
+            } catch { /* non-critical */ }
             stored = {
               accountKey,
               packId: packResult.id,
@@ -3078,7 +3099,7 @@ async function handleBrief(request, requestId, env) {
           }
         }
       } catch (storeError) {
-        // Silently fail - don't break brief response if auto-save fails
+        console.error('[brief] auto-save to Sanity failed:', storeError?.message);
       }
     }
     
@@ -4616,14 +4637,26 @@ async function handleScan(request, requestId, env) {
       cms: [],
       frameworks: [],
       legacySystems: [],
+      pimSystems: [],
+      damSystems: [],
+      lmsSystems: [],
+      analytics: [],
+      ecommerce: [],
+      hosting: [],
+      cssFrameworks: [],
+      authProviders: [],
+      searchTech: [],
+      monitoring: [],
+      payments: [],
+      marketing: [],
+      chat: [],
+      cdnMedia: [],
       headlessIndicators: [],
       migrationOpportunities: [],
       painPoints: [],
       roiInsights: [],
       systemDuplication: [],
-      pimSystems: [],
-      damSystems: [],
-      lmsSystems: [],
+      allDetected: [],
       opportunityScore: 0,
     };
 
@@ -5005,57 +5038,19 @@ async function handleScan(request, requestId, env) {
       result.stored = stored;
       
       // Trigger complete research orchestration (non-blocking)
-      if (env && client && stored.accountKey) {
-        // Import orchestrator
+      // Skip if orchestrate=false (called from within orchestrator to prevent recursion)
+      const shouldOrchestrate = url.searchParams.get('orchestrate') !== 'false';
+      if (shouldOrchestrate && env && client && stored.accountKey) {
         const { orchestrateAccountResearch } = await import('./services/account-orchestrator.js');
         
-        // Run orchestration in background (don't await)
+        const { groqQuery: gq, upsertDocument: ud, patchDocument: pd } = await import('./sanity-client.js');
         orchestrateAccountResearch({
           input: finalUrl,
           inputType: 'url',
           context: {
-            groqQuery: async (client, query, params = {}) => {
-              const response = await client.fetch(`/data/query/${env.SANITY_DATASET}?query=${encodeURIComponent(query)}`, {
-                method: 'GET',
-                headers: {
-                  'Authorization': `Bearer ${env.SANITY_TOKEN || env.SANITY_API_TOKEN}`,
-                },
-              });
-              const data = await response.json();
-              return data.result || null;
-            },
-            upsertDocument: async (client, doc) => {
-              const mutations = [{
-                createOrReplace: doc,
-              }];
-              const response = await client.fetch(`/data/mutate/${env.SANITY_DATASET}`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${env.SANITY_TOKEN || env.SANITY_API_TOKEN}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ mutations }),
-              });
-              const data = await response.json();
-              return { success: true, id: doc._id };
-            },
-            patchDocument: async (client, id, patch) => {
-              const mutations = [{
-                patch: {
-                  id,
-                  set: patch.set || {},
-                },
-              }];
-              const response = await client.fetch(`/data/mutate/${env.SANITY_DATASET}`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${env.SANITY_TOKEN || env.SANITY_API_TOKEN}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ mutations }),
-              });
-              return { success: true };
-            },
+            groqQuery: gq,
+            upsertDocument: ud,
+            patchDocument: pd,
             client,
             handleScan,
             requestId,
@@ -5063,7 +5058,6 @@ async function handleScan(request, requestId, env) {
           },
           options: {},
         }).catch(err => {
-          // Silently fail - orchestration is non-critical
           console.error('Orchestration error:', err);
         });
       }
@@ -5622,7 +5616,7 @@ async function upsertCompanyAccount(client, domain, scanData, linkedInData = nul
  */
 async function handleStore(request, requestId, env) {
   const { initSanityClient, assertSanityConfigured, generateAccountKey, extractDomain,
-    storeAccountPack, upsertAccountSummary, getDocument, upsertDocument, patchDocument } = await import('./sanity-client.js');
+    storeAccountPack, upsertAccountSummary, getDocument, upsertDocument, patchDocument, groqQuery } = await import('./sanity-client.js');
   try {
     // Note: Admin token check removed - auto-save doesn't require it,
     // and manual /store calls should work the same way for consistency.
@@ -5718,8 +5712,6 @@ async function handleStore(request, requestId, env) {
       );
     }
     
-    const { storeAccountPack, getDocument, upsertAccountSummary } = await import('./sanity-client.js');
-    
     // Generate account key
     const accountKey = await generateAccountKey(canonicalUrl);
     if (!accountKey) {
@@ -5744,9 +5736,18 @@ async function handleStore(request, requestId, env) {
         );
       }
       
-      // Ensure account exists (create if needed)
-      const accountId = `account-${accountKey}`;
+      // Ensure account exists (create if needed) — try both ID formats for compatibility
+      let accountId = `account.${accountKey}`;
       let accountExists = await getDocument(client, accountId);
+      if (!accountExists) {
+        accountExists = await getDocument(client, `account-${accountKey}`);
+        if (accountExists) {
+          accountId = `account-${accountKey}`;
+        } else {
+          accountExists = await getDocument(client, `account.${accountKey}`);
+          if (accountExists) accountId = `account.${accountKey}`;
+        }
+      }
       
       if (!accountExists) {
         // Create account summary if it doesn't exist
@@ -5919,6 +5920,9 @@ async function handleStore(request, requestId, env) {
     if (storeType === 'interaction') {
       const { storeInteraction } = await import('./services/interaction-storage.js');
       
+      // Resolve domain from the account object for string-field storage on interaction
+      const interactionDomain = body.account?.domain || extractDomain(canonicalUrl) || '';
+      
       const interactionData = {
         sessionId: body.data?.sessionId || body.account?.sessionId || null,
         userPrompt: body.data?.userPrompt || body.data?.prompt,
@@ -5934,6 +5938,8 @@ async function handleStore(request, requestId, env) {
         followUpNotes: body.data?.followUpNotes || null,
         derivedInsight: body.data?.derivedInsight || false,
         linkedInteractions: body.data?.linkedInteractions || [],
+        domain: interactionDomain,
+        accountKey: accountKey || '',
         requestId,
       };
 
@@ -6206,9 +6212,13 @@ async function handleStore(request, requestId, env) {
  * Trigger background enrichment when user recalls/queries context for an account.
  * Fills in missing data in Sanity so next time they get richer insights.
  */
+/**
+ * Returns a promise suitable for ctx.waitUntil.
+ * Callers inside routeRequest collect these; the outer fetch handler passes them to ctx.waitUntil.
+ */
 function triggerContextEnrichmentIfNeeded(accountKey, domain, env) {
-  if (!accountKey && !domain) return;
-  (async () => {
+  if (!accountKey && !domain) return Promise.resolve();
+  return (async () => {
     const { triggerGapFill } = await import('./services/gap-fill-orchestrator.js');
     await triggerGapFill({
       env,
@@ -6216,7 +6226,9 @@ function triggerContextEnrichmentIfNeeded(accountKey, domain, env) {
       domain: domain || null,
       trigger: 'query',
     });
-  })().catch(() => {});
+  })().catch(err => {
+    console.error('[triggerContextEnrichment] failed:', err?.message);
+  });
 }
 
 /**
@@ -6827,6 +6839,7 @@ const workerHandler = {
           requestId,
           handlers: autonomousContext.handlers,
           internalFunctions: autonomousContext.internalFunctions,
+          responseText: responseBodyText || '',
         });
       } catch (logError) {
         console.error('Request logging failed:', logError);
@@ -6980,6 +6993,14 @@ const workerHandler = {
           const { handleDailyRun } = await import('./routes/network.ts');
           return await handleDailyRun(req, requestId, env);
         }
+        if (path === '/analytics/operator-brief') {
+          const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
+          return await handleOperatorBriefing(req, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
+        }
+        if (path === '/system/self-heal') {
+          const { handleSystemSelfHeal } = await import('./handlers/system-self-heal.js');
+          return await handleSystemSelfHeal(req, requestId, env);
+        }
         if (path === '/opportunities/daily') {
           const { handleOpportunitiesDaily } = await import('./routes/opportunities.ts');
           return await handleOpportunitiesDaily(req, requestId, env);
@@ -6998,6 +7019,7 @@ const workerHandler = {
     } else if (cron === '0 */6 * * *') {
       ctx.waitUntil(runRoute('/dq/scan', {}));
       ctx.waitUntil(runRoute('/enrich/run', {}));
+      ctx.waitUntil(runRoute('/moltbook/crawl', {}));
       // Sweep for incomplete account profiles and trigger gap-fill
       ctx.waitUntil((async () => {
         try {
@@ -7024,9 +7046,23 @@ const workerHandler = {
           console.error('[scheduled] stale-account sweep error:', err?.message);
         }
       })());
+      // Auto-derive learnings from recent interactions
+      ctx.waitUntil((async () => {
+        try {
+          const { deriveAutomaticLearnings } = await import('./services/auto-learning.js');
+          const result = await deriveAutomaticLearnings(env);
+          if (result.derived > 0) {
+            console.log(`[scheduled] auto-learning: derived ${result.derived} learnings from ${result.interactionsReviewed} interactions`);
+          }
+        } catch (err) {
+          console.error('[scheduled] auto-learning error:', err?.message);
+        }
+      })());
+      ctx.waitUntil(runRoute('/system/self-heal', {}));
     } else if (cron === '15 13 * * *') {
       ctx.waitUntil(runRoute('/network/dailyRun', {}));
     } else if (cron === '30 13 * * *') {
+      ctx.waitUntil(runRoute('/analytics/operator-brief', {}));
       ctx.waitUntil(runRoute('/opportunities/daily', { date: now.slice(0, 10) }));
     } else {
       ctx.waitUntil(runRoute('/molt/jobs/run', {}));
@@ -7107,14 +7143,15 @@ async function logUsageForRequest(request, url, requestId, env, response, startT
  * Route request to appropriate handler
  */
 // Paths that can be used for auth-only testing (e.g. from ChatGPT) without requiring Sanity.
-const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/auth-status', '/wrangler/ingest', '/extension/capture'];
+const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/auth-status', '/wrangler/ingest', '/extension/capture', '/extension/page-intel', '/extension/ask', '/extension/learn', '/system/self-heal'];
 
 const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
   '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
   '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/',
   '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/webhooks', '/orchestrate', '/person/',
-  '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/',
+  '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
+  '/memory',
 ];
 
 function isKnownPath(pathname) {
@@ -7186,6 +7223,51 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     const { getMoltApiKey } = await import('./utils/molt-auth.js');
     const key = getMoltApiKey(env);
     return createSuccessResponse({ authRequired: !!key }, requestId);
+  } else if (url.pathname === '/account-plan/context' && request.method === 'GET') {
+    const { handleContextPage } = await import('./routes/account-plan-context.ts');
+    return await handleContextPage(request, requestId, env);
+  } else if (url.pathname === '/account-plan/context/generate') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleContextGenerate } = await import('./routes/account-plan-context.ts');
+    return await handleContextGenerate(request, requestId, env);
+  } else if (url.pathname === '/account-plan/context/save') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleContextSave } = await import('./routes/account-plan-context.ts');
+    return await handleContextSave(request, requestId, env);
+  } else if (url.pathname === '/account-plan/context/recent') {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const { handleContextRecent } = await import('./routes/account-plan-context.ts');
+    return await handleContextRecent(request, requestId, env);
+  } else if (url.pathname === '/account-plan/context/ingest') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleContextIngest } = await import('./routes/account-plan-context.ts');
+    return await handleContextIngest(request, requestId, env);
+  } else if (url.pathname.startsWith('/account-plan/context/draft/')) {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const draftId = decodeURIComponent(url.pathname.replace('/account-plan/context/draft/', ''));
+    const { handleContextDraftGet } = await import('./routes/account-plan-context.ts');
+    return await handleContextDraftGet(request, requestId, env, draftId);
+  } else if (url.pathname === '/gmail/review') {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const { handleGmailReviewPage } = await import('./routes/gmail-review.ts');
+    return await handleGmailReviewPage(request, requestId, env);
+  } else if (url.pathname === '/gmail/draft/save') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleGmailDraftSave } = await import('./routes/gmail-review.ts');
+    return await handleGmailDraftSave(request, requestId, env);
+  } else if (url.pathname === '/gmail/draft/send') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleGmailDraftSend } = await import('./routes/gmail-review.ts');
+    return await handleGmailDraftSend(request, requestId, env);
+  } else if (url.pathname.startsWith('/gmail/draft/')) {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const draftId = decodeURIComponent(url.pathname.replace('/gmail/draft/', ''));
+    const { handleGmailDraftGet } = await import('./routes/gmail-review.ts');
+    return await handleGmailDraftGet(request, requestId, env, draftId);
+  } else if (url.pathname === '/accounts/stack-rank') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleAccountsStackRank } = await import('./routes/account-rank.ts');
+    return await handleAccountsStackRank(request, requestId, env);
   } else if (url.pathname === '/account-page' || url.pathname.startsWith('/accounts/')) {
     { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
     const { handleAccountPage } = await import('./routes/account-page.ts');
@@ -7281,6 +7363,16 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       } else if (url.pathname.startsWith('/delete/')) {
         { const _m = requireMethod(request, 'DELETE', requestId); if (_m) return _m; }
         return await handleDelete(request, requestId, env);
+      } else if (url.pathname === '/memory') {
+        if (request.method === 'GET') {
+          const { handleMemoryRecall } = await import('./handlers/memory.js');
+          return await handleMemoryRecall(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (request.method === 'POST') {
+          const { handleMemorySync } = await import('./handlers/memory.js');
+          return await handleMemorySync(request, requestId, env, groqQuery, upsertDocument, patchDocument, assertSanityConfigured);
+        } else {
+          return createErrorResponse('METHOD_NOT_ALLOWED', 'GET or POST required', {}, 405, requestId);
+        }
       } else if (url.pathname === '/research/complete') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleOneClickResearch } = await import('./handlers/one-click-research.js');
@@ -7332,6 +7424,34 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionCapture } = await import('./routes/extension.ts');
         return await handleExtensionCapture(request, requestId, env);
+      } else if (url.pathname === '/extension/page-intel') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleExtensionPageIntel } = await import('./routes/extension.ts');
+        return await handleExtensionPageIntel(request, requestId, env);
+      } else if (url.pathname === '/extension/ask') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleExtensionAsk } = await import('./routes/extension.ts');
+        return await handleExtensionAsk(request, requestId, env);
+      } else if (url.pathname === '/extension/learn') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleExtensionLearn } = await import('./routes/extension.ts');
+        return await handleExtensionLearn(request, requestId, env);
+      } else if (url.pathname === '/system/self-heal') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleSystemSelfHeal } = await import('./handlers/system-self-heal.js');
+        return await handleSystemSelfHeal(request, requestId, env);
       } else if (url.pathname === '/webhooks/sanity') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleSanityWebhook } = await import('./routes/sanity-webhook.ts');
@@ -7352,7 +7472,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         if (url.pathname === '/tools/gmail') {
           const { handleGmailTool } = await import('./routes/tools/gmail.ts');
-          return await handleGmailTool(request, requestId);
+          return await handleGmailTool(request, requestId, env);
         }
         if (url.pathname === '/tools/calendar') {
           const { handleCalendarTool } = await import('./routes/tools/calendar.ts');
@@ -7413,6 +7533,9 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleMoltbookFetch } = await import('./routes/moltbook.ts');
         return await handleMoltbookFetch(request, requestId, env);
+      } else if (url.pathname === '/moltbook/crawl') {
+        const { handleMoltbookCrawl } = await import('./routes/moltbook.ts');
+        return await handleMoltbookCrawl(request, requestId, env);
       } else if (url.pathname === '/moltbook/sanitize') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleMoltbookSanitize } = await import('./routes/moltbook.ts');
@@ -7573,6 +7696,16 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleExportAccount } = await import('./handlers/analytics.js');
           return await handleExportAccount(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (url.pathname === '/analytics/intelligence') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { handleIntelligenceDashboard } = await import('./handlers/intelligence-dashboard.js');
+          return await handleIntelligenceDashboard(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (url.pathname === '/analytics/operator-brief') {
+          if (request.method !== 'GET' && request.method !== 'POST') {
+            return createErrorResponse('METHOD_NOT_ALLOWED', 'GET or POST required', {}, 405, requestId);
+          }
+          const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
+          return await handleOperatorBriefing(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
         } else {
           return createErrorResponse('NOT_FOUND', 'Analytics endpoint not found', { path: url.pathname }, 404, requestId);
         }

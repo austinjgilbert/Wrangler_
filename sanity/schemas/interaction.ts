@@ -22,6 +22,8 @@ export default {
     { name: 'followUpNotes', title: 'Follow Up Notes', type: 'text' },
     { name: 'derivedInsight', title: 'Derived Insight', type: 'boolean' },
     { name: 'linkedInteractions', title: 'Linked Interactions', type: 'array', of: [{ type: 'reference', to: [{ type: 'interaction' }] }] },
+    { name: 'domain', title: 'Domain', type: 'string', description: 'Primary domain this interaction relates to' },
+    { name: 'accountKey', title: 'Account Key', type: 'string', description: 'Resolved account key for cross-referencing' },
     { name: 'requestId', title: 'Request ID', type: 'string' },
     { name: 'createdAt', title: 'Created At', type: 'datetime' },
     { name: 'updatedAt', title: 'Updated At', type: 'datetime' },

@@ -16,7 +16,7 @@ export default {
   fields: [
     { name: 'name', title: 'Name', type: 'string' },
     { name: 'slug', title: 'Slug', type: 'string', description: 'URL-safe key, e.g. "contentful" or "react"' },
-    { name: 'category', title: 'Category', type: 'string', description: 'cms, framework, analytics, cdp, crm, ecommerce, hosting, cdn, marketing-automation, dxp, dam, pim, lms, legacy' },
+    { name: 'category', title: 'Category', type: 'string', description: 'cms, framework, legacy, pim, dam, lms, analytics, ecommerce, hosting, css-framework, auth, search, monitoring, payments, marketing, chat, cdn-media, migration-target' },
     { name: 'vendor', title: 'Vendor', type: 'string' },
     { name: 'website', title: 'Website', type: 'url' },
     { name: 'description', title: 'Description', type: 'text' },

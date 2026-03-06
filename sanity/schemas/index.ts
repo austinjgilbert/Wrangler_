@@ -17,7 +17,9 @@ import moltNotification from './moltNotification';
 import dqRule from './dqRule';
 import dqFinding from './dqFinding';
 import enrichJob from './enrichJob';
+import enrichmentJob from './enrichmentJob';
 import enrichProposal from './enrichProposal';
+import accountPack from './accountPack';
 import crawlSnapshot from './crawlSnapshot';
 import callSession from './callSession';
 import callInsight from './callInsight';
@@ -36,9 +38,14 @@ import opportunity from './opportunity';
 import opportunityBrief from './opportunityBrief';
 import draftAction from './draftAction';
 import company from './company';
+import userPattern from './userPattern';
 import session from './session';
 import interaction from './interaction';
 import learning from './learning';
+import accountPlanContextDraft from './accountPlanContextDraft';
+import operatorDailyBriefing from './operatorDailyBriefing';
+import learnSession from './learnSession';
+import gmailDraft from './gmailDraft';
 
 export const schemaTypes = [
   moltbotConfig,
@@ -55,7 +62,9 @@ export const schemaTypes = [
   dqRule,
   dqFinding,
   enrichJob,
+  enrichmentJob,
   enrichProposal,
+  accountPack,
   crawlSnapshot,
   callSession,
   callInsight,
@@ -74,9 +83,14 @@ export const schemaTypes = [
   opportunityBrief,
   draftAction,
   company,
+  userPattern,
   session,
   interaction,
   learning,
+  accountPlanContextDraft,
+  operatorDailyBriefing,
+  learnSession,
+  gmailDraft,
 ];
 
 export default schemaTypes;

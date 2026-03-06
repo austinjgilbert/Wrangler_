@@ -70,6 +70,9 @@ export class ToolClient {
         if (action === 'draft') {
           return buildToolResponse(traceId, { draftId: `gmail-draft-${Date.now()}`, status: 'draft', ...input });
         }
+        if (action === 'composeLink') {
+          return buildToolResponse(traceId, { status: 'ready', composeUrl: input.composeUrl || 'https://mail.google.com/mail/?view=cm&fs=1&tf=1', ...input });
+        }
         if (action === 'send') {
           return buildToolResponse(traceId, { messageId: `gmail-msg-${Date.now()}`, status: 'sent', ...input });
         }

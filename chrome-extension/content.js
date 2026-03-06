@@ -1,5 +1,5 @@
 /**
- * Wrangler – Content Script
+ * Rabbit – Content Script
  *
  * Consolidated from:
  *   - SDR research/linkedin-extension  (LinkedInExtractor with fallback selectors)
@@ -80,6 +80,36 @@
   function txts(sel) { return Array.from(document.querySelectorAll(sel)).map(e => e.innerText.trim()).filter(Boolean); }
   function attr(sel, a) { const el = document.querySelector(sel); return el ? (el.getAttribute(a) || '').trim() : ''; }
   function getMeta(name) { const el = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`); return el ? (el.getAttribute('content') || '').trim() : ''; }
+  function fieldValueByLabels(fields, labels) {
+    for (const label of labels) {
+      if (fields[label]) return fields[label];
+    }
+    return '';
+  }
+  function collectInlineSignals(text, patterns, source) {
+    const lower = String(text || '').toLowerCase();
+    return patterns
+      .filter(({ regex }) => regex.test(lower))
+      .map(({ text: signalText }) => ({ text: signalText, source }));
+  }
+
+  function extractEmails(text) {
+    return [...new Set((String(text || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).slice(0, 25))];
+  }
+
+  function extractPhones(text) {
+    return [...new Set((String(text || '').match(/(?:\+?\d[\d\s().-]{7,}\d)/g) || []).map(v => v.trim()).slice(0, 20))];
+  }
+
+  function simpleHash(text) {
+    const input = String(text || '');
+    let hash = 0;
+    for (let i = 0; i < input.length; i += 1) {
+      hash = ((hash << 5) - hash) + input.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(16);
+  }
 
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -259,31 +289,50 @@
     });
 
     const recordName = txt('lightning-formatted-name') || txt('.slds-page-header__title') || txt('h1.slds-page-header__title');
+    const accountName = fieldValueByLabels(fields, ['Account Name', 'Company', 'Account', 'Parent Account']);
+    const website = fieldValueByLabels(fields, ['Website', 'Domain']);
+    const industry = fieldValueByLabels(fields, ['Industry']);
+    const stage = fieldValueByLabels(fields, ['Stage', 'Stage Name', 'Lifecycle Stage']);
+    const owner = fieldValueByLabels(fields, ['Owner', 'Account Owner', 'Opportunity Owner']);
+    const email = fieldValueByLabels(fields, ['Email']);
+    const phone = fieldValueByLabels(fields, ['Phone', 'Mobile', 'Mobile Phone', 'Direct Phone']);
 
-    if (fields['Account Name'] || fields['Company'] || fields['Website']) {
+    if (accountName || website) {
       data.accounts.push({
-        name: fields['Account Name'] || fields['Company'] || recordName,
-        website: fields['Website'] || '', industry: fields['Industry'] || '',
-        employees: fields['Employees'] || fields['Number of Employees'] || '',
-        revenue: fields['Annual Revenue'] || '', type: fields['Type'] || '', source: 'salesforce',
+        name: accountName || recordName,
+        website: website || '',
+        industry: industry || '',
+        employees: fieldValueByLabels(fields, ['Employees', 'Number of Employees']) || '',
+        revenue: fieldValueByLabels(fields, ['Annual Revenue']) || '',
+        type: fieldValueByLabels(fields, ['Type']) || '',
+        stage,
+        owner,
+        source: 'salesforce',
       });
     }
 
-    if (fields['Name'] || fields['Full Name'] || fields['Title']) {
+    if (fieldValueByLabels(fields, ['Name', 'Full Name']) || fieldValueByLabels(fields, ['Title', 'Job Title'])) {
       data.people.push({
-        name: fields['Name'] || fields['Full Name'] || recordName,
-        title: fields['Title'] || '', email: fields['Email'] || '',
-        currentCompany: fields['Account Name'] || fields['Company'] || '', source: 'salesforce',
+        name: fieldValueByLabels(fields, ['Name', 'Full Name']) || recordName,
+        title: fieldValueByLabels(fields, ['Title', 'Job Title']) || '',
+        email: email || '',
+        phone: phone || '',
+        currentCompany: accountName || '',
+        source: 'salesforce',
       });
-      if (fields['Account Name'] || fields['Company']) {
-        data.accounts.push({ name: fields['Account Name'] || fields['Company'], source: 'salesforce_contact' });
+      if (accountName) {
+        data.accounts.push({ name: accountName, source: 'salesforce_contact' });
       }
     }
 
     const body = (document.body?.innerText || '').substring(0, 5000);
-    if (/churn|at risk|downgrade/i.test(body)) data.signals.push({ text: 'Churn / at-risk signal detected', source: 'salesforce' });
-    if (/expand|upsell|upgrade/i.test(body))   data.signals.push({ text: 'Expansion / upsell signal detected', source: 'salesforce' });
-    if (/renew/i.test(body))                    data.signals.push({ text: 'Renewal upcoming', source: 'salesforce' });
+    data.signals.push(...collectInlineSignals(body, [
+      { regex: /churn|at risk|downgrade/, text: 'Churn / at-risk signal detected' },
+      { regex: /expand|upsell|upgrade/, text: 'Expansion / upsell signal detected' },
+      { regex: /renew|renewal/, text: 'Renewal signal detected' },
+      { regex: /champion|executive sponsor/, text: 'Internal champion language detected' },
+      { regex: /legal|security review|procurement/, text: 'Buying process friction detected' },
+    ], 'salesforce'));
 
     return data;
   }
@@ -296,9 +345,26 @@
   function extractHubSpot() {
     const data = { people: [], accounts: [], technologies: [], signals: [] };
     const cn = txt('[data-test-id="company-name"]') || txt('.company-name');
-    if (cn) data.accounts.push({ name: cn, website: txt('[data-test-id="company-domain"]') || '', industry: txt('[data-test-id="industry"]') || '', source: 'hubspot' });
+    if (cn) data.accounts.push({
+      name: cn,
+      website: txt('[data-test-id="company-domain"]') || '',
+      industry: txt('[data-test-id="industry"]') || '',
+      owner: txt('[data-test-id="owner"]') || '',
+      source: 'hubspot',
+    });
     const pn = txt('[data-test-id="contact-name"]') || txt('.contact-name');
-    if (pn) data.people.push({ name: pn, email: txt('[data-test-id="email"]') || '', title: txt('[data-test-id="jobtitle"]') || '', currentCompany: cn || '', source: 'hubspot' });
+    if (pn) data.people.push({
+      name: pn,
+      email: txt('[data-test-id="email"]') || '',
+      phone: txt('[data-test-id="phone"]') || '',
+      title: txt('[data-test-id="jobtitle"]') || '',
+      currentCompany: cn || '',
+      source: 'hubspot',
+    });
+    data.signals.push(...collectInlineSignals(document.body?.innerText || '', [
+      { regex: /meeting booked|open deal|demo requested/, text: 'HubSpot activity suggests active pipeline movement' },
+      { regex: /high intent|hot lead|mql|sql/, text: 'HubSpot scoring language suggests high intent' },
+    ], 'hubspot'));
     return data;
   }
 
@@ -306,8 +372,20 @@
     const data = { people: [], accounts: [], technologies: [], signals: [] };
     const name = txt('[data-testid="prospect-name"]') || txt('h1');
     const company = txt('[data-testid="prospect-company"]') || '';
-    if (name) data.people.push({ name, headline: txt('[data-testid="prospect-title"]') || '', currentCompany: company, email: txt('[data-testid="prospect-email"]') || '', source: 'outreach' });
+    if (name) data.people.push({
+      name,
+      headline: txt('[data-testid="prospect-title"]') || '',
+      currentCompany: company,
+      email: txt('[data-testid="prospect-email"]') || '',
+      phone: txt('[data-testid="prospect-phone"]') || '',
+      source: 'outreach',
+    });
     if (company) data.accounts.push({ name: company, source: 'outreach' });
+    data.signals.push(...collectInlineSignals(document.body?.innerText || '', [
+      { regex: /opened|clicked|replied|positive reply/, text: 'Outreach engagement signal detected' },
+      { regex: /sequence|task due|next step/, text: 'Outreach suggests a live execution step is due' },
+      { regex: /bounced|invalid email/, text: 'Outreach shows contact quality friction' },
+    ], 'outreach'));
     return data;
   }
 
@@ -315,9 +393,19 @@
     const data = { people: [], accounts: [], technologies: [], signals: [] };
     const name = txt('[data-testid="member-name"]') || txt('h1');
     const company = txt('[data-testid="member-organization"]') || '';
-    if (name) data.people.push({ name, headline: txt('[data-testid="member-title"]') || '', currentCompany: company, source: 'commonroom' });
+    if (name) data.people.push({
+      name,
+      headline: txt('[data-testid="member-title"]') || '',
+      currentCompany: company,
+      email: txt('[data-testid="member-email"]') || '',
+      source: 'commonroom',
+    });
     if (company) data.accounts.push({ name: company, source: 'commonroom' });
     data.signals = txts('[data-testid="activity-description"]').slice(0, 10).map(a => ({ text: a, source: 'commonroom' }));
+    data.signals.push(...collectInlineSignals(document.body?.innerText || '', [
+      { regex: /champion|power user|active community/, text: 'Common Room suggests a strong product champion signal' },
+      { regex: /job change|new role|joined/, text: 'Common Room shows a recent persona change' },
+    ], 'commonroom'));
     return data;
   }
 
@@ -399,6 +487,322 @@
     };
   }
 
-  // Expose for popup
+  function buildPageContext() {
+    const extracted = extract();
+    const visibleText = extracted.rawText || '';
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
+      .map(el => el.textContent?.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    const links = Array.from(document.querySelectorAll('a[href]'))
+      .map(el => ({ text: (el.textContent || '').trim(), href: el.href }))
+      .filter(link => link.href && /^https?:/i.test(link.href))
+      .slice(0, 25);
+
+    const payload = {
+      ...extracted,
+      headings,
+      links,
+      emails: extractEmails(visibleText),
+      phones: extractPhones(visibleText),
+      observedAt: new Date().toISOString(),
+    };
+    payload.fingerprint = simpleHash([
+      payload.url,
+      payload.title,
+      (payload.accounts || []).map(a => a.name || a.domain || '').join('|'),
+      (payload.people || []).map(p => p.name || p.email || '').join('|'),
+      payload.emails.join('|'),
+      payload.phones.join('|'),
+      visibleText.slice(0, 1500),
+    ].join('||'));
+    return payload;
+  }
+
+  let rabbitRoot = null;
+  let rabbitShadow = null;
+  let rabbitOpen = false;
+  let rabbitLightboxOpen = false;
+  let rabbitAskState = { loading: false, answer: '' };
+  let rabbitIntel = null;
+  let rabbitLearnIntel = null;
+
+  function ensureRabbitOverlay() {
+    if (rabbitRoot && rabbitShadow) return rabbitShadow;
+    rabbitRoot = document.createElement('div');
+    rabbitRoot.id = 'rabbit-extension-root';
+    rabbitRoot.style.all = 'initial';
+    rabbitRoot.style.position = 'fixed';
+    rabbitRoot.style.top = '16px';
+    rabbitRoot.style.right = '16px';
+    rabbitRoot.style.zIndex = '2147483647';
+    document.documentElement.appendChild(rabbitRoot);
+    rabbitShadow = rabbitRoot.attachShadow({ mode: 'open' });
+    renderRabbitOverlay();
+    return rabbitShadow;
+  }
+
+  function renderRabbitOverlay() {
+    const shadow = ensureRabbitOverlay();
+    const opportunities = rabbitIntel?.opportunities || [];
+    const contacts = rabbitIntel?.contacts || [];
+    const connections = rabbitIntel?.connections || [];
+    const nextActions = rabbitIntel?.nextActions || [];
+    const recentLearnings = rabbitIntel?.recentLearnings || [];
+    const account = rabbitIntel?.primaryAccount || null;
+    const summary = rabbitIntel?.summary || 'Rabbit is watching this page.';
+    const learnSummary = rabbitLearnIntel?.summary || '';
+    const learnFields = rabbitLearnIntel?.mappedFields || [];
+    const learnFindings = rabbitLearnIntel?.validationFindings || [];
+    shadow.innerHTML = `
+      <style>
+        .rabbit-shell { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #e5e7eb; }
+        .rabbit-pill { display:flex; align-items:center; gap:8px; background:#111827; border:1px solid #374151; border-radius:999px; padding:8px 12px; box-shadow:0 10px 30px rgba(0,0,0,.35); cursor:pointer; }
+        .rabbit-pill strong { color:#fff; font-size:12px; }
+        .rabbit-pill span { color:#fbbf24; font-size:11px; }
+        .rabbit-pill button { margin-left:auto; background:transparent; color:#93c5fd; border:none; cursor:pointer; font-size:11px; }
+        .rabbit-panel { margin-top:8px; width:340px; max-height:70vh; overflow:auto; background:#0b1220; border:1px solid #334155; border-radius:16px; box-shadow:0 16px 50px rgba(0,0,0,.45); padding:14px; display:${rabbitOpen ? 'block' : 'none'}; }
+        .rabbit-title { font-size:13px; font-weight:700; color:#fff; margin-bottom:6px; }
+        .rabbit-summary { font-size:12px; line-height:1.45; color:#cbd5e1; margin-bottom:10px; }
+        .rabbit-section { margin-top:10px; }
+        .rabbit-section h4 { margin:0 0 6px; font-size:11px; color:#93c5fd; text-transform:uppercase; letter-spacing:.05em; }
+        .rabbit-list { margin:0; padding-left:16px; }
+        .rabbit-list li { font-size:12px; color:#e2e8f0; margin-bottom:6px; }
+        .rabbit-empty { font-size:12px; color:#94a3b8; }
+        .rabbit-ask { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+        .rabbit-ask textarea { width:100%; min-height:64px; resize:vertical; box-sizing:border-box; background:#111827; color:#fff; border:1px solid #334155; border-radius:10px; padding:10px; font:inherit; }
+        .rabbit-ask button { background:#f8fafc; color:#020617; border:none; border-radius:10px; padding:10px; font-size:12px; font-weight:700; cursor:pointer; }
+        .rabbit-answer { white-space:pre-wrap; font-size:12px; color:#dbeafe; background:#111827; border:1px solid #334155; border-radius:10px; padding:10px; }
+        .rabbit-lightbox { position:fixed; inset:0; display:${rabbitLightboxOpen ? 'flex' : 'none'}; align-items:center; justify-content:center; background:rgba(2,6,23,.75); backdrop-filter: blur(8px); z-index:2147483647; }
+        .rabbit-lightbox-card { width:min(1040px, calc(100vw - 48px)); max-height:calc(100vh - 48px); overflow:auto; background:#020617; border:1px solid #334155; border-radius:24px; box-shadow:0 20px 70px rgba(0,0,0,.55); padding:20px; }
+        .rabbit-lightbox-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+        .rabbit-lightbox-title { font-size:18px; font-weight:800; color:#fff; }
+        .rabbit-lightbox-close { background:#111827; color:#e2e8f0; border:1px solid #334155; border-radius:999px; padding:8px 12px; cursor:pointer; }
+        .rabbit-grid { display:grid; grid-template-columns: 1.2fr 1fr; gap:16px; }
+        .rabbit-card { background:#0f172a; border:1px solid #1e293b; border-radius:16px; padding:14px; }
+        .rabbit-card h3 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#93c5fd; }
+        .rabbit-meta { font-size:12px; color:#cbd5e1; line-height:1.5; }
+        .rabbit-chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+        .rabbit-chip { background:#111827; color:#e2e8f0; border:1px solid #334155; border-radius:999px; padding:6px 10px; font-size:11px; }
+        @media (max-width: 860px) {
+          .rabbit-grid { grid-template-columns: 1fr; }
+        }
+      </style>
+      <div class="rabbit-shell">
+        <div class="rabbit-pill" id="rabbit-pill">
+          <strong>Rabbit</strong>
+          <span>${opportunities.length > 0 ? `${opportunities.length} opportunity${opportunities.length === 1 ? '' : 'ies'}` : 'watching'}</span>
+          <button id="rabbit-expand-btn" title="Open Rabbit Workspace">Open</button>
+        </div>
+        <div class="rabbit-panel">
+          <div class="rabbit-title">On this page, I noticed:</div>
+          <div class="rabbit-summary">${escapeHtml(summary)}</div>
+
+          <div class="rabbit-section">
+            <h4>Opportunities</h4>
+            ${opportunities.length ? `<ul class="rabbit-list">${opportunities.slice(0, 6).map(item => `<li>${escapeHtml(item.title || item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No high-confidence opportunity yet.</div>'}
+          </div>
+
+          <div class="rabbit-section">
+            <h4>Contacts</h4>
+            ${contacts.length ? `<ul class="rabbit-list">${contacts.slice(0, 6).map(item => `<li>${escapeHtml(item.label || item.value || item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No emails or phone numbers surfaced yet.</div>'}
+          </div>
+
+          <div class="rabbit-section">
+            <h4>Connections</h4>
+            ${connections.length ? `<ul class="rabbit-list">${connections.slice(0, 4).map(item => `<li>${escapeHtml(item.name)}${item.title ? ` — ${escapeHtml(item.title)}` : ''}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No known relationship surfaced yet.</div>'}
+          </div>
+
+          <div class="rabbit-section">
+            <h4>Next Moves</h4>
+            ${nextActions.length ? `<ul class="rabbit-list">${nextActions.slice(0, 4).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">Rabbit has not recommended a move yet.</div>'}
+          </div>
+
+          ${rabbitLearnIntel ? `
+            <div class="rabbit-section">
+              <h4>Learn Mode</h4>
+              <div class="rabbit-summary">${escapeHtml(learnSummary || 'Rabbit is mapping this app structure and merging it into a consensus model.')}</div>
+              ${learnFields.length ? `<ul class="rabbit-list">${learnFields.slice(0, 5).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No mapped fields yet.</div>'}
+              ${learnFindings.length ? `<ul class="rabbit-list">${learnFindings.slice(0, 3).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : ''}
+            </div>
+          ` : ''}
+
+          <div class="rabbit-ask">
+            <textarea id="rabbit-ask-input" placeholder="Ask Rabbit about this page, account, person, or next move..."></textarea>
+            <button id="rabbit-ask-btn">${rabbitAskState.loading ? 'Thinking...' : 'Ask Rabbit'}</button>
+            ${rabbitAskState.answer ? `<div class="rabbit-answer">${escapeHtml(rabbitAskState.answer)}</div>` : ''}
+          </div>
+        </div>
+
+        <div class="rabbit-lightbox" id="rabbit-lightbox">
+          <div class="rabbit-lightbox-card">
+            <div class="rabbit-lightbox-header">
+              <div>
+                <div class="rabbit-lightbox-title">Rabbit Workspace</div>
+                <div class="rabbit-summary">${escapeHtml(summary)}</div>
+              </div>
+              <button class="rabbit-lightbox-close" id="rabbit-lightbox-close">Close</button>
+            </div>
+            <div class="rabbit-grid">
+              <div class="rabbit-card">
+                <h3>Account</h3>
+                <div class="rabbit-meta">
+                  ${account ? `
+                    <div><strong>${escapeHtml(account.companyName || account.name || account.domain || 'Unknown account')}</strong></div>
+                    <div>Domain: ${escapeHtml(account.domain || account.rootDomain || 'Unknown')}</div>
+                    <div>Opportunity: ${escapeHtml(account.opportunityScore ?? 'unknown')}</div>
+                    <div>Completeness: ${escapeHtml(account.profileCompleteness?.score ?? 'unknown')}%</div>
+                  ` : 'No account matched yet.'}
+                </div>
+                ${(account?.profileCompleteness?.gaps || []).length ? `<div class="rabbit-chip-row">${account.profileCompleteness.gaps.slice(0, 8).map(item => `<span class="rabbit-chip">${escapeHtml(item)}</span>`).join('')}</div>` : ''}
+              </div>
+              <div class="rabbit-card">
+                <h3>Warm Paths</h3>
+                ${connections.length ? `<ul class="rabbit-list">${connections.slice(0, 6).map(item => `<li>${escapeHtml(item.name)}${item.title ? ` — ${escapeHtml(item.title)}` : ''}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No warm path found yet.</div>'}
+              </div>
+              <div class="rabbit-card">
+                <h3>Opportunities</h3>
+                ${opportunities.length ? `<ul class="rabbit-list">${opportunities.slice(0, 8).map(item => `<li>${escapeHtml(item.title || item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No high-confidence opportunity yet.</div>'}
+              </div>
+              <div class="rabbit-card">
+                <h3>Contacts</h3>
+                ${contacts.length ? `<ul class="rabbit-list">${contacts.slice(0, 8).map(item => `<li>${escapeHtml(item.label || item.value || item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No contact details found yet.</div>'}
+              </div>
+              <div class="rabbit-card">
+                <h3>Learnings</h3>
+                ${recentLearnings.length ? `<ul class="rabbit-list">${recentLearnings.slice(0, 5).map(item => `<li>${escapeHtml(item.title || item.summary || 'Learning')}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No reusable learnings tied to this account yet.</div>'}
+              </div>
+              <div class="rabbit-card">
+                <h3>Learn Mode</h3>
+                ${rabbitLearnIntel ? `
+                  <div class="rabbit-meta">${escapeHtml(learnSummary || 'Learn Mode is active for this app.')}</div>
+                  ${learnFields.length ? `<div class="rabbit-chip-row">${learnFields.slice(0, 10).map(item => `<span class="rabbit-chip">${escapeHtml(item)}</span>`).join('')}</div>` : ''}
+                  ${learnFindings.length ? `<ul class="rabbit-list">${learnFindings.slice(0, 5).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">No validation issues surfaced yet.</div>'}
+                ` : '<div class="rabbit-empty">Learn Mode is not active on this page.</div>'}
+              </div>
+              <div class="rabbit-card">
+                <h3>Next Moves</h3>
+                ${nextActions.length ? `<ul class="rabbit-list">${nextActions.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<div class="rabbit-empty">Rabbit has not recommended a move yet.</div>'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    shadow.getElementById('rabbit-pill')?.addEventListener('click', () => {
+      rabbitOpen = !rabbitOpen;
+      renderRabbitOverlay();
+    });
+    shadow.getElementById('rabbit-expand-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      rabbitLightboxOpen = true;
+      rabbitOpen = true;
+      renderRabbitOverlay();
+    });
+    shadow.getElementById('rabbit-lightbox-close')?.addEventListener('click', () => {
+      rabbitLightboxOpen = false;
+      renderRabbitOverlay();
+    });
+    shadow.getElementById('rabbit-lightbox')?.addEventListener('click', (event) => {
+      if (event.target?.id === 'rabbit-lightbox') {
+        rabbitLightboxOpen = false;
+        renderRabbitOverlay();
+      }
+    });
+
+    shadow.getElementById('rabbit-ask-btn')?.addEventListener('click', async () => {
+      const input = shadow.getElementById('rabbit-ask-input');
+      const prompt = input?.value?.trim();
+      if (!prompt || rabbitAskState.loading) return;
+      rabbitAskState = { loading: true, answer: '' };
+      renderRabbitOverlay();
+      try {
+        const page = buildPageContext();
+        const response = await chrome.runtime.sendMessage({ type: 'rabbit:ask', payload: { prompt, page } });
+        rabbitAskState = { loading: false, answer: response?.data?.answer || 'Rabbit did not return an answer.' };
+      } catch (error) {
+        rabbitAskState = { loading: false, answer: `Rabbit error: ${error.message}` };
+      }
+      rabbitOpen = true;
+      renderRabbitOverlay();
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function publishPageContext() {
+    const payload = buildPageContext();
+    chrome.runtime.sendMessage({ type: 'rabbit:pageContext', payload }).catch(() => {});
+  }
+
+  let publishTimer = null;
+  function schedulePublish() {
+    if (publishTimer) clearTimeout(publishTimer);
+    publishTimer = setTimeout(() => {
+      publishTimer = null;
+      publishPageContext();
+    }, 900);
+  }
+
+  function installNavigationWatchers() {
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    history.pushState = function () {
+      const result = originalPushState.apply(this, arguments);
+      schedulePublish();
+      return result;
+    };
+    history.replaceState = function () {
+      const result = originalReplaceState.apply(this, arguments);
+      schedulePublish();
+      return result;
+    };
+    window.addEventListener('popstate', schedulePublish);
+    window.addEventListener('hashchange', schedulePublish);
+  }
+
+  function installMutationWatcher() {
+    const observer = new MutationObserver(() => schedulePublish());
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      characterData: false,
+      attributes: false,
+    });
+  }
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === 'rabbit:intel') {
+      rabbitIntel = message.intel || null;
+      if (rabbitIntel) {
+        rabbitOpen = rabbitOpen || (rabbitIntel.opportunities || []).length > 0;
+      }
+      renderRabbitOverlay();
+    }
+    if (message?.type === 'rabbit:learnIntel') {
+      rabbitLearnIntel = message.learnIntel || null;
+      renderRabbitOverlay();
+    }
+  });
+
+  // Expose for popup and background
   window.__moltExtract = extract;
+  window.__rabbitBuildPageContext = buildPageContext;
+
+  ensureRabbitOverlay();
+  installNavigationWatchers();
+  installMutationWatcher();
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    schedulePublish();
+  } else {
+    window.addEventListener('DOMContentLoaded', schedulePublish, { once: true });
+  }
 })();

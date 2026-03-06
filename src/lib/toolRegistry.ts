@@ -51,7 +51,7 @@ function buildDefaultConfig(env: any) {
         description: 'Gmail read/draft/send gateway.',
         endpoint: buildToolEndpoint(env, '/tools/gmail', 'MOLT_GMAIL_TOOL_URL'),
         riskLevel: 'restricted',
-        allowedActions: ['read', 'draft', 'send'],
+        allowedActions: ['read', 'draft', 'send', 'composeLink'],
         approvalRequiredActions: ['send'],
         inputSchema: {
           required: ['traceId', 'tool', 'action', 'input'],

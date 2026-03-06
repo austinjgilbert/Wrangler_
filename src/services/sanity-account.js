@@ -37,57 +37,10 @@ export function normalizeDomain(url) {
   }
 }
 
-/**
- * Normalize canonical URL for consistent account key generation
- * @param {string} url - URL to normalize
- * @returns {string|null} - Normalized URL
- */
-export function normalizeCanonicalUrl(url) {
-  if (!url) return null;
-  
-  try {
-    const urlObj = new URL(url);
-    // Force https, lowercase, strip trailing slash, remove www
-    urlObj.protocol = 'https:';
-    urlObj.pathname = urlObj.pathname.replace(/\/$/, '') || '/';
-    urlObj.hostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
-    return urlObj.toString().toLowerCase();
-  } catch (e) {
-    // Fallback normalization
-    let normalized = url.toLowerCase().replace(/^https?:\/\//, 'https://');
-    normalized = normalized.replace(/^www\./, '');
-    normalized = normalized.replace(/\/$/, '') || normalized + '/';
-    return normalized;
-  }
-}
-
-/**
- * Generate account key from canonical URL (SHA-1 hash, full length for better uniqueness)
- * @param {string} canonicalUrl - Canonical URL
- * @returns {Promise<string|null>} - Account key (SHA-1 hash, first 32 chars)
- */
-export async function generateAccountKey(canonicalUrl) {
-  const normalized = normalizeCanonicalUrl(canonicalUrl);
-  if (!normalized) return null;
-  
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(normalized);
-    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    // Use first 32 chars instead of 16 for better uniqueness
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
-  } catch (e) {
-    // Fallback to simple hash if crypto.subtle not available
-    let hash = 0;
-    for (let i = 0; i < normalized.length; i++) {
-      const char = normalized.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36).substring(0, 16);
-  }
-}
+// Re-export from sanity-client.js so all code uses the same normalization and key generation
+import { normalizeCanonicalUrl as _normalizeCanonicalUrl, generateAccountKey as _generateAccountKey } from '../sanity-client.js';
+export const normalizeCanonicalUrl = _normalizeCanonicalUrl;
+export const generateAccountKey = _generateAccountKey;
 
 /**
  * Extract domain from URL
@@ -135,9 +88,12 @@ export async function findAccountByDomain(groqQuery, client, domain) {
  */
 export async function findAccountByKey(groqQuery, client, accountKey) {
   try {
-    const accountId = `account-${accountKey}`;
-    const query = `*[_id == $id][0]`;
-    const account = await groqQuery(client, query, { id: accountId });
+    const query = `*[_type == "account" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
+    const account = await groqQuery(client, query, {
+      dotId: `account.${accountKey}`,
+      dashId: `account-${accountKey}`,
+      key: accountKey,
+    });
     return account ?? null;
   } catch (e) {
     return null;
@@ -241,8 +197,10 @@ export async function findOrCreateMasterAccount(
       existingAccount = domainAccount;
       
       return {
+        success: true,
         accountKey: finalAccountKey,
         accountId: domainAccount._id,
+        account: domainAccount,
         isNew: false,
         merged: true,
         existingKey: existingKey !== finalAccountKey ? existingKey : undefined,
@@ -252,7 +210,7 @@ export async function findOrCreateMasterAccount(
   
   // Create new account if not found
   if (!existingAccount) {
-    const accountId = `account-${finalAccountKey}`;
+    const accountId = `account.${finalAccountKey}`;
     const accountDoc = {
       _type: 'account',
       _id: accountId,
@@ -274,8 +232,10 @@ export async function findOrCreateMasterAccount(
     await upsertDocument(client, accountDoc);
     
     return {
+      success: true,
       accountKey: finalAccountKey,
       accountId,
+      account: accountDoc,
       isNew: true,
       merged: false,
     };
@@ -288,12 +248,10 @@ export async function findOrCreateMasterAccount(
     lastScannedAt: new Date().toISOString(),
   };
   
-  // Merge company name if provided and existing is null
   if (companyName && !existingAccount.companyName) {
     updateData.companyName = companyName;
   }
   
-  // Merge scan data if provided (only update if existing is null/empty)
   if (scanData) {
     if (scanData.technologyStack && !existingAccount.technologyStack) {
       updateData.technologyStack = scanData.technologyStack;
@@ -311,7 +269,6 @@ export async function findOrCreateMasterAccount(
       updateData.businessScale = { businessScale: scanData.businessScale.businessScale };
     }
     
-    // Merge signals (deduplicate)
     const existingSignals = existingAccount.signals || [];
     const newSignals = extractSignals(scanData);
     const mergedSignals = [...new Set([...existingSignals, ...newSignals])].slice(0, 20);
@@ -320,13 +277,17 @@ export async function findOrCreateMasterAccount(
     }
   }
   
-  if (Object.keys(updateData).length > 2) { // More than just updatedAt and lastScannedAt
+  if (Object.keys(updateData).length > 2) {
     await patchDocument(client, accountId, { set: updateData });
   }
   
+  const mergedAccount = { ...existingAccount, ...updateData };
+  
   return {
+    success: true,
     accountKey: existingAccount.accountKey || finalAccountKey,
     accountId,
+    account: mergedAccount,
     isNew: false,
     merged: false,
   };

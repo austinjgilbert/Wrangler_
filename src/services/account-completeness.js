@@ -35,11 +35,28 @@ const DIMENSIONS = {
   competitors:    { weight:  8, label: 'Competitive Intel',      stage: null },
   classification: { weight:  5, label: 'Account Classification', stage: null },
   // Content OS dimensions (run by content-os-enrichment.js)
-  technologies:   { weight: 10, label: 'Technology Linking',     stage: null },
+  technologies:   { weight:  6, label: 'Technology Linking',     stage: null },
+  techDepth:      { weight:  6, label: 'Tech Stack Depth',       stage: null },
   leadership:     { weight:  8, label: 'Leadership Team',        stage: null },
-  painPoints:     { weight:  7, label: 'Pain Point Analysis',    stage: null },
+  painPoints:     { weight:  5, label: 'Pain Point Analysis',    stage: null },
   benchmarks:     { weight:  5, label: 'Company Benchmarks',     stage: null },
 };
+
+/**
+ * Check if the tech stack has depth beyond basic CMS/framework detection.
+ * Rewards accounts where we've identified analytics, marketing, payments, etc.
+ */
+function hasTechDepth(account) {
+  const ts = account?.technologyStack;
+  if (!ts) return false;
+  const depthCategories = [
+    ts.analytics, ts.ecommerce, ts.hosting, ts.marketing,
+    ts.payments, ts.chat, ts.monitoring, ts.authProviders,
+    ts.searchTech, ts.cssFrameworks, ts.cdnMedia,
+  ];
+  const populatedCount = depthCategories.filter(arr => Array.isArray(arr) && arr.length > 0).length;
+  return populatedCount >= 3;
+}
 
 /**
  * Analyse an account + accountPack and return a completeness profile.
@@ -66,6 +83,7 @@ export function analyseCompleteness(account, accountPack, enrichmentJob) {
     classification: !!account?.classification,
     // Content OS dimensions
     technologies:   !!(account?.technologies && account.technologies.length > 0),
+    techDepth:      hasTechDepth(account),
     leadership:     !!(account?.leadership && account.leadership.length > 0),
     painPoints:     !!(account?.painPoints && account.painPoints.length > 0),
     benchmarks:     !!(account?.benchmarks && Object.values(account.benchmarks || {}).some(v => v != null && v !== '')),

@@ -25,7 +25,10 @@ BODY='{
     {"command": "captures", "description": "Recent extension captures"},
     {"command": "briefing", "description": "Daily SDR briefing"},
     {"command": "jobs", "description": "Recent enrichment jobs"},
-    {"command": "network", "description": "Moltbook & network updates"}
+    {"command": "network", "description": "Moltbook & network updates"},
+    {"command": "teach", "description": "Research network & explain cutting edge"},
+    {"command": "trends", "description": "Rising/falling network themes"},
+    {"command": "moltbook", "description": "Moltbook feed or post (/moltbook post <msg>)"}
   ]
 }'
 

@@ -1,7 +1,7 @@
 /**
  * Moltbook Adapter
- * - If MOLTBOOK_BASE_URL is set, fetches from /api/activity or /api/feed (JSON array).
- * - Otherwise returns stub posts for integration testing.
+ * - Fetches from MOLTBOOK_BASE_URL and optionally from MOLTBOOK_NETWORK_URLS (other AIs on the network).
+ * - Each source can expose /api/activity, /api/feed, or /moltbook/api/activity (JSON array).
  */
 
 export interface MoltbookPost {
@@ -13,45 +13,74 @@ export interface MoltbookPost {
   rawJson?: Record<string, unknown>;
 }
 
-/** Fetch recent activity from Moltbook API. Expected shape: { items?: Array<{ id?, author?, text?, summary?, createdAt?, url?, topic? }> } or array. */
-export async function fetchMoltbookActivity(env: any): Promise<MoltbookPost[]> {
-  const baseUrl = env?.MOLTBOOK_BASE_URL ? String(env.MOLTBOOK_BASE_URL).replace(/\/$/, '') : '';
-  if (!baseUrl) return [];
+const ACTIVITY_PATHS = ['/moltbook/api/activity', '/api/activity', '/api/feed', '/api/posts'];
 
-  try {
-    const urlsToTry = [
-      `${baseUrl}/moltbook/api/activity`,
-      `${baseUrl}/api/activity`,
-      `${baseUrl}/api/feed`,
-      `${baseUrl}/api/posts`,
-    ];
-    for (const url of urlsToTry) {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+/** Fetch from a single base URL. Returns [] on failure or empty. */
+async function fetchFromOneBase(baseUrl: string, sourceId: string, limit: number): Promise<MoltbookPost[]> {
+  const base = baseUrl.replace(/\/$/, '');
+  for (const path of ACTIVITY_PATHS) {
+    try {
+      const res = await fetch(`${base}${path}`, { headers: { Accept: 'application/json' } });
       if (!res.ok) continue;
-      const data = await res.json();
-      const items = Array.isArray(data) ? data : (data?.items ?? data?.posts ?? []);
+      const data = (await res.json()) as unknown[] | { items?: unknown[]; posts?: unknown[] };
+      const items = Array.isArray(data) ? data : (data && typeof data === 'object' ? (data.items ?? data.posts ?? []) : []);
       if (!Array.isArray(items) || items.length === 0) continue;
-      const posts: MoltbookPost[] = items.slice(0, 30).map((item: any, idx: number) => {
-        const id = item.id ?? item._id ?? `moltbook-${idx}-${Date.now()}`;
+      return items.slice(0, limit).map((item: any, idx: number) => {
+        const id = item.id ?? item._id ?? `post-${idx}-${Date.now()}`;
         const text = item.text ?? item.summary ?? item.rawText ?? item.content ?? '';
         const author = item.author ?? item.agent ?? item.bot ?? 'bot';
         const createdAt = item.createdAt ?? item.created ?? item.date ?? new Date().toISOString();
-        const urlStr = item.url ?? item.link ?? `${baseUrl}/post/${encodeURIComponent(id)}`;
+        const urlStr = item.url ?? item.link ?? `${base}/post/${encodeURIComponent(id)}`;
         return {
-          externalId: String(id),
+          externalId: `${sourceId}:${String(id)}`,
           url: urlStr,
           author: String(author),
           createdAt: typeof createdAt === 'string' ? createdAt : new Date(createdAt).toISOString(),
           rawText: String(text).slice(0, 2000),
-          rawJson: item,
+          rawJson: { ...item, _source: sourceId },
         };
       });
-      return posts;
+    } catch (_) {
+      continue;
     }
-  } catch (_) {
-    // fall through to stub
   }
   return [];
+}
+
+/** Parse comma-separated URLs from env (e.g. MOLTBOOK_NETWORK_URLS). */
+function parseNetworkUrls(env: any): string[] {
+  const raw = env?.MOLTBOOK_NETWORK_URLS ? String(env.MOLTBOOK_NETWORK_URLS).trim() : '';
+  if (!raw) return [];
+  return raw.split(',').map((u: string) => u.trim()).filter(Boolean);
+}
+
+/**
+ * Fetch activity from primary (MOLTBOOK_BASE_URL) and from other AIs (MOLTBOOK_NETWORK_URLS).
+ * Merges, dedupes by externalId, sorts by createdAt desc. Limit 80 total.
+ */
+export async function fetchMoltbookActivity(env: any): Promise<MoltbookPost[]> {
+  const primary = env?.MOLTBOOK_BASE_URL ? String(env.MOLTBOOK_BASE_URL).replace(/\/$/, '') : '';
+  const extraUrls = parseNetworkUrls(env);
+  const allBases = primary ? [primary, ...extraUrls] : [...extraUrls];
+  if (allBases.length === 0) return [];
+
+  const perSource = Math.max(20, Math.floor(80 / Math.max(1, allBases.length)));
+  const seen = new Set<string>();
+  const merged: MoltbookPost[] = [];
+
+  for (let i = 0; i < allBases.length; i++) {
+    const base = allBases[i];
+    const sourceId = base.replace(/^https?:\/\//, '').replace(/[^a-z0-9.-]/gi, '_').slice(0, 32) || `source-${i}`;
+    const posts = await fetchFromOneBase(base, sourceId, perSource);
+    for (const p of posts) {
+      if (seen.has(p.externalId)) continue;
+      seen.add(p.externalId);
+      merged.push(p);
+    }
+  }
+
+  merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return merged.slice(0, 80);
 }
 
 export async function fetchMoltbookPosts({

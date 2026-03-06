@@ -30,7 +30,10 @@ crons = [
 [vars]
 BASE_URL = "http://localhost:8787"
 MOLT_TOOL_BASE_URL = "http://localhost:8787"
+# Moltbook: same worker so /network and crawl use GET /moltbook/api/activity (KV). Or set to external Moltbook API base.
 MOLTBOOK_BASE_URL = "http://localhost:8787"
+# Optional: comma-separated URLs of other AIs (activity/feed API). Crawl and /network merge these with primary.
+# MOLTBOOK_NETWORK_URLS = "https://other-ai.workers.dev,https://moltbook.example.com"
 WRANGLER_API_URL = ""
 # CORS_ORIGINS: optional comma-separated allowed origins; "*" or unset = allow all
 
@@ -85,14 +88,23 @@ WRANGLER_API_URL = ""
 [env.production]
 name = "website-scanner"
 kv_namespaces = [
-  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" }
+  { binding = "RATE_LIMIT_KV", id = "bbcc096dd2c3444b853978f9620c1f30", preview_id = "6a66e545bdcf4cc59959622e769cf64e" },
+  { binding = "MOLTBOOK_ACTIVITY_KV", id = "b8e25007b3ac45a8ab28c7953de9e914", preview_id = "081c52d2ad3a4bed810c664fd3adaeda" }
 ]
 
-# Production overrides
+# Optional: custom domain (uncomment when you control the zone's nameservers)
+# [env.production.route]
+# pattern = "api.yourdomain.com/*"
+# zone_name = "yourdomain.com"
+# Then set BASE_URL / MOLT_TOOL_BASE_URL / MOLTBOOK_BASE_URL to https://api.yourdomain.com
+
+# Production overrides (default: workers.dev URL)
 [env.production.vars]
 BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 MOLT_TOOL_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+# Moltbook: this worker (feed from KV). Or set to external Moltbook API base (e.g. https://moltbook.example.com).
 MOLTBOOK_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+# Optional: MOLTBOOK_NETWORK_URLS = "https://other-ai.workers.dev,..." to gather posts from other AIs.
 WRANGLER_API_URL = ""
 
 # Production environment inherits top-level config

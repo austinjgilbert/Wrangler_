@@ -36,7 +36,7 @@ export async function quickGetAccount(client, groqQuery, accountKey) {
  * Quick query: Get account pack with all data
  */
 export async function quickGetAccountPack(client, groqQuery, accountKey) {
-  const query = `*[_type == "accountPack" && accountKey == $accountKey][0]{
+  const query = `*[_type == "accountPack" && (accountKey == $accountKey || _id == $dotId || _id == $dashId)][0]{
     _id,
     accountKey,
     canonicalUrl,
@@ -47,7 +47,11 @@ export async function quickGetAccountPack(client, groqQuery, accountKey) {
     createdAt
   }`;
   
-  const raw = await groqQuery(client, query, { accountKey });
+  const raw = await groqQuery(client, query, {
+    accountKey,
+    dotId: `accountPack.${accountKey}`,
+    dashId: `accountPack-${accountKey}`,
+  });
   return singleResult(raw);
 }
 
@@ -234,9 +238,10 @@ export async function quickAccountExists(client, groqQuery, identifier) {
 export async function quickGetEnrichmentStatus(
   client,
   groqQuery,
-  accountKey
+  accountKey,
+  accountId = null
 ) {
-  const query = `*[_type == "enrichmentJob" && accountKey == $accountKey] | order(updatedAt desc)[0]{
+  const legacyQuery = `*[_type == "enrichmentJob" && accountKey == $accountKey] | order(updatedAt desc)[0]{
     _id,
     jobId,
     status,
@@ -245,11 +250,74 @@ export async function quickGetEnrichmentStatus(
     failedStages,
     startedAt,
     updatedAt,
-    results
+    results,
+    priority
   }`;
-  
-  const raw = await groqQuery(client, query, { accountKey });
-  return singleResult(raw);
+
+  const legacyRaw = await groqQuery(client, legacyQuery, { accountKey });
+  const legacy = singleResult(legacyRaw);
+
+  const modernQuery = `*[
+    _type == "enrich.job"
+    && entityType == "account"
+    && (
+      entityId == $accountId
+      || entityId == $dotAccountId
+      || entityId == $dashAccountId
+      || entityId == $accountKey
+    )
+  ] | order(coalesce(createdAt, _updatedAt) desc)[0]{
+    _id,
+    "jobId": _id,
+    status,
+    goal,
+    priority,
+    createdAt
+  }`;
+
+  const modernRaw = await groqQuery(client, modernQuery, {
+    accountKey,
+    accountId,
+    dotAccountId: accountKey ? `account.${accountKey}` : null,
+    dashAccountId: accountKey ? `account-${accountKey}` : null,
+  });
+  const modern = singleResult(modernRaw);
+
+  if (!legacy && !modern) return null;
+  if (legacy && !modern) return legacy;
+  if (!legacy && modern) {
+    return {
+      _id: modern._id,
+      jobId: modern.jobId,
+      status: modern.status,
+      currentStage: modern.goal || 'queued',
+      completedStages: [],
+      failedStages: [],
+      startedAt: modern.createdAt,
+      updatedAt: modern.createdAt,
+      results: {},
+      priority: modern.priority,
+      sourceType: 'enrich.job',
+    };
+  }
+
+  const legacyUpdated = new Date(legacy?.updatedAt || legacy?.startedAt || 0).getTime();
+  const modernUpdated = new Date(modern?.createdAt || 0).getTime();
+  return modernUpdated > legacyUpdated
+    ? {
+        _id: modern._id,
+        jobId: modern.jobId,
+        status: modern.status,
+        currentStage: modern.goal || 'queued',
+        completedStages: [],
+        failedStages: [],
+        startedAt: modern.createdAt,
+        updatedAt: modern.createdAt,
+        results: {},
+        priority: modern.priority,
+        sourceType: 'enrich.job',
+      }
+    : legacy;
 }
 
 /**
@@ -260,21 +328,21 @@ export async function quickGetCompleteProfile(
   groqQuery,
   accountKey
 ) {
-  // Parallel queries
-  const [account, pack, enrichment, similar] = await Promise.all([
-    quickGetAccount(client, groqQuery, accountKey),
+  const account = await quickGetAccount(client, groqQuery, accountKey);
+  const [pack, enrichment, similar] = await Promise.all([
     quickGetAccountPack(client, groqQuery, accountKey),
-    quickGetEnrichmentStatus(client, groqQuery, accountKey),
+    quickGetEnrichmentStatus(client, groqQuery, accountKey, account?._id || null),
     quickFindSimilarAccounts(client, groqQuery, accountKey, { limit: 5 }),
   ]);
+  const enrichmentStatus = enrichment?.status || '';
   
   return {
     account: account || null,
     pack: pack || null,
     enrichment: enrichment || null,
     similarAccounts: similar || [],
-    isEnriched: !!enrichment && enrichment.status === 'completed',
-    isEnriching: !!enrichment && ['pending', 'in_progress'].includes(enrichment.status),
+    isEnriched: !!enrichment && ['complete', 'completed', 'partial'].includes(enrichmentStatus),
+    isEnriching: !!enrichment && ['pending', 'in_progress', 'queued', 'running'].includes(enrichmentStatus),
   };
 }
 

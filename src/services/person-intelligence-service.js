@@ -1063,11 +1063,11 @@ export async function generatePersonBriefInternal(params, context) {
   let personId = null;
   let briefId = null;
   let evidenceIds = [];
+  let personKey = null;
 
   if (store && client) {
     try {
-      // Generate person key
-      const personKey = await generatePersonKey(profileUrl, name);
+      personKey = await generatePersonKey(profileUrl, name);
 
       if (personKey) {
         // Store person

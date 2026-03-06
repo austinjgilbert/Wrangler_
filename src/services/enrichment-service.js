@@ -34,8 +34,11 @@ export async function queueEnrichmentJob(
   accountKey,
   options = {}
 ) {
+  const goalKey = options.goalKey || (Array.isArray(options.requestedStages) && options.requestedStages.length > 0
+    ? `stages:${[...new Set(options.requestedStages)].sort().join('+')}`
+    : 'full_pipeline');
   // Check if enrichment already in progress
-  const existingJob = await getActiveEnrichmentJob(groqQuery, client, accountKey);
+  const existingJob = await getActiveEnrichmentJob(groqQuery, client, accountKey, goalKey);
   if (existingJob) {
     return {
       success: true,
@@ -48,6 +51,7 @@ export async function queueEnrichmentJob(
   // Create pipeline job
   const job = createPipelineJob(canonicalUrl, {
     accountKey,
+    goalKey,
     ...options,
   });
   
@@ -65,6 +69,7 @@ export async function queueEnrichmentJob(
     startedAt: job.startedAt,
     updatedAt: job.updatedAt,
     priority: job.priority,
+    goalKey: job.goalKey || goalKey,
     options: job.options,
     metadata: job.metadata,
   };
@@ -89,10 +94,16 @@ export async function queueEnrichmentJob(
  * @param {string} accountKey - Account key
  * @returns {Promise<object|null>}
  */
-export async function getActiveEnrichmentJob(groqQuery, client, accountKey) {
+export async function getActiveEnrichmentJob(groqQuery, client, accountKey, goalKey = null) {
   try {
-    const query = `*[_type == "enrichmentJob" && accountKey == $accountKey && status in ["pending", "in_progress"]][0]`;
-    const raw = await groqQuery(client, query, { accountKey });
+    let query = `*[_type == "enrichmentJob" && accountKey == $accountKey && status in ["pending", "in_progress"]]`;
+    const params = { accountKey };
+    if (goalKey) {
+      query += ` && goalKey == $goalKey`;
+      params.goalKey = goalKey;
+    }
+    query += ` | order(updatedAt desc)[0]`;
+    const raw = await groqQuery(client, query, params);
     const job = Array.isArray(raw) && raw.length > 0 ? raw[0] : (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null);
     return job ?? null;
   } catch (e) {
@@ -142,7 +153,7 @@ export async function executeEnrichmentStage(
     throw new Error('Enrichment job not found');
   }
   
-  if (job.status === 'complete') {
+  if (['complete', 'partial'].includes(job.status)) {
     return {
       success: true,
       job,
@@ -162,6 +173,7 @@ export async function executeEnrichmentStage(
       failedStages: updatedJob.failedStages,
       results: updatedJob.results,
       updatedAt: updatedJob.updatedAt,
+      goalKey: updatedJob.goalKey || job.goalKey || null,
     },
   });
   
@@ -356,7 +368,7 @@ export async function autoEnrichAccount(
     canonicalUrl,
     accountKey,
     {
-      priority: 5,
+      priority: 50,
       source: 'auto_enrichment',
     }
   );

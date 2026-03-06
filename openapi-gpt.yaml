@@ -30,22 +30,92 @@ components:
       additionalProperties: true
 
 paths:
-  /health:
+  /memory:
     get:
-      operationId: healthCheck
-      summary: Health check
+      operationId: memoryRecall
+      summary: Recall everything the system knows about entities (CALL THIS FIRST ON EVERY TURN)
+      description: |
+        Compare notes before responding. Pass domains mentioned by the user, the
+        thread ID, or a freeform query. Returns account intelligence, recent
+        interactions, follow-ups, and thread history. The "brief" field is a
+        pre-formatted text summary you can read at a glance.
+      parameters:
+        - name: domains
+          in: query
+          schema: { type: string }
+          description: Comma-separated domains (e.g. "acme.com,rival.io")
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Freeform prompt — domains are auto-extracted
+        - name: threadId
+          in: query
+          schema: { type: string }
+          description: Thread or session ID for continuity across turns
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
       responses:
         "200":
-          description: OK
+          description: Recall payload with structured `recall` and human-readable `brief`
           content:
             application/json:
-              schema: { type: object, properties: { ok: { type: boolean } } }
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+    post:
+      operationId: memorySync
+      summary: Store this exchange AND recall context in one call
+      description: |
+        After composing your response, call this with the user's message and
+        your summary. Returns the same recall payload as GET so you stay
+        up-to-date for the next turn.  This replaces the old
+        storeData(type=interaction) + queryData(type=context) two-call pattern.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userMessage]
+              properties:
+                userMessage:
+                  type: string
+                  description: What the user said this turn
+                assistantMessage:
+                  type: string
+                  description: Your response summary (2-3 sentences)
+                domains:
+                  type: array
+                  items: { type: string }
+                  description: Domains discussed (auto-extracted from userMessage if omitted)
+                threadId:
+                  type: string
+                  description: Thread / conversation ID for session continuity
+                tags:
+                  type: array
+                  items: { type: string }
+                  description: Context tags (tech, competitor, research, person, etc.)
+                importance:
+                  type: number
+                  default: 0.6
+                followUpNeeded:
+                  type: boolean
+                  default: false
+                followUpNotes:
+                  type: string
+      responses:
+        "200":
+          description: Stored confirmation + full recall payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
 
   /scan:
     get:
       operationId: scanHomepage
       summary: Scan a website homepage
-      description: Deep scan for tech stack, AI readiness, performance. Auto-saves to Sanity.
+      description: Deep scan for full tech stack (17 categories), AI readiness, and performance. Auto-saves to Sanity. Detects CMS, frameworks, analytics, e-commerce, hosting, auth, search, monitoring, payments, marketing, chat, and more.
       parameters:
         - name: url
           in: query
@@ -53,7 +123,7 @@ paths:
           schema: { type: string, format: uri }
       responses:
         "200":
-          description: Scan result
+          description: Scan result with full technology stack
           content:
             application/json:
               schema:
@@ -84,7 +154,7 @@ paths:
     post:
       operationId: scanLinkedInProfile
       summary: Scan LinkedIn profile
-      description: Provide linkedinUrl or profileHtml/profileText. May be blocked by LinkedIn.
+      description: Provide profileUrl or profileHtml/profileText. May be blocked by LinkedIn.
       requestBody:
         required: true
         content:
@@ -92,7 +162,7 @@ paths:
             schema:
               type: object
               properties:
-                linkedinUrl: { type: string }
+                profileUrl: { type: string, description: "LinkedIn profile URL" }
                 profileHtml: { type: string }
                 profileText: { type: string }
       responses:
@@ -134,9 +204,12 @@ paths:
           application/json:
             schema:
               type: object
+              required: [query]
               properties:
-                q: { type: string }
+                query: { type: string, description: "Search query text" }
                 limit: { type: integer }
+                recencyDays: { type: integer }
+                mode: { type: string, enum: [fast, thorough], default: fast }
       responses:
         "200":
           description: Search results
@@ -175,9 +248,11 @@ paths:
           application/json:
             schema:
               type: object
+              required: [baseUrl]
               properties:
-                url: { type: string }
+                baseUrl: { type: string, description: "Seed URL to crawl from" }
                 maxPages: { type: integer }
+                targetPages: { type: array, items: { type: string } }
       responses:
         "200":
           description: Crawl results
@@ -196,10 +271,11 @@ paths:
           application/json:
             schema:
               type: object
+              required: [companyOrSite]
               properties:
-                url: { type: string }
-                accountKey: { type: string }
-                domain: { type: string }
+                companyOrSite: { type: string, description: "Company name, domain, or URL to generate brief for" }
+                seedUrl: { type: string }
+                query: { type: string }
       responses:
         "200":
           description: Brief
@@ -218,9 +294,12 @@ paths:
           application/json:
             schema:
               type: object
+              required: [input]
               properties:
-                url: { type: string }
-                domain: { type: string }
+                input: { type: string, description: "Company name, domain, or URL" }
+                inputType: { type: string, enum: [auto, url, domain, company], default: auto }
+                includeCompetitors: { type: boolean, default: true }
+                mode: { type: string, enum: [fast, deep], default: fast }
       responses:
         "200":
           description: Research result
@@ -232,20 +311,20 @@ paths:
   /research/quick:
     get:
       operationId: researchQuick
-      summary: Quick lookup (account, search, etc.)
+      summary: Quick lookup for an account (provide at least one identifier)
       parameters:
-        - name: type
+        - name: domain
           in: query
           schema: { type: string }
-        - name: q
-          in: query
-          schema: { type: string }
-        - name: url
-          in: query
-          schema: { type: string }
+          description: "Company domain (e.g. cloudflare.com)"
         - name: accountKey
           in: query
           schema: { type: string }
+          description: "Sanity account key"
+        - name: url
+          in: query
+          schema: { type: string }
+          description: "Company URL"
       responses:
         "200":
           description: Quick result
@@ -261,10 +340,9 @@ paths:
       parameters:
         - name: accountKey
           in: query
+          required: true
           schema: { type: string }
-        - name: domain
-          in: query
-          schema: { type: string }
+          description: "Sanity account key (required)"
       responses:
         "200":
           description: Intelligence payload
@@ -283,10 +361,11 @@ paths:
           application/json:
             schema:
               type: object
+              required: [input]
               properties:
-                url: { type: string }
-                domain: { type: string }
-                accountKey: { type: string }
+                input: { type: string, description: "Company name, domain, or URL" }
+                inputType: { type: string, enum: [url, domain, company], default: url }
+                runMode: { type: string, enum: [queue, sync], default: queue }
       responses:
         "200":
           description: Orchestration result
@@ -321,11 +400,13 @@ paths:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
-                name: { type: string }
-                company: { type: string }
-                domain: { type: string }
-                linkedinUrl: { type: string }
+                name: { type: string, description: "Person's full name" }
+                companyName: { type: string, description: "Company name" }
+                companyDomain: { type: string, description: "Company domain" }
+                profileUrl: { type: string, description: "LinkedIn profile URL" }
+                mode: { type: string, enum: [fast, deep], default: fast }
       responses:
         "200":
           description: Person brief
@@ -359,17 +440,31 @@ paths:
     post:
       operationId: storeData
       summary: Store data in Sanity (scan, brief, interaction, etc.)
+      description: "type is one of: scan, linkedin, evidence, brief, person, account, interaction, session, learning. Body must include account (with canonicalUrl or domain) and data."
       parameters:
         - name: type
           in: path
           required: true
-          schema: { type: string }
+          schema: { type: string, enum: [scan, linkedin, evidence, brief, person, account, interaction, session, learning] }
       requestBody:
         required: true
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/GenericResponse'
+              type: object
+              required: [account, data]
+              properties:
+                account:
+                  type: object
+                  properties:
+                    canonicalUrl: { type: string, description: "Account URL (or provide domain)" }
+                    domain: { type: string, description: "Account domain (alternative to canonicalUrl)" }
+                    companyName: { type: string }
+                data:
+                  type: object
+                  description: "For interaction: { userPrompt, gptResponse, sessionId? }. For others: payload object."
+                meta:
+                  type: object
       responses:
         "200":
           description: Stored
@@ -459,10 +554,11 @@ paths:
           application/json:
             schema:
               type: object
+              required: [url]
               properties:
-                url: { type: string }
-                domain: { type: string }
-                accountKey: { type: string }
+                url: { type: string, description: "Company URL to research" }
+                companyName: { type: string }
+                mode: { type: string, enum: [year_ahead, quick], default: year_ahead }
       responses:
         "200":
           description: Job queued
@@ -525,19 +621,15 @@ paths:
                 $ref: '#/components/schemas/GenericResponse'
 
   /competitors/opportunities:
-    post:
+    get:
       operationId: competitorOpportunities
       summary: Get displacement opportunities
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                accountKey:
-                  type: string
-                domain:
-                  type: string
+      parameters:
+        - name: accountKey
+          in: query
+          required: true
+          schema: { type: string }
+          description: "Account key to find displacement opportunities for"
       responses:
         "200":
           description: Opportunities
@@ -556,8 +648,9 @@ paths:
             schema:
               type: object
               properties:
+                canonicalUrl: { type: string, description: "Account URL (or use url)" }
+                url: { type: string, description: "Alternative to canonicalUrl" }
                 accountKey: { type: string }
-                domain: { type: string }
       responses:
         "200":
           description: Enrichment triggered
@@ -592,6 +685,8 @@ paths:
             schema:
               type: object
               properties:
+                canonicalUrl: { type: string, description: "Account URL (or use url)" }
+                url: { type: string, description: "Alternative to canonicalUrl" }
                 accountKey: { type: string }
       responses:
         "200":
@@ -624,23 +719,3 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenericResponse'
 
-  /analytics/compare:
-    post:
-      operationId: analyticsCompare
-      summary: Compare multiple accounts
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                accountKeys: { type: array, items: { type: string } }
-                domains: { type: array, items: { type: string } }
-      responses:
-        "200":
-          description: Comparison
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'

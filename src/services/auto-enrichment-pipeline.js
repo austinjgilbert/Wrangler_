@@ -8,6 +8,29 @@ import { queueEnrichmentJob, getActiveEnrichmentJob } from './enrichment-service
 import { quickAccountExists, quickGetCompleteProfile } from './sanity-quick-query.js';
 import { generateAccountKey, normalizeCanonicalUrl } from '../sanity-client.js';
 
+function normalizeEnrichmentPriority(priority) {
+  if (typeof priority === 'number' && Number.isFinite(priority)) return priority;
+  switch (priority) {
+    case 'urgent': return 100;
+    case 'high': return 75;
+    case 'low': return 25;
+    case 'normal':
+    default:
+      return 50;
+  }
+}
+
+function buildGoalKey(options = {}) {
+  if (typeof options.goalKey === 'string' && options.goalKey.trim()) {
+    return options.goalKey.trim();
+  }
+  const requestedStages = Array.isArray(options.requestedStages) ? options.requestedStages.filter(Boolean) : [];
+  if (requestedStages.length > 0) {
+    return `stages:${[...new Set(requestedStages)].sort().join('+')}`;
+  }
+  return 'full_pipeline';
+}
+
 /**
  * Trigger auto-enrichment for an account (non-blocking)
  * Called automatically when accounts are searched/scanned/queried
@@ -61,7 +84,8 @@ export async function triggerAutoEnrichment(
     }
     
     // Check if enrichment already in progress or recently completed
-    const existingJob = await getActiveEnrichmentJob(groqQuery, client, accountKey);
+    const goalKey = buildGoalKey(options);
+    const existingJob = await getActiveEnrichmentJob(groqQuery, client, accountKey, goalKey);
     if (existingJob) {
       return { 
         triggered: false, 
@@ -94,7 +118,8 @@ export async function triggerAutoEnrichment(
       accountKey,
       {
         auto: true,
-        priority: options.priority || 'normal',
+        priority: normalizeEnrichmentPriority(options.priority || 'normal'),
+        goalKey,
         ...options,
       }
     );
@@ -242,7 +267,7 @@ export async function onAccountQueried(
       account.accountKey,
       'accountKey',
       { 
-        priority: 'normal',
+        priority: profile.account?.profileCompleteness?.score >= 70 ? 'low' : 'normal',
         trigger: 'query',
       }
     ).catch(err => {

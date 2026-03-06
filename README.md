@@ -25,6 +25,15 @@ Then:
 
 Optional: [Chrome extension](CHROME-EXTENSION-SETUP.md), [Telegram bot](TELEGRAM-BOT-SETUP.md), [Custom GPT](UPDATE-INSTRUCTIONS.md). Full details: [SETUP.md](SETUP.md).
 
+### Production URL and custom domain (open source / self-hosted)
+
+By default the worker is served at **`https://<your-worker-name>.<your-subdomain>.workers.dev`** (e.g. `https://website-scanner.austin-gilbert.workers.dev`). You can use this URL for:
+
+- **Telegram webhook:** `https://<your-worker-url>/webhooks/telegram`
+- **API base:** All endpoints live under this origin. No custom domain required.
+
+If you control a domain and its **nameservers** (e.g. you own the domain at the registrar), you can attach a custom domain (e.g. `api.yourproject.com`): in `wrangler.toml` under `[env.production]` uncomment the `[env.production.route]` block and set `pattern` and `zone_name`, then set `BASE_URL` / `MOLT_TOOL_BASE_URL` / `MOLTBOOK_BASE_URL` to that origin. For domains you don’t control (e.g. community-owned like miriad.systems), use the workers.dev URL.
+
 ## Overview
 
 A comprehensive website scanning and research API built on Cloudflare Workers. Provides tech stack detection, business intelligence, LinkedIn profile analysis, and seamless integration with Sanity CMS for data persistence.

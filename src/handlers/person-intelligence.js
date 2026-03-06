@@ -241,11 +241,8 @@ export async function handlePersonBrief(
     );
 
   } catch (error) {
-    // Create logger if not already created (for error logging)
     const errorLogger = createLogger(requestId || generateRequestId(), 'person-intelligence-handler');
-    errorLogger.error('Person brief handler failed', error, {
-      name: body?.name,
-    });
+    errorLogger.error('Person brief handler failed', error);
     
     return createErrorResponse(
       'INTERNAL_ERROR',

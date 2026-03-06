@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Wrangler",
-  "version": "3.0.0",
-  "description": "Capture pages from LinkedIn, Salesforce, HubSpot, and any site. Bulk tab capture and text paste. Data flows to your Cloudflare Worker for enrichment and Sanity.",
+  "name": "Rabbit",
+  "version": "3.1.0",
+  "description": "Always-on page awareness for LinkedIn, Salesforce, Outreach, Common Room, and the open web. Rabbit sees the page, surfaces opportunities, queues research, and lets you ask grounded questions in-context.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -32,7 +32,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Wrangler — Capture Page Data",
+    "default_title": "Rabbit — AI Sales Super Eyes",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"

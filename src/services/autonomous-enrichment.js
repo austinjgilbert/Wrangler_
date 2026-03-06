@@ -201,6 +201,174 @@ async function enrichPerson({
   }
 }
 
+// Simple dedup cache — keyed by domain+path, tracks last-stored timestamp.
+// Resets when the isolate recycles (acceptable for CF Workers).
+const recentStoreCache = new Map();
+const DEDUP_WINDOW_MS = 30_000;
+
+/**
+ * Extract a concise textual summary from a raw API response.
+ * Avoids storing raw HTML/JSON blobs in interaction records.
+ */
+function summarizeResponse(responseText, path) {
+  if (!responseText || responseText.length < 50) return responseText || '';
+
+  try {
+    const parsed = JSON.parse(responseText);
+    const data = parsed.data || parsed;
+
+    const parts = [];
+
+    // Scan results
+    if (data.technologyStack) {
+      const ts = data.technologyStack;
+      const allTechs = ts.allDetected || [];
+      if (allTechs.length) {
+        parts.push(`Tech detected: ${allTechs.map(t => t.name).join(', ')}`);
+      }
+      if (ts.opportunityScore) parts.push(`Opportunity score: ${ts.opportunityScore}`);
+    }
+
+    // Brief results
+    if (data.executiveSummary) {
+      const summary = Array.isArray(data.executiveSummary)
+        ? data.executiveSummary.join('. ')
+        : String(data.executiveSummary);
+      parts.push(`Brief: ${summary.slice(0, 500)}`);
+    }
+
+    // Context/query results
+    if (data.summary && typeof data.summary === 'string') {
+      parts.push(data.summary.slice(0, 500));
+    }
+
+    // Research results
+    if (data.researchSet?.summary) {
+      const rs = data.researchSet.summary;
+      parts.push(`Research: ${rs.pagesDiscovered || 0} pages, brief: ${rs.hasBrief ? 'yes' : 'no'}`);
+    }
+
+    // Person brief
+    if (data.name && data.currentTitle) {
+      parts.push(`Person: ${data.name} - ${data.currentTitle}`);
+    }
+
+    // Search results
+    if (Array.isArray(data.results)) {
+      parts.push(`${data.results.length} results returned`);
+    }
+
+    // Store results
+    if (data.stored || data.created) {
+      parts.push(`Data stored successfully`);
+    }
+
+    // Interactions list
+    if (data.interactions && Array.isArray(data.interactions)) {
+      parts.push(`${data.interactions.length} interactions returned`);
+    }
+
+    // Generic success/failure
+    if (parts.length === 0) {
+      if (parsed.ok === true) parts.push(`Request succeeded (${path})`);
+      else if (parsed.ok === false) parts.push(`Request failed: ${parsed.error?.message || 'unknown error'}`);
+    }
+
+    if (parts.length > 0) return parts.join('. ');
+  } catch {
+    // Not valid JSON — store a truncated version of the text
+  }
+
+  return responseText.length > 2000
+    ? responseText.substring(0, 2000) + '... [truncated]'
+    : responseText;
+}
+
+/**
+ * Auto-store every GPT interaction to Sanity so the knowledge base grows.
+ * Runs in ctx.waitUntil after every request — no opt-in needed.
+ */
+async function autoStoreInteraction({
+  prompt,
+  responseText,
+  domains,
+  companyNames,
+  requestId,
+  url,
+  groqQuery,
+  upsertDocument,
+  patchDocument,
+  client,
+}) {
+  if (!prompt || !responseText) return null;
+
+  // Skip non-informational responses (health checks, static assets, errors, etc.)
+  const path = url?.pathname || '';
+  const skipPaths = ['/health', '/ready', '/favicon', '/robots.txt', '/openapi'];
+  if (skipPaths.some(p => path.startsWith(p))) return null;
+
+  // Skip very short responses that are just status confirmations
+  if (responseText.length < 50) return null;
+
+  // Dedup: skip if we stored for same domain+path in the last 30s
+  const dedupKey = `${domains[0] || 'none'}:${path}`;
+  const lastStored = recentStoreCache.get(dedupKey);
+  if (lastStored && (Date.now() - lastStored) < DEDUP_WINDOW_MS) return null;
+  recentStoreCache.set(dedupKey, Date.now());
+  // Prune cache to prevent unbounded growth
+  if (recentStoreCache.size > 200) {
+    const cutoff = Date.now() - DEDUP_WINDOW_MS * 2;
+    for (const [k, v] of recentStoreCache) {
+      if (v < cutoff) recentStoreCache.delete(k);
+    }
+  }
+
+  try {
+    const { storeInteraction } = await import('./interaction-storage.js');
+    const primaryDomain = domains[0] || '';
+    const { generateAccountKey } = await import('./sanity-account.js');
+    const accountKey = primaryDomain ? await generateAccountKey(`https://${primaryDomain}`) : '';
+
+    const contextTags = [];
+    if (path.includes('brief')) contextTags.push('brief');
+    if (path.includes('research')) contextTags.push('research');
+    if (path.includes('scan')) contextTags.push('scan');
+    if (path.includes('enrich')) contextTags.push('enrichment');
+    if (path.includes('person')) contextTags.push('person');
+    if (path.includes('linkedin')) contextTags.push('linkedin');
+    if (path.includes('competitor')) contextTags.push('competitor');
+    if (path.includes('osint')) contextTags.push('osint');
+    if (path.includes('store')) contextTags.push('store');
+    if (path.includes('query')) contextTags.push('query');
+    if (path.includes('search')) contextTags.push('search');
+    if (path.includes('orchestrate')) contextTags.push('orchestrate');
+
+    // Build a concise response summary for storage (not raw JSON/HTML)
+    const truncatedResponse = summarizeResponse(responseText, path);
+
+    const result = await storeInteraction(
+      groqQuery,
+      upsertDocument,
+      patchDocument,
+      client,
+      {
+        userPrompt: prompt,
+        gptResponse: truncatedResponse,
+        domain: primaryDomain,
+        accountKey,
+        contextTags,
+        requestId,
+        importance: domains.length > 0 ? 0.7 : 0.4,
+      }
+    );
+
+    return result;
+  } catch (err) {
+    console.error('[autoStoreInteraction] failed:', err?.message);
+    return null;
+  }
+}
+
 export async function runAutonomousEnrichment({
   request,
   url,
@@ -209,6 +377,7 @@ export async function runAutonomousEnrichment({
   handlers,
   internalFunctions,
   flags = {},
+  responseText = '',
 }) {
   try {
     const prompt = await buildPromptFromRequest(request, url);
@@ -226,15 +395,29 @@ export async function runAutonomousEnrichment({
       autoAdvance: body?.auto_advance ?? body?.autoAdvance ?? flags.autoAdvance ?? true,
     };
 
-    if (finalFlags.autoEnrich === false) {
-      return null;
-    }
-
     const patterns = extractQueryPatterns(prompt, {});
     const domains = extractDomains(prompt);
     const linkedInUrls = extractLinkedInProfiles(prompt);
     const personNames = extractPersonNames(prompt);
     const companyNames = extractCompanyNames(patterns, prompt);
+
+    // Auto-store every interaction (independent of enrichment flags)
+    await autoStoreInteraction({
+      prompt,
+      responseText,
+      domains,
+      companyNames,
+      requestId,
+      url,
+      groqQuery,
+      upsertDocument,
+      patchDocument,
+      client,
+    });
+
+    if (finalFlags.autoEnrich === false) {
+      return null;
+    }
 
     const searchProvider = internalFunctions?.searchProvider || handlers?.searchProvider || null;
 

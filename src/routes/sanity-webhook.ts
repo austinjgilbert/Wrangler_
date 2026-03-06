@@ -4,15 +4,16 @@
  * POST /webhooks/sanity
  *
  * Receives webhook notifications from Sanity when documents are created
- * or updated. Automatically triggers enrichment for accounts that have gaps.
+ * or updated. Automatically triggers enrichment for accounts, people,
+ * and other entities that have gaps in their data.
  *
  * Setup in Sanity:
  *   1. Go to sanity.io/manage → Project → API → Webhooks
  *   2. Create webhook:
  *      - URL: https://website-scanner.austin-gilbert.workers.dev/webhooks/sanity
  *      - Trigger on: Create, Update
- *      - Filter: _type == "account"
- *      - Projection: {_id, accountKey, domain, rootDomain, profileCompleteness}
+ *      - Filter: _type in ["account", "person", "interaction", "accountPack"]
+ *      - Projection: {_id, _type, accountKey, domain, rootDomain, profileCompleteness, name, companyDomain}
  *      - Secret: (set as SANITY_WEBHOOK_SECRET in worker)
  *      - HTTP method: POST
  */
@@ -25,17 +26,22 @@ interface SanityWebhookPayload {
   accountKey?: string;
   domain?: string;
   rootDomain?: string;
+  companyDomain?: string;
+  name?: string;
   profileCompleteness?: {
     score?: number;
     gaps?: string[];
     nextStages?: string[];
   };
+  // Person fields
+  companyName?: string;
+  linkedinUrl?: string;
+  // Interaction fields
+  userPrompt?: string;
+  gptResponse?: string;
+  contextTags?: string[];
 }
 
-/**
- * Verify Sanity webhook signature.
- * Sanity sends HMAC-SHA256 in the `sanity-webhook-signature` header.
- */
 async function verifySignature(
   body: string,
   signature: string | null,
@@ -64,11 +70,148 @@ async function verifySignature(
   }
 }
 
+/**
+ * Handle account document changes — trigger gap-fill if incomplete
+ */
+async function handleAccountChange(payload: SanityWebhookPayload, env: any) {
+  const accountKey = payload.accountKey;
+  const domain = payload.domain || payload.rootDomain;
+
+  if (!accountKey || !domain) {
+    return { skipped: true, reason: 'Missing accountKey or domain' };
+  }
+
+  const completeness = payload.profileCompleteness;
+  const score = completeness?.score ?? 0;
+  const hasGaps = (completeness?.gaps?.length ?? 0) > 0;
+  const hasNextStages = (completeness?.nextStages?.length ?? 0) > 0;
+
+  if (score >= 80 && !hasGaps && !hasNextStages) {
+    return {
+      skipped: true,
+      reason: `Profile completeness ${score}% — no enrichment needed`,
+      accountKey,
+    };
+  }
+
+  const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
+  triggerGapFill({
+    env,
+    accountKey,
+    domain,
+    trigger: 'sanity_webhook',
+  }).catch((err: any) => {
+    console.error(`[SanityWebhook] Gap-fill failed for ${accountKey}:`, err?.message);
+  });
+
+  return {
+    triggered: true,
+    action: 'gap_fill',
+    accountKey,
+    domain,
+    currentScore: score,
+    gaps: completeness?.gaps || [],
+  };
+}
+
+/**
+ * Handle person document changes — enrich if missing key data
+ */
+async function handlePersonChange(payload: SanityWebhookPayload, env: any) {
+  const name = payload.name;
+  const companyDomain = payload.companyDomain || payload.domain;
+
+  if (!name) {
+    return { skipped: true, reason: 'Person document missing name' };
+  }
+
+  // Also trigger gap-fill for the associated account if we have a domain
+  if (companyDomain) {
+    const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
+    const { generateAccountKey } = await import('../sanity-client.js');
+    const accountKey = await generateAccountKey(`https://${companyDomain}`);
+    triggerGapFill({
+      env,
+      accountKey,
+      domain: companyDomain,
+      trigger: 'sanity_webhook_person',
+    }).catch((err: any) => {
+      console.error(`[SanityWebhook] Person-triggered gap-fill failed:`, err?.message);
+    });
+  }
+
+  return {
+    triggered: true,
+    action: 'person_enrichment',
+    name,
+    companyDomain,
+  };
+}
+
+/**
+ * Handle interaction document changes — derive learnings and trigger account enrichment
+ */
+async function handleInteractionChange(payload: SanityWebhookPayload, env: any) {
+  const domain = payload.domain;
+  const accountKey = payload.accountKey;
+
+  if (!domain && !accountKey) {
+    return { skipped: true, reason: 'Interaction has no associated domain or accountKey' };
+  }
+
+  // Trigger gap-fill for the account referenced in the interaction
+  if (domain || accountKey) {
+    const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
+    triggerGapFill({
+      env,
+      accountKey: accountKey || null,
+      domain: domain || null,
+      trigger: 'sanity_webhook_interaction',
+    }).catch((err: any) => {
+      console.error(`[SanityWebhook] Interaction-triggered gap-fill failed:`, err?.message);
+    });
+  }
+
+  return {
+    triggered: true,
+    action: 'interaction_enrichment',
+    domain,
+    accountKey,
+  };
+}
+
+/**
+ * Handle accountPack document changes — check if new data needs Content OS enrichment
+ */
+async function handleAccountPackChange(payload: SanityWebhookPayload, env: any) {
+  const accountKey = payload.accountKey;
+  const domain = payload.domain || payload.rootDomain;
+
+  if (!accountKey) {
+    return { skipped: true, reason: 'AccountPack missing accountKey' };
+  }
+
+  const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
+  triggerGapFill({
+    env,
+    accountKey,
+    domain: domain || null,
+    trigger: 'sanity_webhook_pack',
+  }).catch((err: any) => {
+    console.error(`[SanityWebhook] Pack-triggered gap-fill failed for ${accountKey}:`, err?.message);
+  });
+
+  return {
+    triggered: true,
+    action: 'pack_enrichment',
+    accountKey,
+  };
+}
+
 export async function handleSanityWebhook(request: Request, requestId: string, env: any) {
   try {
     const rawBody = await request.text();
 
-    // ── Verify webhook signature (if secret is configured) ────────────
     const secret = env.SANITY_WEBHOOK_SECRET;
     if (secret) {
       const signature = request.headers.get('sanity-webhook-signature');
@@ -85,51 +228,27 @@ export async function handleSanityWebhook(request: Request, requestId: string, e
       return createErrorResponse('VALIDATION_ERROR', 'Invalid JSON', {}, 400, requestId);
     }
 
-    // Only process account documents
-    if (payload._type !== 'account') {
-      return createSuccessResponse({ skipped: true, reason: 'Not an account document' }, requestId);
+    const docType = payload._type;
+    let result: any;
+
+    switch (docType) {
+      case 'account':
+        result = await handleAccountChange(payload, env);
+        break;
+      case 'person':
+        result = await handlePersonChange(payload, env);
+        break;
+      case 'interaction':
+        result = await handleInteractionChange(payload, env);
+        break;
+      case 'accountPack':
+        result = await handleAccountPackChange(payload, env);
+        break;
+      default:
+        result = { skipped: true, reason: `Unhandled document type: ${docType}` };
     }
 
-    const accountKey = payload.accountKey;
-    const domain = payload.domain || payload.rootDomain;
-
-    if (!accountKey || !domain) {
-      return createSuccessResponse({ skipped: true, reason: 'Missing accountKey or domain' }, requestId);
-    }
-
-    // ── Check if enrichment is needed ─────────────────────────────────
-    const completeness = payload.profileCompleteness;
-    const score = completeness?.score ?? 0;
-    const hasGaps = (completeness?.gaps?.length ?? 0) > 0;
-    const hasNextStages = (completeness?.nextStages?.length ?? 0) > 0;
-
-    // Only trigger enrichment if profile is incomplete (< 80%) or has gaps
-    if (score >= 80 && !hasGaps && !hasNextStages) {
-      return createSuccessResponse({
-        skipped: true,
-        reason: `Profile completeness ${score}% — no enrichment needed`,
-        accountKey,
-      }, requestId);
-    }
-
-    // ── Trigger gap-fill enrichment ───────────────────────────────────
-    const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
-    triggerGapFill({
-      env,
-      accountKey,
-      domain,
-      trigger: 'sanity_webhook',
-    }).catch((err: any) => {
-      console.error(`[SanityWebhook] Gap-fill failed for ${accountKey}:`, err?.message);
-    });
-
-    return createSuccessResponse({
-      triggered: true,
-      accountKey,
-      domain,
-      currentScore: score,
-      gaps: completeness?.gaps || [],
-    }, requestId);
+    return createSuccessResponse({ ...result, documentType: docType }, requestId);
   } catch (error: any) {
     return createErrorResponse('WEBHOOK_ERROR', error.message, {}, 500, requestId);
   }

@@ -47,28 +47,35 @@ export async function getRecentInteractions(
     }
   }
   
-  if (resolvedAccountId) {
+  // Match interactions by account reference OR by domain/accountKey string fields
+  if (resolvedAccountId && domain) {
+    query += ` && (references($accountId) || domain == $domain)`;
+    filters.accountId = resolvedAccountId;
+    filters.domain = domain;
+  } else if (resolvedAccountId) {
     query += ` && references($accountId)`;
     filters.accountId = resolvedAccountId;
+  } else if (domain) {
+    query += ` && domain == $domain`;
+    filters.domain = domain;
+  } else if (accountKey) {
+    query += ` && accountKey == $accountKey`;
+    filters.accountKey = accountKey;
   }
 
-  // Filter by session
   if (sessionId) {
     query += ` && sessionId->sessionId == $sessionId`;
   }
 
-  // Filter by context tags
   if (contextTags.length > 0) {
     const tagConditions = contextTags.map(tag => `"${tag}" in contextTags`).join(' || ');
     query += ` && (${tagConditions})`;
   }
 
-  // Filter by follow-up needed
   if (followUpNeeded !== null) {
     query += ` && followUpNeeded == ${followUpNeeded}`;
   }
 
-  // Filter by derived insight
   if (derivedInsight !== null) {
     query += ` && derivedInsight == ${derivedInsight}`;
   }
@@ -124,7 +131,6 @@ export async function getRelevantLearnings(
 
   let query = '*[_type == "learning"';
 
-  // Filter by account reference
   let resolvedAccountId = null;
   if (accountId) {
     resolvedAccountId = accountId;
@@ -132,21 +138,27 @@ export async function getRelevantLearnings(
     const accountQuery = `*[_type == "account" && accountKey == $accountKey][0]._id`;
     const raw = await groqQuery(client, accountQuery, { accountKey });
     const account = Array.isArray(raw) && raw.length ? raw[0] : raw;
-    if (account) {
-      resolvedAccountId = account;
-    }
+    if (account) resolvedAccountId = account;
   } else if (domain) {
     const accountQuery = `*[_type == "account" && (domain == $domain || rootDomain == $domain)][0]._id`;
     const raw = await groqQuery(client, accountQuery, { domain });
     const account = Array.isArray(raw) && raw.length ? raw[0] : raw;
-    if (account) {
-      resolvedAccountId = account;
-    }
+    if (account) resolvedAccountId = account;
   }
   
-  if (resolvedAccountId) {
+  if (resolvedAccountId && domain) {
+    query += ` && (references($accountId) || domain == $domain)`;
+    filters.accountId = resolvedAccountId;
+    filters.domain = domain;
+  } else if (resolvedAccountId) {
     query += ` && references($accountId)`;
     filters.accountId = resolvedAccountId;
+  } else if (domain) {
+    query += ` && domain == $domain`;
+    filters.domain = domain;
+  } else if (accountKey) {
+    query += ` && accountKey == $accountKey`;
+    filters.accountKey = accountKey;
   }
 
   // Filter by brief reference
@@ -247,6 +259,30 @@ export async function getAccountIntelligenceForContext(
     }
     if (account.technologyStack?.frameworks?.length) {
       parts.push(`Frameworks: ${account.technologyStack.frameworks.slice(0, 5).join(', ')}`);
+    }
+    if (account.technologyStack?.analytics?.length) {
+      parts.push(`Analytics: ${account.technologyStack.analytics.join(', ')}`);
+    }
+    if (account.technologyStack?.marketing?.length) {
+      parts.push(`Marketing: ${account.technologyStack.marketing.join(', ')}`);
+    }
+    if (account.technologyStack?.ecommerce?.length) {
+      parts.push(`E-commerce: ${account.technologyStack.ecommerce.join(', ')}`);
+    }
+    if (account.technologyStack?.hosting?.length) {
+      parts.push(`Hosting/CDN: ${account.technologyStack.hosting.join(', ')}`);
+    }
+    if (account.technologyStack?.payments?.length) {
+      parts.push(`Payments: ${account.technologyStack.payments.join(', ')}`);
+    }
+    if (account.technologyStack?.chat?.length) {
+      parts.push(`Chat/Support: ${account.technologyStack.chat.join(', ')}`);
+    }
+    if (account.technologyStack?.monitoring?.length) {
+      parts.push(`Monitoring: ${account.technologyStack.monitoring.join(', ')}`);
+    }
+    if (account.technologyStack?.authProviders?.length) {
+      parts.push(`Auth: ${account.technologyStack.authProviders.join(', ')}`);
     }
     if (account.signals?.length) {
       parts.push(`Signals: ${account.signals.slice(0, 5).join('; ')}`);

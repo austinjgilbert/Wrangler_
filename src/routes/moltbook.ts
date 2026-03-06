@@ -3,6 +3,7 @@
  * - GET  /moltbook/api/activity — list recent network activity (for Telegram bot / adapter)
  * - POST /moltbook/api/activity — append activity (bots post here; optional MOLTBOOK_API_KEY)
  * - POST /moltbook/fetch
+ * - GET  /moltbook/crawl — cron: fetch from network and store in Sanity (learn from network)
  * - POST /moltbook/sanitize
  */
 
@@ -10,7 +11,7 @@ const MOLTBOOK_KV_KEY = 'moltbook:activity';
 const MOLTBOOK_ACTIVITY_MAX = 100;
 
 import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
-import { fetchMoltbookPosts } from '../lib/moltbookAdapter.ts';
+import { fetchMoltbookActivity, fetchMoltbookPosts } from '../lib/moltbookAdapter.ts';
 import { sanitizePost } from '../lib/sanitize.ts';
 import {
   createCommunityPostRaw,
@@ -55,6 +56,45 @@ export async function handleMoltbookFetch(request: Request, requestId: string, e
     return createSuccessResponse({ fetchedCount: posts.length, storedIds }, requestId);
   } catch (error: any) {
     return createErrorResponse('MOLTBOOK_FETCH_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+/** GET /moltbook/crawl — Fetch from Moltbook (KV or MOLTBOOK_BASE_URL), store in Sanity. Call from cron to gather data and learn from the network. */
+export async function handleMoltbookCrawl(request: Request, requestId: string, env: any) {
+  try {
+    const baseUrl = (env?.MOLTBOOK_BASE_URL || '').toString().replace(/\/$/, '');
+    await createCommunitySource(env, {
+      _type: 'communitySource',
+      _id: 'communitySource.moltbook',
+      name: 'Moltbook',
+      type: 'moltbook',
+      baseUrl: baseUrl || 'https://moltbook.local',
+      topics: ['network'],
+    });
+    const live = await fetchMoltbookActivity(env);
+    let stored = 0;
+    for (const post of live.slice(0, 50)) {
+      try {
+        await createCommunityPostRaw(env, {
+          _type: 'communityPostRaw',
+          _id: `communityPostRaw.${post.externalId}`,
+          sourceRef: { _type: 'reference', _ref: 'communitySource.moltbook' },
+          externalId: post.externalId,
+          url: post.url,
+          author: post.author,
+          createdAt: post.createdAt,
+          rawText: post.rawText,
+          rawJson: post.rawJson || {},
+          fetchedAt: new Date().toISOString(),
+        });
+        stored += 1;
+      } catch (_) {
+        // duplicate or storage error
+      }
+    }
+    return createSuccessResponse({ crawled: live.length, stored }, requestId);
+  } catch (error: any) {
+    return createErrorResponse('MOLTBOOK_CRAWL_ERROR', (error as Error).message, {}, 500, requestId);
   }
 }
 

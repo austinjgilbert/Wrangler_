@@ -6,6 +6,20 @@
 
 import { generateInteractionId, generateSessionId, generateLearningId } from '../utils/ids.js';
 
+function normalizeRefId(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  return value._id || value._ref || null;
+}
+
+function uniqueRefs(values = []) {
+  return [...new Set(values.map(normalizeRefId).filter(Boolean))].map(refId => ({
+    _type: 'reference',
+    _ref: refId,
+    _weak: false,
+  }));
+}
+
 /**
  * Generate or retrieve session for interactions
  */
@@ -28,14 +42,43 @@ export async function getOrCreateSession(
     const query = `*[_type == "session" && sessionId == $sessionId][0]`;
     const existing = await groqQuery(client, query, { sessionId });
     if (existing) {
-      // Update lastUpdatedAt
+      const mergedAccounts = uniqueRefs([
+        ...(existing.accountsInContext || []),
+        ...accountsInContext,
+      ]);
+      const mergedBriefs = uniqueRefs([
+        ...(existing.briefsInContext || []),
+        ...briefsInContext,
+      ]);
+
+      // Update lastUpdatedAt and carry forward newly discovered entities
       await upsertDocument(client, {
         _type: 'session',
         _id: existing._id,
+        sessionId: existing.sessionId,
+        title: existing.title,
+        startedAt: existing.startedAt,
+        participants: existing.participants || participants,
+        accountsInContext: mergedAccounts,
+        briefsInContext: mergedBriefs,
+        learnings: existing.learnings || [],
+        followUps: existing.followUps || [],
+        interactionCount: existing.interactionCount || 0,
+        createdAt: existing.createdAt,
         lastUpdatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-      return { success: true, sessionId: existing.sessionId, session: existing, isNew: false };
+      return {
+        success: true,
+        sessionId: existing.sessionId,
+        session: {
+          ...existing,
+          accountsInContext: mergedAccounts,
+          briefsInContext: mergedBriefs,
+          lastUpdatedAt: new Date().toISOString(),
+        },
+        isNew: false,
+      };
     }
   }
 
@@ -51,16 +94,8 @@ export async function getOrCreateSession(
     startedAt: now,
     lastUpdatedAt: now,
     participants,
-    accountsInContext: accountsInContext.map(accountId => ({
-      _type: 'reference',
-      _ref: typeof accountId === 'string' ? accountId : accountId._id || accountId,
-      _weak: false,
-    })),
-    briefsInContext: briefsInContext.map(briefId => ({
-      _type: 'reference',
-      _ref: typeof briefId === 'string' ? briefId : briefId._id || briefId,
-      _weak: false,
-    })),
+    accountsInContext: uniqueRefs(accountsInContext),
+    briefsInContext: uniqueRefs(briefsInContext),
     learnings: [],
     followUps: [],
     interactionCount: 0,
@@ -101,6 +136,8 @@ export async function storeInteraction(
     derivedInsight = false,
     linkedInteractions = [],
     requestId = null,
+    domain = '',
+    accountKey = '',
   } = interactionData;
 
   if (!userPrompt || !gptResponse) {
@@ -149,36 +186,18 @@ export async function storeInteraction(
     userPrompt,
     gptResponse,
     timestamp,
-    referencedAccounts: referencedAccounts.map(accountId => ({
-      _type: 'reference',
-      _ref: typeof accountId === 'string' ? accountId : accountId._id || accountId,
-      _weak: false,
-    })),
-    referencedBriefs: referencedBriefs.map(briefId => ({
-      _type: 'reference',
-      _ref: typeof briefId === 'string' ? briefId : briefId._id || briefId,
-      _weak: false,
-    })),
-    referencedPeople: referencedPeople.map(personId => ({
-      _type: 'reference',
-      _ref: typeof personId === 'string' ? personId : personId._id || personId,
-      _weak: false,
-    })),
-    referencedEvidence: referencedEvidence.map(evidenceId => ({
-      _type: 'reference',
-      _ref: typeof evidenceId === 'string' ? evidenceId : evidenceId._id || evidenceId,
-      _weak: false,
-    })),
+    referencedAccounts: uniqueRefs(referencedAccounts),
+    referencedBriefs: uniqueRefs(referencedBriefs),
+    referencedPeople: uniqueRefs(referencedPeople),
+    referencedEvidence: uniqueRefs(referencedEvidence),
     contextTags,
     importance: Math.min(1, Math.max(0, importance)),
     followUpNeeded: autoFollowUpNeeded,
     followUpNotes: followUpNotes || (autoFollowUpNeeded ? 'Auto-flagged for follow-up' : null),
     derivedInsight: autoDerivedInsight,
-    linkedInteractions: linkedInteractions.map(interactionId => ({
-      _type: 'reference',
-      _ref: typeof interactionId === 'string' ? interactionId : interactionId._id || interactionId,
-      _weak: false,
-    })),
+    linkedInteractions: uniqueRefs(linkedInteractions),
+    domain: domain || '',
+    accountKey: accountKey || '',
     requestId,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -239,6 +258,9 @@ export async function deriveLearning(
     relevanceScore = 0.5,
     contextTags = [],
     memoryPhrase = null,
+    patternType = 'learning',
+    recommendedActions = [],
+    confidence = null,
   } = learningData;
 
   if (!title || !summary) {
@@ -254,24 +276,16 @@ export async function deriveLearning(
     learningId,
     title,
     summary,
-    derivedFrom: derivedFrom.map(interactionId => ({
-      _type: 'reference',
-      _ref: typeof interactionId === 'string' ? interactionId : interactionId._id || interactionId,
-      _weak: false,
-    })),
-    applicableToAccounts: applicableToAccounts.map(accountId => ({
-      _type: 'reference',
-      _ref: typeof accountId === 'string' ? accountId : accountId._id || accountId,
-      _weak: false,
-    })),
-    applicableToBriefs: applicableToBriefs.map(briefId => ({
-      _type: 'reference',
-      _ref: typeof briefId === 'string' ? briefId : briefId._id || briefId,
-      _weak: false,
-    })),
+    derivedFrom: uniqueRefs(derivedFrom),
+    applicableToAccounts: uniqueRefs(applicableToAccounts),
+    applicableToBriefs: uniqueRefs(applicableToBriefs),
     relevanceScore: Math.min(1, Math.max(0, relevanceScore)),
     contextTags,
     memoryPhrase: memoryPhrase || title.substring(0, 100),
+    patternType,
+    recommendedActions,
+    tags: contextTags,
+    confidence: confidence ?? relevanceScore,
     createdAt: new Date().toISOString(),
     lastReferencedAt: null,
     referenceCount: 0,

@@ -72,8 +72,18 @@ interface CapturePayload {
   signals: any[];
   metadata: Record<string, string>;
   rawText?: string;
+  emails?: string[];
+  phones?: string[];
+  headings?: string[];
+  links?: Array<{ text?: string; href?: string }>;
+  fingerprint?: string;
   /** When set (e.g. from Paste Text with a tab open), pasted tech list is applied to this URL's account */
   contextUrl?: string;
+  learnMode?: {
+    sessionId?: string;
+    label?: string;
+    startedAt?: string;
+  };
 }
 
 export async function handleExtensionCapture(request: Request, requestId: string, env: any) {
@@ -392,7 +402,642 @@ export async function handleExtensionCapture(request: Request, requestId: string
   }
 }
 
+export async function handleExtensionPageIntel(request: Request, requestId: string, env: any) {
+  try {
+    const body: CapturePayload = await request.json();
+    if (!body?.url || !body?.source) {
+      return createErrorResponse('VALIDATION_ERROR', 'url and source are required', {}, 400, requestId);
+    }
+
+    const { initSanityClient } = await import('../sanity-client.js');
+    const client = initSanityClient(env);
+    if (!client) {
+      return createErrorResponse('SANITY_ERROR', 'Sanity not configured', {}, 500, requestId);
+    }
+
+    const intel = await buildRabbitIntel(body, env, client);
+    const { groqQuery: _groqQuery, ...responseData } = intel;
+    return createSuccessResponse(responseData, requestId);
+  } catch (error: any) {
+    return createErrorResponse('EXTENSION_INTEL_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+export async function handleExtensionAsk(request: Request, requestId: string, env: any) {
+  try {
+    const body: any = await request.json().catch(() => ({}));
+    const prompt = String(body?.prompt || '').trim();
+    const page = body?.page || null;
+    if (!prompt) {
+      return createErrorResponse('VALIDATION_ERROR', 'prompt is required', {}, 400, requestId);
+    }
+
+    const { initSanityClient } = await import('../sanity-client.js');
+    const client = initSanityClient(env);
+    if (!client) {
+      return createErrorResponse('SANITY_ERROR', 'Sanity not configured', {}, 500, requestId);
+    }
+
+    const intel = page ? await buildRabbitIntel(page, env, client) : null;
+    const { buildContextSummary } = await import('../services/context-retrieval.js');
+    const contextSummary = intel?.primaryAccount?.accountKey || intel?.primaryAccount?.domain
+      ? await buildContextSummary(
+        intel.groqQuery,
+        client,
+        {
+          accountKey: intel.primaryAccount?.accountKey || null,
+          domain: intel.primaryAccount?.domain || null,
+          fullInsights: false,
+          interactionLimit: 5,
+          learningLimit: 5,
+          followUpLimit: 3,
+        },
+      )
+      : 'No stored account context found for this page yet.';
+
+    const answer = buildRabbitAnswer(prompt, intel, contextSummary);
+    return createSuccessResponse({
+      answer,
+      nextActions: intel?.nextActions || [],
+      opportunities: intel?.opportunities || [],
+      contacts: intel?.contacts || [],
+      primaryAccount: intel?.primaryAccount || null,
+      contextSummary,
+    }, requestId);
+  } catch (error: any) {
+    return createErrorResponse('EXTENSION_ASK_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+export async function handleExtensionLearn(request: Request, requestId: string, env: any) {
+  try {
+    const body: CapturePayload = await request.json();
+    if (!body?.url || !body?.source) {
+      return createErrorResponse('VALIDATION_ERROR', 'url and source are required', {}, 400, requestId);
+    }
+
+    const {
+      initSanityClient,
+      getDocument,
+      upsertDocument,
+    } = await import('../sanity-client.js');
+    const client = initSanityClient(env);
+    if (!client) {
+      return createErrorResponse('SANITY_ERROR', 'Sanity not configured', {}, 500, requestId);
+    }
+
+    const intel = await buildRabbitIntel(body, env, client);
+    const host = intel.page?.domain || 'unknown';
+    const sessionId = String(body.learnMode?.sessionId || `learn-${host}-${Date.now()}`);
+    const learnSessionDocId = `learnSession-${toSafeId(sessionId)}`;
+    const existing = await getDocument(client, learnSessionDocId).catch(() => null) as Record<string, any> | null;
+
+    const pathTemplate = buildLearnPathTemplate(body.url);
+    const mappedFields = inferMappedFields(body);
+    const entityHints = inferEntityHints(body, intel);
+    const validationFindings = buildValidationFindings(body, intel);
+    const assumptions = buildLearnAssumptions(body, intel, mappedFields);
+    const consensusModel = buildConsensusModel(body, intel, mappedFields);
+    const observation = {
+      pathTemplate,
+      source: body.source,
+      title: body.title || host,
+      mappedFields,
+      entityHints,
+      seenCount: 1,
+      lastSeenAt: body.capturedAt || new Date().toISOString(),
+    };
+
+    const mergedSession = mergeLearnSession(existing, {
+      _id: learnSessionDocId,
+      _type: 'learnSession',
+      sessionId,
+      status: 'active',
+      label: body.learnMode?.label || `Learn ${host}`,
+      source: body.source,
+      host,
+      accountKey: intel.primaryAccount?.accountKey || '',
+      accountDomain: intel.primaryAccount?.domain || host,
+      observationCount: (existing?.observationCount || 0) + 1,
+      pagePatterns: [observation],
+      consensusModel,
+      assumptions,
+      validationFindings,
+      startedAt: existing?.startedAt || body.learnMode?.startedAt || new Date().toISOString(),
+      lastObservedAt: body.capturedAt || new Date().toISOString(),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await upsertDocument(client, mergedSession);
+
+    const crawlSnapshotId = `crawlSnapshot-${toSafeId(`${sessionId}-${body.fingerprint || body.url}`)}`;
+    await upsertDocument(client, {
+      _id: crawlSnapshotId,
+      _type: 'crawl.snapshot',
+      url: body.url,
+      status: 200,
+      snippet: truncateLongText(body.rawText || body.title || body.url, 1000),
+      fetchedAt: body.capturedAt || new Date().toISOString(),
+      robotsAllowed: true,
+      traceId: requestId,
+    }).catch(() => {});
+
+    if (validationFindings.length > 0) {
+      await upsertDocument(client, {
+        _id: `dqFinding-${toSafeId(`${sessionId}-${body.fingerprint || body.url}`)}`,
+        _type: 'dq.finding',
+        ruleId: 'extension.learn.consensus-check',
+        entityType: 'learnSession',
+        entityId: learnSessionDocId,
+        severity: validationFindings.length > 1 ? 'medium' : 'low',
+        summary: validationFindings.join(' | '),
+        details: {
+          value: JSON.stringify({
+            url: body.url,
+            source: body.source,
+            mappedFields,
+            assumptions,
+          }),
+        },
+        createdAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
+    await upsertDocument(client, {
+      _id: `learning-${toSafeId(`learn-${sessionId}`)}`,
+      _type: 'learning',
+      learningId: `learn-${sessionId}`,
+      title: `Learn Mode consensus for ${host}`,
+      summary: buildLearnSummary(intel, mergedSession),
+      patternType: 'learn_mode_consensus',
+      contextTags: [body.source, host, 'learn-mode'],
+      recommendedActions: buildLearnRecommendedActions(mergedSession),
+      confidence: Math.min(0.95, 0.45 + ((mergedSession.observationCount || 1) * 0.08)),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      lastReferencedAt: new Date().toISOString(),
+      referenceCount: mergedSession.observationCount || 1,
+    }).catch(() => {});
+
+    await upsertDocument(client, {
+      _id: `moltPattern-${toSafeId(`learn-${host}`)}`,
+      _type: 'molt.pattern',
+      patternType: 'learn_mode_page_pattern',
+      summary: `Learn Mode has observed ${(mergedSession.pagePatterns || []).length} recurring page pattern(s) for ${host}.`,
+      conditions: {
+        value: JSON.stringify({
+          host,
+          source: body.source,
+          pagePatterns: (mergedSession.pagePatterns || []).map((item: any) => ({
+            pathTemplate: item.pathTemplate,
+            mappedFields: item.mappedFields,
+            entityHints: item.entityHints,
+          })),
+        }),
+      },
+      recommendedMoves: buildLearnRecommendedActions(mergedSession),
+      successStats: {
+        value: JSON.stringify({
+          observationCount: mergedSession.observationCount || 1,
+          validationFindingCount: (mergedSession.validationFindings || []).length,
+        }),
+      },
+      lastUpdated: new Date().toISOString(),
+    }).catch(() => {});
+
+    return createSuccessResponse({
+      sessionId,
+      host,
+      summary: buildLearnSummary(intel, mergedSession),
+      mappedFields: uniqueStrings((mergedSession.consensusModel?.fieldCoverage || []).slice(0, 12)),
+      validationFindings: (mergedSession.validationFindings || []).slice(0, 6),
+      pagePatterns: (mergedSession.pagePatterns || []).slice(0, 8).map((item: any) => item.pathTemplate),
+      observationCount: mergedSession.observationCount || 1,
+      consensusModel: mergedSession.consensusModel || {},
+    }, requestId);
+  } catch (error: any) {
+    return createErrorResponse('EXTENSION_LEARN_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────
+
+export async function buildRabbitIntel(body: CapturePayload, env: any, client: any) {
+  const { groqQuery, extractDomain, generateAccountKey, normalizeCanonicalUrl } = await import('../sanity-client.js');
+  const pageDomain = extractDomain(body.contextUrl || body.url || '');
+  const contactSignals = extractContactSignals(body);
+  const pageAccountHints = [
+    ...(body.accounts || []).map((account) => account.name).filter(Boolean),
+    pageDomain,
+  ].filter(Boolean) as string[];
+
+  const primaryAccount = await resolvePrimaryAccount({
+    body,
+    client,
+    groqQuery,
+    pageDomain,
+    generateAccountKey,
+    normalizeCanonicalUrl,
+  });
+
+  const matchedPeople = await resolveMatchedPeople(groqQuery, client, body, primaryAccount);
+  const matchedConnections = await resolveMatchedConnections(groqQuery, client, body, primaryAccount);
+  const recentConversation = primaryAccount
+    ? await groqQuery(client, `*[_type == "interaction" && (accountKey == $accountKey || domain == $domain)] | order(timestamp desc)[0...5]{
+      _id, userPrompt, gptResponse, timestamp, followUpNeeded, contextTags
+    }`, { accountKey: primaryAccount.accountKey, domain: primaryAccount.domain }) || []
+    : [];
+  const recentLearnings = primaryAccount
+    ? await groqQuery(client, `*[_type == "learning" && references($accountId)] | order(createdAt desc)[0...5]{
+      _id, title, summary, relevanceScore, patternType, recommendedActions
+    }`, { accountId: primaryAccount._id }) || []
+    : [];
+
+  const opportunities = buildOpportunityCards({
+    body,
+    pageDomain,
+    primaryAccount,
+    matchedPeople,
+    matchedConnections,
+    contactSignals,
+    recentConversation,
+  });
+  const dedupedOpportunities = dedupeOpportunityCards(opportunities);
+  const interruptLevel = computeInterruptLevel(dedupedOpportunities, contactSignals, matchedConnections);
+  const interruptKey = [
+    body.source,
+    primaryAccount?.accountKey || primaryAccount?.domain || body.url,
+    dedupedOpportunities.map((item) => item.type).join(','),
+    contactSignals.map((item) => item.value).join(','),
+  ].join('|');
+
+  const nextActions = buildNextActions({
+    body,
+    primaryAccount,
+    opportunities: dedupedOpportunities,
+    matchedPeople,
+    matchedConnections,
+    contactSignals,
+  });
+
+  return {
+    groqQuery,
+    page: {
+      url: body.url,
+      source: body.source,
+      title: body.title,
+      domain: pageDomain,
+      headings: (body.headings || []).slice(0, 8),
+    },
+    summary: buildPageSummary(body, primaryAccount, dedupedOpportunities, matchedConnections),
+    primaryAccount,
+    matchedPeople,
+    connections: matchedConnections,
+    contacts: contactSignals,
+    opportunities: dedupedOpportunities,
+    nextActions,
+    recentConversation,
+    recentLearnings,
+    interruptLevel,
+    interruptKey,
+    shouldStoreCapture: shouldStoreCapture(body, primaryAccount, dedupedOpportunities, contactSignals, pageAccountHints),
+    shouldQueueResearch: !!primaryAccount && ((primaryAccount.profileCompleteness?.score ?? 0) < 70 || dedupedOpportunities.length > 0),
+  };
+}
+
+async function resolvePrimaryAccount(opts: {
+  body: CapturePayload;
+  client: any;
+  groqQuery: Function;
+  pageDomain: string | null;
+  generateAccountKey: Function;
+  normalizeCanonicalUrl: Function;
+}) {
+  const { body, client, groqQuery, pageDomain, generateAccountKey, normalizeCanonicalUrl } = opts;
+  const hintedDomain = (body.accounts || []).map((account) => account.domain).find(Boolean) || pageDomain;
+  if (hintedDomain) {
+    const byDomain = await groqQuery(client, `*[_type == "account" && (domain == $domain || rootDomain == $domain)][0]{
+      _id, accountKey, domain, rootDomain, canonicalUrl, companyName, name, industry,
+      opportunityScore, profileCompleteness, signals, leadership, painPoints, benchmarks,
+      technologyStack, lastScannedAt, lastEnrichedAt
+    }`, { domain: hintedDomain });
+    if (byDomain) return byDomain;
+
+    const canonicalUrl = normalizeCanonicalUrl(`https://${hintedDomain}`);
+    const accountKey = await generateAccountKey(canonicalUrl);
+    if (accountKey) {
+      const byKey = await groqQuery(client, `*[_type == "account" && accountKey == $accountKey][0]{
+        _id, accountKey, domain, rootDomain, canonicalUrl, companyName, name, industry,
+        opportunityScore, profileCompleteness, signals, leadership, painPoints, benchmarks,
+        technologyStack, lastScannedAt, lastEnrichedAt
+      }`, { accountKey });
+      if (byKey) return byKey;
+    }
+  }
+
+  for (const hint of (body.accounts || []).map((account) => account.name).filter(Boolean).slice(0, 3)) {
+    const match = await groqQuery(client, `*[_type == "account" && (companyName match $q || name match $q)][0]{
+      _id, accountKey, domain, rootDomain, canonicalUrl, companyName, name, industry,
+      opportunityScore, profileCompleteness, signals, leadership, painPoints, benchmarks,
+      technologyStack, lastScannedAt, lastEnrichedAt
+    }`, { q: `${hint}*` });
+    if (match) return match;
+  }
+
+  return null;
+}
+
+async function resolveMatchedPeople(groqQuery: Function, client: any, body: CapturePayload, primaryAccount: any) {
+  const matches: any[] = [];
+  const seen = new Set<string>();
+  const names = (body.people || []).map((person) => person.name).filter(Boolean).slice(0, 5);
+  const emails = (body.emails || []).concat((body.people || []).map((person) => person.email).filter(Boolean)).slice(0, 10);
+
+  for (const email of emails) {
+    const person = await groqQuery(client, `*[_type == "person" && email == $email][0]{
+      _id, name, email, headline, currentCompany, currentTitle, relatedAccountKey, seniorityLevel, roleCategory
+    }`, { email });
+    if (person && !seen.has(person._id)) {
+      seen.add(person._id);
+      matches.push(person);
+    }
+  }
+
+  for (const name of names) {
+    const person = await groqQuery(client, `*[_type == "person" && name match $name][0]{
+      _id, name, email, headline, currentCompany, currentTitle, relatedAccountKey, seniorityLevel, roleCategory
+    }`, { name: `${name}*` });
+    if (person && !seen.has(person._id)) {
+      seen.add(person._id);
+      matches.push(person);
+    }
+  }
+
+  if (primaryAccount?.accountKey) {
+    const related = await groqQuery(client, `*[_type == "person" && relatedAccountKey == $accountKey][0...5]{
+      _id, name, email, headline, currentCompany, currentTitle, relatedAccountKey, seniorityLevel, roleCategory
+    }`, { accountKey: primaryAccount.accountKey }) || [];
+    for (const person of related) {
+      if (!seen.has(person._id)) {
+        seen.add(person._id);
+        matches.push(person);
+      }
+    }
+  }
+
+  return matches.slice(0, 8);
+}
+
+async function resolveMatchedConnections(groqQuery: Function, client: any, body: CapturePayload, primaryAccount: any) {
+  const matches: any[] = [];
+  const seen = new Set<string>();
+  const names = (body.people || []).map((person) => person.name).filter(Boolean).slice(0, 5);
+
+  for (const name of names) {
+    const connection = await groqQuery(client, `*[_type == "networkPerson" && name match $name][0]{
+      _id, name, company, title, tier, relationshipStrength, lastTouchedAt, linkedinUrl
+    }`, { name: `${name}*` });
+    if (connection && !seen.has(connection._id)) {
+      seen.add(connection._id);
+      matches.push(connection);
+    }
+  }
+
+  if (primaryAccount?.companyName || primaryAccount?.name) {
+    const company = primaryAccount.companyName || primaryAccount.name;
+    const companyMatches = await groqQuery(client, `*[_type == "networkPerson" && company match $company][0...5]{
+      _id, name, company, title, tier, relationshipStrength, lastTouchedAt, linkedinUrl
+    }`, { company: `${company}*` }) || [];
+    for (const connection of companyMatches) {
+      if (!seen.has(connection._id)) {
+        seen.add(connection._id);
+        matches.push(connection);
+      }
+    }
+  }
+
+  return matches.slice(0, 6);
+}
+
+function buildPageSummary(body: CapturePayload, primaryAccount: any, opportunities: any[], matchedConnections: any[]) {
+  const source = sourceLabel(body.source);
+  const accountName = primaryAccount?.companyName || primaryAccount?.name || primaryAccount?.domain || null;
+  if (opportunities.length > 0) {
+    return `${source} page${accountName ? ` for ${accountName}` : ''}. I found ${opportunities.length} actionable signal${opportunities.length === 1 ? '' : 's'}${matchedConnections.length ? ` and ${matchedConnections.length} known connection${matchedConnections.length === 1 ? '' : 's'}` : ''}.`;
+  }
+  if (accountName) {
+    return `${source} page for ${accountName}. Rabbit is tracking the account and watching for the next high-value opening.`;
+  }
+  return `${source} page observed. Rabbit is extracting entities, contacts, and signals from what is visible right now.`;
+}
+
+function buildOpportunityCards(input: {
+  body: CapturePayload;
+  pageDomain: string | null;
+  primaryAccount: any;
+  matchedPeople: any[];
+  matchedConnections: any[];
+  contactSignals: any[];
+  recentConversation: any[];
+}) {
+  const { body, primaryAccount, matchedPeople, matchedConnections, contactSignals, recentConversation } = input;
+  const cards: any[] = [];
+
+  if (matchedConnections.length > 0) {
+    cards.push({
+      type: 'warm-path',
+      title: `${matchedConnections.length} warm connection${matchedConnections.length === 1 ? '' : 's'} matched on this page`,
+      confidence: 'high',
+    });
+  }
+
+  if (contactSignals.length > 0) {
+    cards.push({
+      type: 'contact-signal',
+      title: `${contactSignals.length} direct contact detail${contactSignals.length === 1 ? '' : 's'} visible and usable here`,
+      confidence: 'high',
+    });
+  }
+
+  if (matchedPeople.some((person) => person.seniorityLevel === 'c-suite' || person.seniorityLevel === 'vp')) {
+    cards.push({
+      type: 'decision-maker',
+      title: 'A likely decision-maker is visible on this page',
+      confidence: 'medium',
+    });
+  }
+
+  if (body.source === 'commonroom' && (body.signals || []).length > 0) {
+    cards.push({
+      type: 'community-activity',
+      title: 'Common Room activity suggests a live engagement moment',
+      confidence: 'medium',
+    });
+  }
+
+  if (body.source === 'salesforce' && /renew|upsell|expand|churn|at risk/i.test(body.rawText || '')) {
+    cards.push({
+      type: 'crm-opportunity',
+      title: 'Salesforce page contains renewal, churn, or expansion language',
+      confidence: 'high',
+    });
+  }
+
+  if (primaryAccount && (primaryAccount.profileCompleteness?.score ?? 0) < 50) {
+    cards.push({
+      type: 'intel-gap',
+      title: `This account is only ${primaryAccount.profileCompleteness?.score ?? 0}% enriched, so every live touchpoint here is valuable`,
+      confidence: 'medium',
+    });
+  }
+
+  if (recentConversation.some((item) => item.followUpNeeded)) {
+    cards.push({
+      type: 'follow-up',
+      title: 'There is already an unresolved follow-up chain tied to this account',
+      confidence: 'medium',
+    });
+  }
+
+  return cards.slice(0, 6);
+}
+
+function dedupeOpportunityCards(cards: any[]) {
+  const seen = new Set<string>();
+  const out = [];
+  for (const card of cards) {
+    const key = `${card.type}:${card.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(card);
+  }
+  return out;
+}
+
+function computeInterruptLevel(opportunities: any[], contactSignals: any[], matchedConnections: any[]) {
+  if (contactSignals.length > 0 || matchedConnections.length > 0) return 'high';
+  if (opportunities.some((item) => ['crm-opportunity', 'decision-maker', 'warm-path'].includes(item.type))) return 'high';
+  if (opportunities.length >= 2) return 'medium';
+  if (opportunities.length === 1) return 'low';
+  return 'quiet';
+}
+
+function buildNextActions(input: {
+  body: CapturePayload;
+  primaryAccount: any;
+  opportunities: any[];
+  matchedPeople: any[];
+  matchedConnections: any[];
+  contactSignals: any[];
+}) {
+  const { body, primaryAccount, matchedPeople, matchedConnections, contactSignals } = input;
+  const actions = [];
+
+  if (matchedConnections.length > 0) {
+    actions.push(`Lead with the warmest visible connection: ${matchedConnections[0].name}${matchedConnections[0].title ? ` (${matchedConnections[0].title})` : ''}.`);
+  }
+  if (contactSignals.length > 0) {
+    actions.push(`Use the visible contact info now: ${contactSignals[0].label || contactSignals[0].value}.`);
+  }
+  if (matchedPeople.length > 0) {
+    actions.push(`Anchor follow-up around ${matchedPeople[0].name}${matchedPeople[0].currentTitle ? `, ${matchedPeople[0].currentTitle}` : ''}.`);
+  }
+  if (primaryAccount && (primaryAccount.profileCompleteness?.score ?? 0) < 70) {
+    actions.push('Let Rabbit keep enriching this account in the background while you work the live opportunity.');
+  }
+  if (body.source === 'outreach') {
+    actions.push('Use this Outreach view to align messaging with the person and account context Rabbit surfaced.');
+  }
+  if (body.source === 'salesforce') {
+    actions.push('Cross-check the CRM state against the visible renewal/expansion language before the next touch.');
+  }
+
+  return actions.slice(0, 5);
+}
+
+function shouldStoreCapture(body: CapturePayload, primaryAccount: any, opportunities: any[], contactSignals: any[], pageAccountHints: string[]) {
+  if (['salesforce', 'commonroom', 'outreach', 'hubspot', 'linkedin'].includes(body.source)) return true;
+  if (opportunities.length > 0) return true;
+  if (contactSignals.length > 0) return true;
+  if (primaryAccount) return true;
+  return pageAccountHints.length > 0;
+}
+
+function extractContactSignals(body: CapturePayload) {
+  const contacts = [];
+  const seen = new Set<string>();
+  for (const email of (body.emails || []).concat((body.people || []).map((person) => person.email).filter(Boolean))) {
+    const value = String(email).trim();
+    if (!value || seen.has(`email:${value}`)) continue;
+    seen.add(`email:${value}`);
+    contacts.push({ type: 'email', value, label: value });
+  }
+  for (const phone of body.phones || []) {
+    const value = String(phone).trim();
+    if (!value || seen.has(`phone:${value}`)) continue;
+    seen.add(`phone:${value}`);
+    contacts.push({ type: 'phone', value, label: value });
+  }
+  return contacts.slice(0, 12);
+}
+
+export function buildRabbitAnswer(prompt: string, intel: any, contextSummary: string) {
+  const lines = [
+    `Question: ${prompt}`,
+    '',
+    `Current page: ${intel?.page?.title || 'Unknown page'}${intel?.page?.source ? ` (${sourceLabel(intel.page.source)})` : ''}`,
+  ];
+
+  if (intel?.primaryAccount) {
+    const accountName = intel.primaryAccount.companyName || intel.primaryAccount.name || intel.primaryAccount.domain;
+    lines.push(`Known account: ${accountName}`);
+    if (intel.primaryAccount.profileCompleteness?.score != null) {
+      lines.push(`Account completeness: ${intel.primaryAccount.profileCompleteness.score}%`);
+    }
+  }
+
+  if ((intel?.opportunities || []).length > 0) {
+    lines.push('', 'What Rabbit sees right now:');
+    for (const item of intel.opportunities.slice(0, 4)) {
+      lines.push(`- ${item.title || item}`);
+    }
+  }
+
+  if ((intel?.contacts || []).length > 0) {
+    lines.push('', `Contact details surfaced: ${(intel.contacts || []).slice(0, 4).map((item: any) => item.label || item.value).join(', ')}`);
+  }
+
+  if ((intel?.connections || []).length > 0) {
+    lines.push(`Warm paths: ${(intel.connections || []).slice(0, 3).map((item: any) => `${item.name}${item.title ? ` (${item.title})` : ''}`).join(', ')}`);
+  }
+
+  lines.push('', 'Stored system context:');
+  lines.push(truncateLongText(contextSummary || 'No stored context found.', 1200));
+
+  if ((intel?.nextActions || []).length > 0) {
+    lines.push('', 'Best next moves:');
+    for (const step of intel.nextActions.slice(0, 5)) {
+      lines.push(`- ${step}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function sourceLabel(source: string) {
+  switch (source) {
+    case 'salesforce': return 'Salesforce';
+    case 'commonroom': return 'Common Room';
+    case 'outreach': return 'Outreach';
+    case 'hubspot': return 'HubSpot';
+    case 'linkedin': return 'LinkedIn';
+    default: return 'Web';
+  }
+}
+
+function truncateLongText(value: string, maxLen: number) {
+  const text = String(value || '');
+  return text.length <= maxLen ? text : `${text.slice(0, maxLen)}…`;
+}
 
 function classifyRole(title: string): string {
   const t = (title || '').toLowerCase();
@@ -477,4 +1122,180 @@ function mergePersonForExtension(existing: Record<string, any> | null, incoming:
   if (Array.isArray(existing.experience) && existing.experience.length && !(out.experience?.length)) out.experience = existing.experience;
   if (Array.isArray(existing.education) && existing.education.length && !(out.education?.length)) out.education = existing.education;
   return out;
+}
+
+function buildLearnPathTemplate(inputUrl: string): string {
+  try {
+    const url = new URL(inputUrl);
+    const normalized = url.pathname
+      .split('/')
+      .filter(Boolean)
+      .map((part) => (/^\d+$/.test(part) || /^[0-9a-f-]{8,}$/i.test(part) ? ':id' : part))
+      .join('/');
+    return `/${normalized}`.replace(/\/+/g, '/');
+  } catch {
+    return '/';
+  }
+}
+
+function inferMappedFields(body: CapturePayload): string[] {
+  const fields: string[] = [];
+  if ((body.accounts || []).some((item) => item.name)) fields.push('account.name');
+  if ((body.accounts || []).some((item) => item.domain || item.url || item.website)) fields.push('account.domain');
+  if ((body.accounts || []).some((item) => item.industry)) fields.push('account.industry');
+  if ((body.people || []).some((item) => item.name)) fields.push('person.name');
+  if ((body.people || []).some((item) => item.title || item.currentTitle || item.headline)) fields.push('person.title');
+  if ((body.people || []).some((item) => item.currentCompany)) fields.push('person.company');
+  if ((body.emails || []).length || (body.people || []).some((item) => item.email)) fields.push('contact.email');
+  if ((body.phones || []).length) fields.push('contact.phone');
+  if ((body.technologies || []).length) fields.push('technology.detected');
+  if ((body.signals || []).length) fields.push('signal.inline');
+  if ((body.headings || []).length) fields.push('page.headings');
+  if ((body.links || []).length) fields.push('page.links');
+  if (body.metadata?.canonical || body.metadata?.description || body.metadata?.ogTitle) fields.push('page.metadata');
+  return uniqueStrings(fields);
+}
+
+function inferEntityHints(body: CapturePayload, intel: any): string[] {
+  return uniqueStrings([
+    ...(body.accounts || []).map((item) => item.name || item.domain || '').filter(Boolean),
+    ...(body.people || []).map((item) => item.name || item.email || '').filter(Boolean),
+    ...(body.technologies || []).map((item: any) => (typeof item === 'string' ? item : item?.name || '')).filter(Boolean),
+    intel?.primaryAccount?.companyName || intel?.primaryAccount?.name || intel?.primaryAccount?.domain || '',
+  ]).slice(0, 12);
+}
+
+function buildValidationFindings(body: CapturePayload, intel: any): string[] {
+  const findings: string[] = [];
+  const accountNames = uniqueStrings((body.accounts || []).map((item) => item.name || '').filter(Boolean));
+  const accountDomains = uniqueStrings((body.accounts || []).map((item) => item.domain || '').filter(Boolean));
+  if (accountNames.length > 1) findings.push(`Multiple account names observed: ${accountNames.slice(0, 3).join(', ')}`);
+  if (accountDomains.length > 1) findings.push(`Multiple account domains observed: ${accountDomains.slice(0, 3).join(', ')}`);
+  if (body.source === 'salesforce' && !body.people?.length) findings.push('CRM page did not surface a clear contact/person record.');
+  if ((body.people || []).length > 0 && !intel?.matchedPeople?.length) findings.push('Visible people are not yet strongly linked to stored person records.');
+  if ((body.technologies || []).length > 0 && !intel?.primaryAccount) findings.push('Technology signals are visible before a primary account was confidently resolved.');
+  if ((intel?.primaryAccount?.profileCompleteness?.score ?? 100) < 50) findings.push('Matched account remains low-completeness and needs more validation.');
+  return uniqueStrings(findings).slice(0, 8);
+}
+
+function buildLearnAssumptions(body: CapturePayload, intel: any, mappedFields: string[]): string[] {
+  const assumptions: string[] = [];
+  if (mappedFields.includes('account.name')) assumptions.push('This page family consistently exposes account identity.');
+  if (mappedFields.includes('person.name') && mappedFields.includes('person.title')) assumptions.push('Visible person cards are likely role-bearing stakeholders.');
+  if (mappedFields.includes('technology.detected')) assumptions.push('Repeated pasted or visible technologies should merge into the account consensus model.');
+  if ((body.emails || []).length || (body.phones || []).length) assumptions.push('Direct contact signals on this page are usable validation sources.');
+  if (intel?.primaryAccount?.accountKey) assumptions.push(`Current walkthrough appears centered on account ${intel.primaryAccount.accountKey}.`);
+  return uniqueStrings(assumptions).slice(0, 8);
+}
+
+function buildConsensusModel(body: CapturePayload, intel: any, mappedFields: string[]) {
+  return {
+    companyNames: uniqueStrings([
+      ...(body.accounts || []).map((item) => item.name || '').filter(Boolean),
+      intel?.primaryAccount?.companyName || '',
+      intel?.primaryAccount?.name || '',
+    ]),
+    people: uniqueStrings([
+      ...(body.people || []).map((item) => item.name || item.email || '').filter(Boolean),
+      ...(intel?.matchedPeople || []).map((item: any) => item.name || item.email || '').filter(Boolean),
+    ]),
+    technologies: uniqueStrings(
+      (body.technologies || []).map((item: any) => (typeof item === 'string' ? item : item?.name || '')).filter(Boolean),
+    ),
+    contacts: uniqueStrings([
+      ...(body.emails || []),
+      ...(body.phones || []),
+      ...((intel?.contacts || []).map((item: any) => item.label || item.value || '').filter(Boolean)),
+    ]),
+    signals: uniqueStrings([
+      ...((body.signals || []).map((item: any) => typeof item === 'string' ? item : item?.text || item?.label || '').filter(Boolean)),
+      ...((intel?.opportunities || []).map((item: any) => item.title || item.type || '').filter(Boolean)),
+    ]),
+    fieldCoverage: uniqueStrings(mappedFields),
+  };
+}
+
+function mergeLearnSession(existing: Record<string, any> | null, incoming: Record<string, any>): Record<string, any> {
+  if (!existing) {
+    return {
+      ...incoming,
+      pagePatterns: incoming.pagePatterns || [],
+      assumptions: uniqueStrings(incoming.assumptions || []),
+      validationFindings: uniqueStrings(incoming.validationFindings || []),
+      consensusModel: incoming.consensusModel || {},
+    };
+  }
+
+  const patternsByPath = new Map<string, any>();
+  for (const item of existing.pagePatterns || []) {
+    if (item?.pathTemplate) patternsByPath.set(item.pathTemplate, { ...item });
+  }
+  for (const item of incoming.pagePatterns || []) {
+    if (!item?.pathTemplate) continue;
+    const prev = patternsByPath.get(item.pathTemplate);
+    patternsByPath.set(item.pathTemplate, prev ? {
+      ...prev,
+      source: item.source || prev.source,
+      title: bestString(prev.title, item.title),
+      mappedFields: uniqueStrings([...(prev.mappedFields || []), ...(item.mappedFields || [])]),
+      entityHints: uniqueStrings([...(prev.entityHints || []), ...(item.entityHints || [])]),
+      seenCount: (prev.seenCount || 1) + 1,
+      lastSeenAt: item.lastSeenAt || prev.lastSeenAt,
+    } : item);
+  }
+
+  return {
+    ...existing,
+    ...incoming,
+    pagePatterns: Array.from(patternsByPath.values()).slice(-20),
+    assumptions: uniqueStrings([...(existing.assumptions || []), ...(incoming.assumptions || [])]).slice(0, 20),
+    validationFindings: uniqueStrings([...(existing.validationFindings || []), ...(incoming.validationFindings || [])]).slice(0, 20),
+    consensusModel: {
+      companyNames: uniqueStrings([...(existing.consensusModel?.companyNames || []), ...(incoming.consensusModel?.companyNames || [])]),
+      people: uniqueStrings([...(existing.consensusModel?.people || []), ...(incoming.consensusModel?.people || [])]),
+      technologies: uniqueStrings([...(existing.consensusModel?.technologies || []), ...(incoming.consensusModel?.technologies || [])]),
+      contacts: uniqueStrings([...(existing.consensusModel?.contacts || []), ...(incoming.consensusModel?.contacts || [])]),
+      signals: uniqueStrings([...(existing.consensusModel?.signals || []), ...(incoming.consensusModel?.signals || [])]),
+      fieldCoverage: uniqueStrings([...(existing.consensusModel?.fieldCoverage || []), ...(incoming.consensusModel?.fieldCoverage || [])]),
+    },
+  };
+}
+
+function buildLearnSummary(intel: any, session: any): string {
+  const host = session?.host || intel?.page?.domain || 'this app';
+  const pages = (session?.pagePatterns || []).length;
+  const fields = (session?.consensusModel?.fieldCoverage || []).length;
+  const checks = (session?.validationFindings || []).length;
+  return `Learn Mode has mapped ${pages} page pattern${pages === 1 ? '' : 's'} on ${host}, inferred ${fields} reusable field signal${fields === 1 ? '' : 's'}, and surfaced ${checks} validation checkpoint${checks === 1 ? '' : 's'}.`;
+}
+
+function buildLearnRecommendedActions(session: any): string[] {
+  const actions: string[] = [];
+  if ((session?.validationFindings || []).length > 0) actions.push('Review duplicate and validation findings before trusting the consensus model fully.');
+  if ((session?.consensusModel?.technologies || []).length > 0) actions.push('Merge repeated technology evidence into the account technology stack.');
+  if ((session?.consensusModel?.people || []).length > 0) actions.push('Link repeated people signals to known stakeholders and buying roles.');
+  actions.push('Keep browsing the same app flow so Learn Mode can strengthen its schema assumptions.');
+  return uniqueStrings(actions).slice(0, 5);
+}
+
+function uniqueStrings(values: any[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values || []) {
+    const normalized = String(value || '').trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function toSafeId(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
 }

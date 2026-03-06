@@ -59,6 +59,76 @@ export const PIPELINE_CONFIG = {
   },
 };
 
+function normalizePipelinePriority(priority) {
+  if (typeof priority === 'number' && Number.isFinite(priority)) return priority;
+  switch (priority) {
+    case 'urgent': return 100;
+    case 'high': return 75;
+    case 'low': return 25;
+    case 'normal':
+    default:
+      return 50;
+  }
+}
+
+function normalizeRequestedStages(requestedStages = []) {
+  const requested = new Set(Array.isArray(requestedStages) ? requestedStages.filter(Boolean) : []);
+  if (requested.size === 0) {
+    return [
+      PIPELINE_STAGES.INITIAL_SCAN,
+      PIPELINE_STAGES.DISCOVERY,
+      PIPELINE_STAGES.CRAWL,
+      PIPELINE_STAGES.EXTRACTION,
+      PIPELINE_STAGES.LINKEDIN,
+      PIPELINE_STAGES.BRIEF,
+      PIPELINE_STAGES.VERIFICATION,
+    ];
+  }
+
+  const expanded = new Set();
+  const dependencyMap = {
+    [PIPELINE_STAGES.INITIAL_SCAN]: [],
+    [PIPELINE_STAGES.DISCOVERY]: [PIPELINE_STAGES.INITIAL_SCAN],
+    [PIPELINE_STAGES.CRAWL]: [PIPELINE_STAGES.INITIAL_SCAN, PIPELINE_STAGES.DISCOVERY],
+    [PIPELINE_STAGES.EXTRACTION]: [PIPELINE_STAGES.INITIAL_SCAN, PIPELINE_STAGES.DISCOVERY, PIPELINE_STAGES.CRAWL],
+    [PIPELINE_STAGES.LINKEDIN]: [PIPELINE_STAGES.INITIAL_SCAN],
+    [PIPELINE_STAGES.BRIEF]: [PIPELINE_STAGES.INITIAL_SCAN, PIPELINE_STAGES.DISCOVERY, PIPELINE_STAGES.CRAWL, PIPELINE_STAGES.EXTRACTION],
+    [PIPELINE_STAGES.VERIFICATION]: [PIPELINE_STAGES.INITIAL_SCAN, PIPELINE_STAGES.DISCOVERY, PIPELINE_STAGES.CRAWL, PIPELINE_STAGES.EXTRACTION, PIPELINE_STAGES.BRIEF],
+  };
+
+  function addStage(stage) {
+    if (!stage || expanded.has(stage)) return;
+    (dependencyMap[stage] || []).forEach(addStage);
+    expanded.add(stage);
+  }
+
+  requested.forEach(addStage);
+  const ordered = [
+    PIPELINE_STAGES.INITIAL_SCAN,
+    PIPELINE_STAGES.DISCOVERY,
+    PIPELINE_STAGES.CRAWL,
+    PIPELINE_STAGES.EXTRACTION,
+    PIPELINE_STAGES.LINKEDIN,
+    PIPELINE_STAGES.BRIEF,
+    PIPELINE_STAGES.VERIFICATION,
+  ];
+  return ordered.filter(stage => expanded.has(stage));
+}
+
+function buildGoalKey(options = {}) {
+  if (typeof options.goalKey === 'string' && options.goalKey.trim()) {
+    return options.goalKey.trim();
+  }
+  const stages = normalizeRequestedStages(options.requestedStages || []);
+  return stages.length === 7 ? 'full_pipeline' : `stages:${stages.join('+')}`;
+}
+
+function buildStablePipelineJobId(accountKey, goalKey) {
+  const safeAccountKey = (accountKey || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '-');
+  const safeGoalKey = (goalKey || 'full_pipeline').replace(/[^a-zA-Z0-9_-]/g, '-');
+  return `pipeline.${safeAccountKey}.${safeGoalKey}`;
+}
+
 /**
  * Initialize research pipeline for account
  * @param {string} canonicalUrl - Account canonical URL
@@ -66,7 +136,9 @@ export const PIPELINE_CONFIG = {
  * @returns {object} - Pipeline job definition
  */
 export function createPipelineJob(canonicalUrl, options = {}) {
-  const jobId = `pipeline-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const requestedStages = normalizeRequestedStages(options.requestedStages || []);
+  const goalKey = buildGoalKey({ ...options, requestedStages });
+  const jobId = buildStablePipelineJobId(options.accountKey, goalKey);
   
   return {
     jobId,
@@ -79,13 +151,15 @@ export function createPipelineJob(canonicalUrl, options = {}) {
     results: {},
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    priority: options.priority || 5,
+    priority: normalizePipelinePriority(options.priority || 50),
+    goalKey,
     options: {
       includeLinkedIn: options.includeLinkedIn !== false,
       includeBrief: options.includeBrief !== false,
       includeVerification: options.includeVerification !== false,
       maxDepth: options.maxDepth || 2,
       budget: options.budget || 20,
+      requestedStages,
       ...options,
     },
     metadata: {
@@ -363,6 +437,7 @@ export async function executePipelineStage(job, stage, context = {}) {
  */
 export async function executeNextPipelineStage(job, context) {
   const stage = job.currentStage;
+  const stageOrder = normalizeRequestedStages(job.options?.requestedStages || []);
   
   // Execute current stage
   const stageResult = await executePipelineStage(job, stage, context);
@@ -376,23 +451,13 @@ export async function executeNextPipelineStage(job, context) {
     job.completedStages.push(stage);
     
     // Move to next stage
-    const stageOrder = [
-      PIPELINE_STAGES.INITIAL_SCAN,
-      PIPELINE_STAGES.DISCOVERY,
-      PIPELINE_STAGES.CRAWL,
-      PIPELINE_STAGES.EXTRACTION,
-      PIPELINE_STAGES.LINKEDIN,
-      PIPELINE_STAGES.BRIEF,
-      PIPELINE_STAGES.VERIFICATION,
-    ];
-    
     const currentIndex = stageOrder.indexOf(stage);
     if (currentIndex < stageOrder.length - 1) {
       job.currentStage = stageOrder[currentIndex + 1];
       job.status = 'in_progress';
     } else {
       job.currentStage = PIPELINE_STAGES.COMPLETE;
-      job.status = 'complete';
+      job.status = job.failedStages.length > 0 ? 'partial' : 'complete';
     }
   } else {
     // Stage failed
@@ -403,28 +468,19 @@ export async function executeNextPipelineStage(job, context) {
     });
     
     // Continue to next stage anyway (non-blocking)
-    const stageOrder = [
-      PIPELINE_STAGES.INITIAL_SCAN,
-      PIPELINE_STAGES.DISCOVERY,
-      PIPELINE_STAGES.CRAWL,
-      PIPELINE_STAGES.EXTRACTION,
-      PIPELINE_STAGES.LINKEDIN,
-      PIPELINE_STAGES.BRIEF,
-      PIPELINE_STAGES.VERIFICATION,
-    ];
-    
     const currentIndex = stageOrder.indexOf(stage);
     if (currentIndex < stageOrder.length - 1) {
       job.currentStage = stageOrder[currentIndex + 1];
       job.status = 'in_progress';
     } else {
-      job.status = 'complete';
+      job.currentStage = PIPELINE_STAGES.COMPLETE;
+      job.status = 'partial';
     }
   }
   
   return {
     job,
-    completed: job.status === 'complete',
+    completed: ['complete', 'partial'].includes(job.status),
   };
 }
 
@@ -434,7 +490,7 @@ export async function executeNextPipelineStage(job, context) {
  * @returns {object} - Progress information
  */
 export function getPipelineProgress(job) {
-  const totalStages = 7; // All stages
+  const totalStages = normalizeRequestedStages(job.options?.requestedStages || []).length || 7;
   const completed = job.completedStages.length;
   const failed = job.failedStages.length;
   const progress = (completed / totalStages) * 100;
@@ -487,7 +543,7 @@ function estimateTimeRemaining(job) {
  * @returns {object} - Complete research set
  */
 export function buildCompleteResearchSet(job) {
-  if (job.status !== 'complete') {
+  if (!['complete', 'partial'].includes(job.status)) {
     throw new Error('Pipeline not complete');
   }
   
@@ -496,6 +552,7 @@ export function buildCompleteResearchSet(job) {
     canonicalUrl: job.canonicalUrl,
     completedAt: job.updatedAt,
     pipelineJobId: job.jobId,
+    status: job.status,
     
     // Core data
     scan: job.results[PIPELINE_STAGES.INITIAL_SCAN] || null,

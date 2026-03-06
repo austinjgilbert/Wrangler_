@@ -154,7 +154,9 @@ async function run() {
   console.log('Smoke test completed.');
 }
 
-run().catch((error) => {
-  console.error('Smoke test failed:', error.message || error);
+run().catch((error: unknown) => {
+  const err = error instanceof Error ? error : new Error(String(error));
+  console.error('Smoke test failed:', err.message);
+  if (err.stack) console.error(err.stack);
   process.exit(1);
 });
