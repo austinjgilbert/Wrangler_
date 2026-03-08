@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/console/account/[accountId]/route": "app/api/console/account/[accountId]/route.js",
+  "/api/console/agents/route": "app/api/console/agents/route.js",
+  "/api/console/command/route": "app/api/console/command/route.js",
+  "/api/console/copilot/action/route": "app/api/console/copilot/action/route.js",
+  "/api/console/copilot/explain/route": "app/api/console/copilot/explain/route.js",
+  "/api/console/copilot/query/route": "app/api/console/copilot/query/route.js",
+  "/api/console/copilot/route": "app/api/console/copilot/route.js",
+  "/api/console/copilot/stream/route": "app/api/console/copilot/stream/route.js",
+  "/api/console/diagnostics/route": "app/api/console/diagnostics/route.js",
+  "/api/console/functions/route": "app/api/console/functions/route.js",
+  "/api/console/simulate/route": "app/api/console/simulate/route.js",
+  "/api/console/snapshot/route": "app/api/console/snapshot/route.js",
+  "/api/molt/feedback/route": "app/api/molt/feedback/route.js",
+  "/page": "app/page.js"
+}

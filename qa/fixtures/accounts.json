@@ -1,0 +1,7 @@
+[
+  { "name": "Nike", "domain": "nike.com", "segment": "enterprise", "scenarioTags": ["critical", "signal-rich"] },
+  { "name": "Fleet Feet", "domain": "fleetfeet.com", "segment": "mid-market", "scenarioTags": ["research", "enrichment"] },
+  { "name": "Stripe", "domain": "stripe.com", "segment": "enterprise", "scenarioTags": ["platform", "high-priority"] },
+  { "name": "Vercel", "domain": "vercel.com", "segment": "growth", "scenarioTags": ["developer", "headless"] },
+  { "name": "Shopify", "domain": "shopify.com", "segment": "enterprise", "scenarioTags": ["commerce", "cms-displacement"] }
+]

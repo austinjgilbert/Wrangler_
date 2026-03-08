@@ -1,0 +1,6 @@
+[
+  { "name": "VP Engineering", "role": "economic_buyer", "preferredAction": "send_email" },
+  { "name": "Web Platform Lead", "role": "technical_validator", "preferredAction": "make_call" },
+  { "name": "Director of Digital", "role": "champion", "preferredAction": "send_email" },
+  { "name": "Head of Content", "role": "business_owner", "preferredAction": "create_followup_task" }
+]

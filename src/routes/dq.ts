@@ -9,12 +9,14 @@
 import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
 import { runDqRules } from '../lib/dqRules.ts';
 import { computeDqPriority } from '../lib/scoring.ts';
+import { enqueueActionCandidateJob } from '../lib/jobs.ts';
 import { crawlSite } from '../lib/crawler.ts';
 import { extractAccountFacts, extractTechSignals } from '../lib/extractors.ts';
 import { generatePatchProposal, applyPatchesToDocument } from '../lib/proposals.ts';
 import { derivePatternInsights } from '../lib/patterns.ts';
 import { buildEventDoc } from '../lib/events.ts';
 import { notify } from '../lib/notify.ts';
+import { createLogger } from '../utils/logger.js';
 import {
   fetchAccounts,
   fetchPeople,
@@ -72,6 +74,10 @@ export async function handleDqScan(request: Request, requestId: string, env: any
           scope: { maxDepth: 1, maxPages: 5 },
           priority,
           status: 'queued',
+          attempts: 0,
+          maxAttempts: 3,
+          nextAttemptAt: new Date().toISOString(),
+          leaseExpiresAt: null,
           createdAt: new Date().toISOString(),
         };
         await createEnrichJob(env, job);
@@ -111,6 +117,10 @@ export async function handleEnrichQueue(request: Request, requestId: string, env
         scope: { maxDepth: 1, maxPages: 5 },
         priority,
         status: 'queued',
+        attempts: 0,
+        maxAttempts: 3,
+        nextAttemptAt: new Date().toISOString(),
+        leaseExpiresAt: null,
         createdAt: new Date().toISOString(),
       };
       await createEnrichJob(env, job);
@@ -128,123 +138,153 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
     const jobs = await fetchQueuedEnrichJobs(env);
     const applied: string[] = [];
     const pending: string[] = [];
+    const logger = createLogger(requestId, 'dq.enrich.run');
 
     for (const job of jobs) {
-      const account = job.entityType === 'account'
-        ? (await fetchAccounts(env)).find((a) => a._id === job.entityId)
-        : null;
-
-      if (!account?.domain) {
-        await updateEnrichJob(env, job._id, { status: 'skipped', reason: 'missing domain' });
-        continue;
-      }
-
-      const seedUrl = `https://${account.domain}`;
-      const snapshots = await crawlSite({
-        seedUrl,
-        env,
-        maxDepth: job.scope?.maxDepth || 1,
-        maxPages: job.scope?.maxPages || 5,
-      });
-      for (const snap of snapshots) {
-        await createCrawlSnapshot(env, {
-          _type: 'crawl.snapshot',
-          _id: `crawl.snapshot.${job._id}.${Math.random().toString(36).slice(2, 6)}`,
-          url: snap.url,
-          status: snap.status,
-          snippet: snap.snippet,
-          fetchedAt: snap.fetchedAt,
-          robotsAllowed: snap.robotsAllowed,
-          traceId: requestId,
+      try {
+        const attempts = (job.attempts || 0) + 1;
+        await updateEnrichJob(env, job._id, {
+          status: 'running',
+          attempts,
+          leaseExpiresAt: new Date(Date.now() + (5 * 60 * 1000)).toISOString(),
         });
-      }
+        const account = job.entityType === 'account'
+          ? (await fetchAccounts(env)).find((a) => a._id === job.entityId)
+          : null;
 
-      const snippets = snapshots.map((s) => s.snippet);
-      const accountFacts = extractAccountFacts(snippets);
-      const techSignals = extractTechSignals(snippets);
+        if (!account?.domain) {
+          await updateEnrichJob(env, job._id, { status: 'skipped', error: 'missing domain', leaseExpiresAt: null });
+          continue;
+        }
 
-      const updates: Record<string, any> = {
-        ...(accountFacts.industry ? { industry: accountFacts.industry } : {}),
-        ...(techSignals.length > 0 ? { techStack: techSignals } : {}),
-        lastEnrichedAt: new Date().toISOString(),
-      };
-
-      const evidence = snapshots.map((s) => ({
-        url: s.url,
-        snippet: s.snippet,
-        fetchedAt: s.fetchedAt,
-      }));
-
-      const proposal = generatePatchProposal({
-        entityId: account._id,
-        entityType: 'account',
-        updates,
-        evidence,
-      });
-
-      const proposalDoc = {
-        _type: 'enrich.proposal',
-        _id: `enrich.proposal.${job._id}`,
-        jobRef: { _type: 'reference', _ref: job._id },
-        entityRef: { _type: 'reference', _ref: account._id },
-        patches: proposal.patches,
-        confidence: proposal.confidence,
-        risk: proposal.risk,
-        traceId: requestId,
-        evidence,
-        status: proposal.risk === 'safe' ? 'applied' : 'pending_approval',
-        createdAt: new Date().toISOString(),
-      };
-      await createEnrichProposal(env, proposalDoc);
-
-      if (proposal.risk === 'safe') {
-        const updated = applyPatchesToDocument(account, proposal.patches);
-        await patchEntity(env, account._id, updated);
-        applied.push(proposalDoc._id);
-        const eventDoc = buildEventDoc({
-          type: 'enrich.applied',
-          text: `Applied safe enrichment to ${account._id}`,
-          channel: 'system',
-          actor: 'moltbot',
-          entities: [{ _ref: account._id, entityType: 'account' }],
-          tags: ['enrich'],
-          traceId: requestId,
-          idempotencyKey: `enrich.applied.${proposalDoc._id}`,
+        const seedUrl = `https://${account.domain}`;
+        const snapshots = await crawlSite({
+          seedUrl,
+          env,
+          maxDepth: job.scope?.maxDepth || 1,
+          maxPages: job.scope?.maxPages || 5,
         });
-        await createMoltEvent(env, eventDoc);
-      } else {
-        const approvalDoc = {
-          _type: 'molt.approval',
-          _id: `molt.approval.${proposalDoc._id}`,
-          actionType: 'enrich.apply',
-          riskLevel: 'dangerous',
-          preview: `Apply enrichment proposal ${proposalDoc._id}`,
-          actionPayload: { proposalId: proposalDoc._id },
-          status: 'pending',
-          relatedEntities: [{ _type: 'reference', _ref: account._id }],
-          createdAt: new Date().toISOString(),
-          audit: { source: 'enrich.run' },
+        for (const snap of snapshots) {
+          await createCrawlSnapshot(env, {
+            _type: 'crawl.snapshot',
+            _id: `crawl.snapshot.${job._id}.${Math.random().toString(36).slice(2, 6)}`,
+            url: snap.url,
+            status: snap.status,
+            snippet: snap.snippet,
+            fetchedAt: snap.fetchedAt,
+            robotsAllowed: snap.robotsAllowed,
+            traceId: requestId,
+          });
+        }
+
+        const snippets = snapshots.map((s) => s.snippet);
+        const accountFacts = extractAccountFacts(snippets);
+        const techSignals = extractTechSignals(snippets);
+
+        const updates: Record<string, any> = {
+          ...(accountFacts.industry ? { industry: accountFacts.industry } : {}),
+          ...(techSignals.length > 0 ? { techStack: techSignals } : {}),
+          lastEnrichedAt: new Date().toISOString(),
         };
-        await createMoltApproval(env, approvalDoc);
-        await notify('approval_required', 'Enrichment approval required', {
-          approvalId: approvalDoc._id,
-          proposalId: proposalDoc._id,
-        }, env);
-        pending.push(proposalDoc._id);
-        const eventDoc = buildEventDoc({
-          type: 'approval.requested',
-          text: `Approval required for enrichment ${proposalDoc._id}`,
-          channel: 'system',
-          actor: 'moltbot',
-          entities: [{ _ref: account._id, entityType: 'account' }],
-          tags: ['approval', 'enrich'],
-          traceId: requestId,
-          idempotencyKey: `approval.requested.${proposalDoc._id}`,
-        });
-        await createMoltEvent(env, eventDoc);
-      }
 
-      await updateEnrichJob(env, job._id, { status: 'done' });
+        const evidence = snapshots.map((s) => ({
+          url: s.url,
+          snippet: s.snippet,
+          fetchedAt: s.fetchedAt,
+        }));
+
+        const proposal = generatePatchProposal({
+          entityId: account._id,
+          entityType: 'account',
+          updates,
+          evidence,
+        });
+
+        const proposalDoc = {
+          _type: 'enrich.proposal',
+          _id: `enrich.proposal.${job._id}`,
+          jobRef: { _type: 'reference', _ref: job._id },
+          entityRef: { _type: 'reference', _ref: account._id },
+          patches: proposal.patches,
+          confidence: proposal.confidence,
+          risk: proposal.risk,
+          traceId: requestId,
+          evidence,
+          status: proposal.risk === 'safe' ? 'applied' : 'pending_approval',
+          createdAt: new Date().toISOString(),
+        };
+        await createEnrichProposal(env, proposalDoc);
+
+        if (proposal.risk === 'safe') {
+          const updated = applyPatchesToDocument(account, proposal.patches);
+          await patchEntity(env, account._id, updated);
+          await enqueueActionCandidateJob({
+            env,
+            accountRef: account._id,
+            traceId: requestId,
+            priority: Math.max(70, job.priority || 70),
+          });
+          applied.push(proposalDoc._id);
+          const eventDoc = buildEventDoc({
+            type: 'enrich.applied',
+            text: `Applied safe enrichment to ${account._id}`,
+            channel: 'system',
+            actor: 'moltbot',
+            entities: [{ _ref: account._id, entityType: 'account' }],
+            tags: ['enrich'],
+            traceId: requestId,
+            idempotencyKey: `enrich.applied.${proposalDoc._id}`,
+          });
+          await createMoltEvent(env, eventDoc);
+        } else {
+          const approvalDoc = {
+            _type: 'molt.approval',
+            _id: `molt.approval.${proposalDoc._id}`,
+            actionType: 'enrich.apply',
+            riskLevel: 'dangerous',
+            preview: `Apply enrichment proposal ${proposalDoc._id}`,
+            actionPayload: { proposalId: proposalDoc._id },
+            status: 'pending',
+            relatedEntities: [{ _type: 'reference', _ref: account._id }],
+            createdAt: new Date().toISOString(),
+            audit: { source: 'enrich.run' },
+          };
+          await createMoltApproval(env, approvalDoc);
+          await notify('approval_required', 'Enrichment approval required', {
+            approvalId: approvalDoc._id,
+            proposalId: proposalDoc._id,
+          }, env);
+          pending.push(proposalDoc._id);
+          const eventDoc = buildEventDoc({
+            type: 'approval.requested',
+            text: `Approval required for enrichment ${proposalDoc._id}`,
+            channel: 'system',
+            actor: 'moltbot',
+            entities: [{ _ref: account._id, entityType: 'account' }],
+            tags: ['approval', 'enrich'],
+            traceId: requestId,
+            idempotencyKey: `approval.requested.${proposalDoc._id}`,
+          });
+          await createMoltEvent(env, eventDoc);
+        }
+
+        await updateEnrichJob(env, job._id, { status: 'done', leaseExpiresAt: null });
+        logger.info('enrich.job.completed', { jobId: job._id, entityId: account._id });
+      } catch (jobError: any) {
+        const attempts = (job.attempts || 0) + 1;
+        const maxAttempts = job.maxAttempts || 3;
+        const retryable = attempts < maxAttempts;
+        const nextAttemptAt = retryable
+          ? new Date(Date.now() + (Math.min(2 ** attempts, 30) * 60 * 1000)).toISOString()
+          : null;
+        await updateEnrichJob(env, job._id, {
+          status: retryable ? 'queued' : 'failed',
+          error: jobError.message,
+          leaseExpiresAt: null,
+          nextAttemptAt,
+        });
+        logger.error('enrich.job.failed', jobError, { jobId: job._id, retryable, nextAttemptAt });
+      }
     }
 
     const patterns = derivePatternInsights({
@@ -285,6 +325,12 @@ export async function handleEnrichApply(request: Request, requestId: string, env
 
     const updated = applyPatchesToDocument({}, proposal.patches);
     await patchEntity(env, entityId, updated);
+    await enqueueActionCandidateJob({
+      env,
+      accountRef: entityId,
+      traceId: requestId,
+      priority: 80,
+    });
     // Mark proposal as applied.
     await updateEnrichProposal(env, proposalId, { status: 'applied' });
     const eventDoc = buildEventDoc({

@@ -1,0 +1,22 @@
+export default {
+  name: 'scenarioRun',
+  title: 'Scenario Run',
+  type: 'document',
+  fields: [
+    { name: 'scenarioId', title: 'Scenario ID', type: 'string' },
+    { name: 'scenarioClass', title: 'Scenario Class', type: 'string', options: { list: ['critical', 'reliability', 'stress', 'chaos'] } },
+    { name: 'status', title: 'Status', type: 'string', options: { list: ['passed', 'failed', 'degraded'] } },
+    { name: 'startedAt', title: 'Started At', type: 'datetime' },
+    { name: 'completedAt', title: 'Completed At', type: 'datetime' },
+    { name: 'executionConfidence', title: 'Execution Confidence', type: 'number' },
+    { name: 'outputConfidence', title: 'Output Confidence', type: 'number' },
+    { name: 'repairConfidence', title: 'Repair Confidence', type: 'number' },
+    { name: 'stabilityConfidence', title: 'Stability Confidence', type: 'number' },
+    { name: 'overallConfidence', title: 'Overall Confidence', type: 'number' },
+    { name: 'latencyMs', title: 'Latency Ms', type: 'number' },
+    { name: 'issues', title: 'Issues', type: 'array', of: [{ type: 'string' }] },
+    { name: 'bestKnownPath', title: 'Best Known Path', type: 'array', of: [{ type: 'string' }] },
+    { name: 'repairAttempts', title: 'Repair Attempts', type: 'array', of: [{ type: 'string' }] },
+    { name: 'details', title: 'Details', type: 'object', fields: [{ name: 'value', title: 'Value', type: 'text', hidden: true }] },
+  ],
+};

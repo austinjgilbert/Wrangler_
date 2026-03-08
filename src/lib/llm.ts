@@ -25,6 +25,8 @@ export interface LlmOptions {
   maxTokens?: number;
   /** When true, instruct the API to return JSON. */
   json?: boolean;
+  timeoutMs?: number;
+  retries?: number;
 }
 
 export interface LlmResult {
@@ -126,7 +128,7 @@ async function callAnthropic(
     body.temperature = options.temperature;
   }
 
-  const res = await fetch(`${baseUrl}/v1/messages`, {
+  const res = await fetchWithRetry(env, `${baseUrl}/v1/messages`, {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -134,12 +136,7 @@ async function callAnthropic(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => '');
-    throw new Error(`Anthropic API error ${res.status}: ${errorBody.slice(0, 500)}`);
-  }
+  }, options, 'Anthropic API');
 
   const data = (await res.json()) as any;
   const textBlock = (data.content || []).find((b: any) => b.type === 'text');
@@ -181,19 +178,14 @@ async function callOpenAI(
   if (options.maxTokens) body.max_tokens = options.maxTokens;
   if (options.json) body.response_format = { type: 'json_object' };
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
+  const res = await fetchWithRetry(env, `${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => '');
-    throw new Error(`LLM API error ${res.status}: ${errorBody.slice(0, 500)}`);
-  }
+  }, options, 'LLM API');
 
   const data = (await res.json()) as any;
   const choice = data.choices?.[0];
@@ -258,4 +250,69 @@ export async function extractTextFromImage(
   });
 
   return result.content;
+}
+
+async function fetchWithRetry(
+  env: any,
+  url: string,
+  init: RequestInit,
+  options: LlmOptions,
+  label: string,
+): Promise<Response> {
+  const timeoutMs = clampInt(options.timeoutMs ?? Number(env.LLM_TIMEOUT_MS || 30000), 1000, 120000);
+  const retries = clampInt(options.retries ?? Number(env.LLM_RETRIES || 1), 0, 3);
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        return res;
+      }
+
+      const errorBody = await res.text().catch(() => '');
+      const error = new Error(`${label} error ${res.status}: ${errorBody.slice(0, 500)}`);
+      if (!isRetryableStatus(res.status) || attempt === retries) {
+        throw error;
+      }
+      lastError = error;
+    } catch (error: any) {
+      clearTimeout(timeout);
+      const wrapped = error instanceof Error ? error : new Error(String(error || `${label} failed`));
+      if (!isRetryableError(wrapped) || attempt === retries) {
+        throw wrapped;
+      }
+      lastError = wrapped;
+    }
+
+    await sleep((attempt + 1) * 500);
+  }
+
+  throw lastError || new Error(`${label} failed`);
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 409 || status === 429 || status >= 500;
+}
+
+function isRetryableError(error: Error): boolean {
+  const message = String(error.message || '').toLowerCase();
+  return message.includes('timed out') || message.includes('timeout') || message.includes('network') || message.includes('fetch');
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  const numeric = Number.isFinite(value) ? value : min;
+  return Math.round(Math.max(min, Math.min(max, numeric)));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

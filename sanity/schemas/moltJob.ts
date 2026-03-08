@@ -16,6 +16,9 @@ export default {
     },
     { name: 'priority', title: 'Priority', type: 'number' },
     { name: 'attempts', title: 'Attempts', type: 'number' },
+    { name: 'maxAttempts', title: 'Max Attempts', type: 'number' },
+    { name: 'nextAttemptAt', title: 'Next Attempt At', type: 'datetime' },
+    { name: 'leaseExpiresAt', title: 'Lease Expires At', type: 'datetime' },
     { name: 'traceId', title: 'Trace ID', type: 'string' },
     { name: 'idempotencyKey', title: 'Idempotency Key', type: 'string' },
     {
@@ -34,7 +37,7 @@ export default {
       name: 'outputRefs',
       title: 'Output Refs',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'account' }, { type: 'person' }, { type: 'molt.event' }, { type: 'enrich.job' }, { type: 'molt.strategyBrief' }] }],
+      of: [{ type: 'reference', to: [{ type: 'account' }, { type: 'person' }, { type: 'molt.event' }, { type: 'enrich.job' }, { type: 'molt.strategyBrief' }, { type: 'actionCandidate' }, { type: 'driftMetric' }, { type: 'outcomeEvent' }, { type: 'scoringPolicyVersion' }, { type: 'patternVersion' }, { type: 'draftPolicyVersion' }, { type: 'strategyInstructionVersion' }] }],
     },
     { name: 'error', title: 'Error', type: 'string' },
     { name: 'createdAt', title: 'Created At', type: 'datetime' },

@@ -80,6 +80,10 @@ export async function handleGmailTool(request: Request, requestId: string, env: 
 
       const saved = await saveDraftRecord(env, {
         ...payload,
+        actionCandidateId: input.actionCandidateId || undefined,
+        draftPolicyVersion: input.draftPolicyVersion || undefined,
+        strategyVersion: input.strategyVersion || undefined,
+        confidenceBreakdown: input.confidenceBreakdown || undefined,
         status: 'draft',
         composeUrl,
         gmailDraftId,

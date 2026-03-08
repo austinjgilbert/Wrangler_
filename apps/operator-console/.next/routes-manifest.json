@@ -1,0 +1,143 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/console/account/[accountId]",
+      "regex": "^/api/console/account/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPaccountId": "nxtPaccountId"
+      },
+      "namedRegex": "^/api/console/account/(?<nxtPaccountId>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api/console/agents",
+      "regex": "^/api/console/agents(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/agents(?:/)?$"
+    },
+    {
+      "page": "/api/console/command",
+      "regex": "^/api/console/command(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/command(?:/)?$"
+    },
+    {
+      "page": "/api/console/copilot",
+      "regex": "^/api/console/copilot(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/copilot(?:/)?$"
+    },
+    {
+      "page": "/api/console/copilot/action",
+      "regex": "^/api/console/copilot/action(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/copilot/action(?:/)?$"
+    },
+    {
+      "page": "/api/console/copilot/explain",
+      "regex": "^/api/console/copilot/explain(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/copilot/explain(?:/)?$"
+    },
+    {
+      "page": "/api/console/copilot/query",
+      "regex": "^/api/console/copilot/query(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/copilot/query(?:/)?$"
+    },
+    {
+      "page": "/api/console/copilot/stream",
+      "regex": "^/api/console/copilot/stream(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/copilot/stream(?:/)?$"
+    },
+    {
+      "page": "/api/console/diagnostics",
+      "regex": "^/api/console/diagnostics(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/diagnostics(?:/)?$"
+    },
+    {
+      "page": "/api/console/functions",
+      "regex": "^/api/console/functions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/functions(?:/)?$"
+    },
+    {
+      "page": "/api/console/simulate",
+      "regex": "^/api/console/simulate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/simulate(?:/)?$"
+    },
+    {
+      "page": "/api/console/snapshot",
+      "regex": "^/api/console/snapshot(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/console/snapshot(?:/)?$"
+    },
+    {
+      "page": "/api/molt/feedback",
+      "regex": "^/api/molt/feedback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/molt/feedback(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

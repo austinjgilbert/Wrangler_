@@ -12,7 +12,6 @@ import {
   upsertNetworkPerson,
   fetchCompanies,
   fetchNetworkPeople,
-  createSignal,
   createConversationStarter,
   createDailyBriefing,
   fetchRecentStarters,
@@ -27,6 +26,7 @@ import { generateConversationOptions } from '../lib/generation.ts';
 import { notify } from '../lib/notify.ts';
 import { buildEventDoc } from '../lib/events.ts';
 import { createMoltEvent } from '../lib/sanity.ts';
+import { attachSignalToEntity, normalizeSignal, storeSignal } from '../lib/signalIngestion.ts';
 
 function parseCsv(text: string): Array<Record<string, string>> {
   // Minimal CSV parser with quoted field handling; assumes header row exists.
@@ -149,6 +149,10 @@ export async function handleImportConnections(request: Request, requestId: strin
           scope: { maxDepth: 1, maxPages: 3 },
           priority: 70,
           status: 'queued',
+          attempts: 0,
+          maxAttempts: 3,
+          nextAttemptAt: new Date().toISOString(),
+          leaseExpiresAt: null,
           createdAt: new Date().toISOString(),
         });
       }
@@ -214,20 +218,25 @@ export async function handleDailyRun(request: Request, requestId: string, env: a
       if (!summary) continue;
 
       const citations = Array.isArray(result?.citations) ? result.citations : [];
-      const signalDoc = {
-        _type: 'signal',
-        _id: `signal.${company._id}.${Date.now()}`,
-        type: 'company_update',
-        companyRef: { _type: 'reference', _ref: company._id },
-        personRefs: [],
-        sourceUrl: citations[0]?.url || sources[0],
-        date: now,
+      const signalDoc = normalizeSignal({
+        source: 'website_scan',
+        signalType: 'website_scan',
+        account: company?._id ? { _type: 'reference', _ref: company._id } : null,
+        timestamp: now,
+        metadata: {
+          sourceUrl: citations[0]?.url || sources[0],
+          summary,
+          keywords: extractKeywords(summary),
+          citations,
+        },
+      });
+      await storeSignal(env, signalDoc);
+      await attachSignalToEntity(env, signalDoc);
+      signals.push({
+        ...signalDoc,
         summary,
-        keywords: extractKeywords(summary),
-        citations,
-      };
-      await createSignal(env, signalDoc);
-      signals.push(signalDoc);
+        date: now,
+      });
     }
 
     const matches = matchSignalsToPeople({ signals, people, companies });

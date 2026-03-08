@@ -303,8 +303,9 @@ export async function getAccountIntelligenceForContext(
       parts.push(`Research: ${rs.pagesDiscovered ?? 0} pages discovered, ${rs.pagesCrawled ?? 0} crawled, brief: ${rs.hasBrief ? 'yes' : 'no'}`);
     }
     const briefFromResearch = researchSet.brief;
-    if (briefFromResearch?.evidencePack?.keyFacts?.length) {
-      parts.push(`Key facts: ${briefFromResearch.evidencePack.keyFacts.slice(0, 3).join('; ')}`);
+    const briefEvidence = briefFromResearch?.evidence || briefFromResearch?.evidencePack;
+    if (briefEvidence?.keyFacts?.length) {
+      parts.push(`Key facts: ${briefEvidence.keyFacts.slice(0, 3).join('; ')}`);
     }
     if (briefFromResearch?.executiveSummary?.length) {
       const bullets = Array.isArray(briefFromResearch.executiveSummary)

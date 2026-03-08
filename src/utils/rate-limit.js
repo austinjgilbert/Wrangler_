@@ -17,6 +17,9 @@ export class RateLimiter {
       '/competitors/research': { requests: 30, window: 3600 }, // 30 per hour
       '/molt': { requests: 120, window: 3600 }, // 120/hour for MoltBot + GPT worker
       '/wrangler': { requests: 120, window: 3600 }, // 120/hour for wrangler ingest
+      '/analytics/superuser': { requests: 30, window: 3600 },
+      '/analytics/superuser/command': { requests: 20, window: 3600 },
+      '/analytics/nightly-intelligence': { requests: 6, window: 3600 },
       default: { requests: 200, window: 3600 }, // 200 per hour
     };
     this.inMemoryCache = new Map(); // Fallback if KV not available
@@ -244,6 +247,15 @@ export class RateLimiter {
 export async function rateLimitMiddleware(request, endpoint, rateLimiter, requestId) {
   if (!rateLimiter) {
     return null; // Rate limiting disabled
+  }
+
+  try {
+    const url = new URL(request.url);
+    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+      return null;
+    }
+  } catch {
+    // ignore URL parsing errors and continue with normal rate limiting
   }
 
   const check = await rateLimiter.check(request, endpoint);

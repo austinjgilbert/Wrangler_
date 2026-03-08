@@ -37,6 +37,7 @@ import communityPostSanitized from './communityPostSanitized';
 import opportunity from './opportunity';
 import opportunityBrief from './opportunityBrief';
 import draftAction from './draftAction';
+import actionCandidate from './actionCandidate';
 import company from './company';
 import userPattern from './userPattern';
 import session from './session';
@@ -44,8 +45,23 @@ import interaction from './interaction';
 import learning from './learning';
 import accountPlanContextDraft from './accountPlanContextDraft';
 import operatorDailyBriefing from './operatorDailyBriefing';
+import operatorFeedback from './operatorFeedback';
 import learnSession from './learnSession';
 import gmailDraft from './gmailDraft';
+import evidencePack from './evidencePack';
+import scoringPolicyVersion from './scoringPolicyVersion';
+import patternVersion from './patternVersion';
+import draftPolicyVersion from './draftPolicyVersion';
+import strategyInstructionVersion from './strategyInstructionVersion';
+import outcomeEvent from './outcomeEvent';
+import driftMetric from './driftMetric';
+import scenarioRun from './scenarioRun';
+import flowExperience from './flowExperience';
+import repairAttempt from './repairAttempt';
+import autonomyPolicy from './autonomyPolicy';
+import runtimeIncident from './runtimeIncident';
+import bestKnownPath from './bestKnownPath';
+import scenarioConfidenceSnapshot from './scenarioConfidenceSnapshot';
 
 export const schemaTypes = [
   moltbotConfig,
@@ -82,6 +98,7 @@ export const schemaTypes = [
   opportunity,
   opportunityBrief,
   draftAction,
+  actionCandidate,
   company,
   userPattern,
   session,
@@ -89,8 +106,23 @@ export const schemaTypes = [
   learning,
   accountPlanContextDraft,
   operatorDailyBriefing,
+  operatorFeedback,
   learnSession,
   gmailDraft,
+  evidencePack,
+  scoringPolicyVersion,
+  patternVersion,
+  draftPolicyVersion,
+  strategyInstructionVersion,
+  outcomeEvent,
+  driftMetric,
+  scenarioRun,
+  flowExperience,
+  repairAttempt,
+  autonomyPolicy,
+  runtimeIncident,
+  bestKnownPath,
+  scenarioConfidenceSnapshot,
 ];
 
 export default schemaTypes;

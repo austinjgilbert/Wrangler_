@@ -823,12 +823,13 @@ export async function executeNextOrchestrationStage(job, context) {
 // Helper functions
 
 function extractClaimsFromBrief(brief) {
-  if (!brief || !brief.evidencePack) return [];
+  const evidence = brief?.evidence || brief?.evidencePack;
+  if (!brief || !evidence) return [];
   
   const claims = [];
   
-  if (brief.evidencePack.keyFacts) {
-    brief.evidencePack.keyFacts.forEach(fact => {
+  if (evidence.keyFacts) {
+    evidence.keyFacts.forEach(fact => {
       if (fact && fact.length > 20) {
         claims.push(fact.substring(0, 200));
       }

@@ -24,17 +24,24 @@ export function buildEventDoc({
   idempotencyKey?: string;
 }) {
   const now = new Date().toISOString();
+  const safeIdempotencyKey = idempotencyKey
+    ? String(idempotencyKey)
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 180)
+    : null;
   return {
     _type: 'molt.event',
-    _id: idempotencyKey
-      ? `molt.event.${idempotencyKey}`
+    _id: safeIdempotencyKey
+      ? `molt.event.${safeIdempotencyKey}`
       : `molt.event.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`,
     type,
     actor,
     channel,
     timestamp: now,
     traceId: traceId || null,
-    idempotencyKey: idempotencyKey || null,
+    idempotencyKey: safeIdempotencyKey,
     entities: entities.map((e) => ({
       entityType: e.entityType,
       entityRef: { _type: 'reference', _ref: e._ref },

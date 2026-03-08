@@ -16,6 +16,16 @@ export default {
   fields: [
     // ── Identity ──────────────────────────────────────────────────────
     { name: 'name', title: 'Name', type: 'string' },
+    { name: 'observedAt', title: 'Observed At', type: 'datetime' },
+    { name: 'lastValidatedAt', title: 'Last Validated At', type: 'datetime' },
+    { name: 'staleAfter', title: 'Stale After', type: 'datetime' },
+    { name: 'refreshPriority', title: 'Refresh Priority', type: 'number' },
+    {
+      name: 'uncertaintyState',
+      title: 'Uncertainty State',
+      type: 'string',
+      options: { list: ['confirmed', 'likely', 'weakly_inferred', 'contradictory', 'stale', 'needs_validation'] },
+    },
     { name: 'domain', title: 'Domain', type: 'string' },
     { name: 'accountKey', title: 'Account Key', type: 'string' },
     { name: 'canonicalUrl', title: 'Canonical URL', type: 'url' },

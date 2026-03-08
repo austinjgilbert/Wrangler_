@@ -10,6 +10,22 @@ export default {
   type: 'document',
   fields: [
     { name: 'draftId', title: 'Draft ID', type: 'string' },
+    { name: 'actionCandidateId', title: 'Action Candidate ID', type: 'string' },
+    { name: 'draftPolicyVersion', title: 'Draft Policy Version', type: 'string' },
+    { name: 'strategyVersion', title: 'Strategy Version', type: 'string' },
+    {
+      name: 'confidenceBreakdown',
+      title: 'Confidence Breakdown',
+      type: 'object',
+      fields: [
+        { name: 'dataConfidence', title: 'Data Confidence', type: 'number' },
+        { name: 'entityConfidence', title: 'Entity Confidence', type: 'number' },
+        { name: 'patternConfidence', title: 'Pattern Confidence', type: 'number' },
+        { name: 'actionConfidence', title: 'Action Confidence', type: 'number' },
+        { name: 'draftConfidence', title: 'Draft Confidence', type: 'number' },
+        { name: 'updatedAt', title: 'Updated At', type: 'datetime' },
+      ],
+    },
     { name: 'status', title: 'Status', type: 'string' },
     { name: 'accountName', title: 'Account Name', type: 'string' },
     { name: 'recipientName', title: 'Recipient Name', type: 'string' },
@@ -32,6 +48,16 @@ export default {
     { name: 'createdAt', title: 'Created At', type: 'datetime' },
     { name: 'updatedAt', title: 'Updated At', type: 'datetime' },
     { name: 'sentAt', title: 'Sent At', type: 'datetime' },
+    { name: 'observedAt', title: 'Observed At', type: 'datetime' },
+    { name: 'lastValidatedAt', title: 'Last Validated At', type: 'datetime' },
+    { name: 'staleAfter', title: 'Stale After', type: 'datetime' },
+    { name: 'refreshPriority', title: 'Refresh Priority', type: 'number' },
+    {
+      name: 'uncertaintyState',
+      title: 'Uncertainty State',
+      type: 'string',
+      options: { list: ['confirmed', 'likely', 'weakly_inferred', 'contradictory', 'stale', 'needs_validation'] },
+    },
   ],
   preview: {
     select: {

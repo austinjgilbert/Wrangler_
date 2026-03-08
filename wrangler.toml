@@ -21,7 +21,8 @@ crons = [
   "*/15 * * * *",  # frequent job runner
   "0 */6 * * *",   # DQ scan + enrich run
   "15 13 * * *",   # network daily run
-  "30 13 * * *"    # opportunities daily
+  "30 13 * * *",   # opportunities daily
+  "45 13 * * *"    # nightly intelligence pipeline
 ]
 
 # Non-secret vars (override in env.* as needed)

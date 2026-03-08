@@ -1,0 +1,159 @@
+{
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  ],
+  "networkFailures": [
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=overview&accountId=account-3d4692498d8111fd",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=accounts&accountId=account-3d4692498d8111fd",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=accounts&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=jobs&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=jobs&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=jobs&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=overview&accountId=account-3d4692498d8111fd",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=overview&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=accounts&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=people&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=jobs&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=signals&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=patterns&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=patterns&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/copilot?section=actions&accountId=account-3d4692498d8111fd&accountName=www.ulta.com",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/console/snapshot",
+      "status": 429,
+      "method": "GET"
+    }
+  ],
+  "pageErrors": [],
+  "stuckIndicators": [],
+  "emptyStates": []
+}

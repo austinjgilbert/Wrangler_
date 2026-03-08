@@ -14,6 +14,16 @@ export default {
   fields: [
     // ── Identity ──────────────────────────────────────────────────────
     { name: 'personKey', title: 'Person Key', type: 'string' },
+    { name: 'observedAt', title: 'Observed At', type: 'datetime' },
+    { name: 'lastValidatedAt', title: 'Last Validated At', type: 'datetime' },
+    { name: 'staleAfter', title: 'Stale After', type: 'datetime' },
+    { name: 'refreshPriority', title: 'Refresh Priority', type: 'number' },
+    {
+      name: 'uncertaintyState',
+      title: 'Uncertainty State',
+      type: 'string',
+      options: { list: ['confirmed', 'likely', 'weakly_inferred', 'contradictory', 'stale', 'needs_validation'] },
+    },
     { name: 'name', title: 'Name', type: 'string' },
     { name: 'title', title: 'Current Title', type: 'string' },
     { name: 'headline', title: 'LinkedIn Headline', type: 'string' },
@@ -65,6 +75,7 @@ export default {
       }],
     },
     { name: 'skills', title: 'Skills', type: 'array', of: [{ type: 'string' }] },
+    { name: 'signals', title: 'Signals', type: 'array', of: [{ type: 'string' }] },
 
     // ── LinkedIn Intelligence ─────────────────────────────────────────
     { name: 'connections', title: 'Connections', type: 'number' },

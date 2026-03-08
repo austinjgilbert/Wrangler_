@@ -13,6 +13,16 @@ export type DraftInput = {
   context?: string;
   objective?: string;
   tone?: string;
+  draftPolicyVersion?: string;
+  strategyVersion?: string;
+  confidenceBreakdown?: {
+    dataConfidence?: number;
+    entityConfidence?: number;
+    patternConfidence?: number;
+    actionConfidence?: number;
+    draftConfidence?: number;
+    updatedAt?: string;
+  };
 };
 
 export async function generateOutreachDraft(env: any, input: DraftInput) {
@@ -82,12 +92,14 @@ export function gmailIsConfigured(env: any) {
 
 export async function saveDraftRecord(env: any, input: DraftInput & {
   draftId?: string;
+  actionCandidateId?: string;
   status?: string;
   composeUrl?: string;
   gmailDraftId?: string | null;
   gmailMessageId?: string | null;
   sentAt?: string | null;
 }) {
+  const { recordOutcomeEvent } = await import('../lib/outcomeLinkingService.ts');
   const { initSanityClient, upsertDocument } = await import('../sanity-client.js');
   const client = initSanityClient(env);
   const now = new Date().toISOString();
@@ -96,6 +108,10 @@ export async function saveDraftRecord(env: any, input: DraftInput & {
     _id: draftId,
     _type: 'gmailDraft',
     draftId,
+    actionCandidateId: input.actionCandidateId || null,
+    draftPolicyVersion: input.draftPolicyVersion || null,
+    strategyVersion: input.strategyVersion || null,
+    confidenceBreakdown: input.confidenceBreakdown || null,
     status: input.status || 'draft',
     accountName: input.accountName || '',
     recipientName: input.recipientName || '',
@@ -113,9 +129,24 @@ export async function saveDraftRecord(env: any, input: DraftInput & {
     createdAt: now,
     updatedAt: now,
     sentAt: input.sentAt || null,
+    observedAt: now,
+    lastValidatedAt: now,
+    staleAfter: new Date(Date.now() + (72 * 60 * 60 * 1000)).toISOString(),
+    refreshPriority: 60,
+    uncertaintyState: input.confidenceBreakdown?.draftConfidence != null && input.confidenceBreakdown.draftConfidence < 0.5 ? 'needs_validation' : 'likely',
   };
 
   if (!client) {
+    if (input.actionCandidateId) {
+      await recordOutcomeEvent(env, {
+        actionCandidateId: input.actionCandidateId,
+        gmailDraftId: draftId,
+        eventType: input.sentAt ? 'sent' : 'drafted',
+        actor: 'system',
+        observedAt: input.sentAt || now,
+        outcomeLabel: input.status || 'draft',
+      }).catch(() => null);
+    }
     return { draftId, doc, saved: false };
   }
 
@@ -123,7 +154,21 @@ export async function saveDraftRecord(env: any, input: DraftInput & {
   const existing = await getDocument(client, draftId).catch(() => null) as any;
   if (existing?.createdAt) doc.createdAt = existing.createdAt;
   if (!doc.sentAt && existing?.sentAt) doc.sentAt = existing.sentAt;
+  if (!doc.actionCandidateId && existing?.actionCandidateId) doc.actionCandidateId = existing.actionCandidateId;
+  if (!doc.draftPolicyVersion && existing?.draftPolicyVersion) doc.draftPolicyVersion = existing.draftPolicyVersion;
+  if (!doc.strategyVersion && existing?.strategyVersion) doc.strategyVersion = existing.strategyVersion;
+  if (!doc.confidenceBreakdown && existing?.confidenceBreakdown) doc.confidenceBreakdown = existing.confidenceBreakdown;
   await upsertDocument(client, doc);
+  if (input.actionCandidateId) {
+    await recordOutcomeEvent(env, {
+      actionCandidateId: input.actionCandidateId,
+      gmailDraftId: draftId,
+      eventType: input.sentAt ? 'sent' : 'drafted',
+      actor: 'system',
+      observedAt: input.sentAt || now,
+      outcomeLabel: input.status || 'draft',
+    }).catch(() => null);
+  }
   return { draftId, doc, saved: true };
 }
 

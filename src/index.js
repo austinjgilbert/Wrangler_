@@ -6997,6 +6997,10 @@ const workerHandler = {
           const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
           return await handleOperatorBriefing(req, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
         }
+        if (path === '/analytics/nightly-intelligence') {
+          const { handleNightlyIntelligence } = await import('./routes/analyticsNightly.ts');
+          return await handleNightlyIntelligence(req, requestId, env);
+        }
         if (path === '/system/self-heal') {
           const { handleSystemSelfHeal } = await import('./handlers/system-self-heal.js');
           return await handleSystemSelfHeal(req, requestId, env);
@@ -7064,6 +7068,8 @@ const workerHandler = {
     } else if (cron === '30 13 * * *') {
       ctx.waitUntil(runRoute('/analytics/operator-brief', {}));
       ctx.waitUntil(runRoute('/opportunities/daily', { date: now.slice(0, 10) }));
+    } else if (cron === '45 13 * * *') {
+      ctx.waitUntil(runRoute('/analytics/nightly-intelligence', { date: now }));
     } else {
       ctx.waitUntil(runRoute('/molt/jobs/run', {}));
     }
@@ -7072,6 +7078,32 @@ const workerHandler = {
 };
 
 export default workerHandler;
+
+export {
+  handleScan,
+  handleDiscover,
+  handleCrawl,
+  handleExtract,
+  handleLinkedInProfile,
+  handleBrief,
+  handleVerify,
+  searchProvider,
+  getBrowserHeaders,
+  readHtmlWithLimit,
+  extractTitle,
+  cleanMainText,
+  detectSignals,
+  extractExcerpts,
+  extractEntities,
+  extractClaims,
+  extractScriptSrcs,
+  extractLinkHrefs,
+  extractNavigationLinks,
+  detectTechnologyStack,
+  discoverPages,
+  crawlWithConcurrency,
+  calculateContentHash,
+};
 
 /**
  * Log usage for a request (async, non-blocking)
@@ -7143,14 +7175,15 @@ async function logUsageForRequest(request, url, requestId, env, response, startT
  * Route request to appropriate handler
  */
 // Paths that can be used for auth-only testing (e.g. from ChatGPT) without requiring Sanity.
-const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/auth-status', '/wrangler/ingest', '/extension/capture', '/extension/page-intel', '/extension/ask', '/extension/learn', '/system/self-heal'];
+const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/feedback', '/molt/auth-status', '/wrangler/ingest', '/extension/capture', '/extension/page-intel', '/extension/ask', '/extension/learn', '/system/self-heal'];
 
 const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
   '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
-  '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/',
+  '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/', '/gmail/',
   '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/webhooks', '/orchestrate', '/person/',
   '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
+  '/operator/console',
   '/memory',
 ];
 
@@ -7582,6 +7615,13 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (!auth.allowed) return auth.errorResponse;
         const { handleMoltJobsRun } = await import('./routes/molt.ts');
         return await handleMoltJobsRun(request, requestId, env);
+      } else if (url.pathname === '/molt/feedback') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleMoltFeedback } = await import('./routes/molt.ts');
+        return await handleMoltFeedback(request, requestId, env);
       } else if (url.pathname === '/calls/ingest') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleCallsIngest } = await import('./routes/calls.ts');
@@ -7679,6 +7719,82 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else {
           return createErrorResponse('NOT_FOUND', 'OSINT endpoint not found', { path: url.pathname }, 404, requestId);
         }
+      } else if (url.pathname.startsWith('/operator/console')) {
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+        if (!auth) {
+          return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+        }
+        const {
+          handleOperatorConsoleAccount,
+          handleOperatorConsoleCommand,
+          handleOperatorConsoleDiagnostics,
+          handleOperatorConsoleSimulate,
+          handleOperatorConsoleSnapshot,
+        } = await import('./routes/operatorConsole.ts');
+        const {
+          handleOperatorCopilotAction,
+          handleOperatorCopilotExplain,
+          handleOperatorCopilotQuery,
+          handleOperatorCopilotState,
+        } = await import('./routes/operatorCopilot.ts');
+        const {
+          handleOperatorAgents,
+          handleOperatorFunctions,
+        } = await import('./routes/operatorRegistry.ts');
+
+        if (url.pathname === '/operator/console/snapshot') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleOperatorConsoleSnapshot(request, requestId, env);
+        } else if (url.pathname === '/operator/console/functions') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleOperatorFunctions(request, requestId);
+        } else if (url.pathname === '/operator/console/agents') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleOperatorAgents(request, requestId);
+        } else if (url.pathname === '/operator/console/copilot') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleOperatorCopilotState(request, requestId, env);
+        } else if (url.pathname === '/operator/console/copilot/query') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorCopilotQuery(request, requestId, env);
+        } else if (url.pathname === '/operator/console/copilot/explain') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorCopilotExplain(request, requestId, env);
+        } else if (url.pathname === '/operator/console/copilot/action') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorCopilotAction(request, requestId, env);
+        } else if (url.pathname.startsWith('/operator/console/account/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const accountId = decodeURIComponent(url.pathname.split('/').pop() || '');
+          return await handleOperatorConsoleAccount(request, requestId, env, accountId);
+        } else if (url.pathname === '/operator/console/command') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorConsoleCommand(request, requestId, env);
+        } else if (url.pathname === '/operator/console/simulate') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorConsoleSimulate(request, requestId, env);
+        } else if (url.pathname === '/operator/console/diagnostics') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleOperatorConsoleDiagnostics(request, requestId, env);
+        } else if (url.pathname.startsWith('/operator/console/draft/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const draftId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/draft\//, '') || '');
+          const { handleOperatorConsoleDraft } = await import('./routes/operatorConsole.ts');
+          return await handleOperatorConsoleDraft(request, requestId, env, draftId);
+        } else if (url.pathname.startsWith('/operator/console/brief/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const briefId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/brief\//, '') || '');
+          const { handleOperatorConsoleBrief } = await import('./routes/operatorConsole.ts');
+          return await handleOperatorConsoleBrief(request, requestId, env, briefId);
+        } else if (url.pathname.startsWith('/operator/console/job/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const jobId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/job\//, '') || '');
+          const { handleOperatorConsoleJob } = await import('./routes/operatorConsole.ts');
+          return await handleOperatorConsoleJob(request, requestId, env, jobId);
+        } else {
+          return createErrorResponse('NOT_FOUND', 'Operator console endpoint not found', { path: url.pathname }, 404, requestId);
+        }
       } else if (url.pathname.startsWith('/analytics/')) {
         if (url.pathname === '/analytics/compare') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
@@ -7700,12 +7816,53 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleIntelligenceDashboard } = await import('./handlers/intelligence-dashboard.js');
           return await handleIntelligenceDashboard(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (url.pathname === '/analytics/explain') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          if (!auth) {
+            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+          }
+          const { handleAnalyticsExplain } = await import('./routes/analyticsExplain.ts');
+          return await handleAnalyticsExplain(request, requestId, env);
         } else if (url.pathname === '/analytics/operator-brief') {
           if (request.method !== 'GET' && request.method !== 'POST') {
             return createErrorResponse('METHOD_NOT_ALLOWED', 'GET or POST required', {}, 405, requestId);
           }
+          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          if (!auth) {
+            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+          }
           const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
           return await handleOperatorBriefing(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
+        } else if (url.pathname === '/analytics/superuser') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          if (!auth) {
+            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+          }
+          const { handleSuperuserState } = await import('./routes/superuser.ts');
+          return await handleSuperuserState(request, requestId, env);
+        } else if (url.pathname === '/analytics/superuser/command') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          if (!auth) {
+            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+          }
+          const { handleSuperuserCommand } = await import('./routes/superuser.ts');
+          return await handleSuperuserCommand(request, requestId, env);
+        } else if (url.pathname === '/analytics/nightly-intelligence') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          if (!auth) {
+            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+          }
+          const { handleNightlyIntelligence } = await import('./routes/analyticsNightly.ts');
+          return await handleNightlyIntelligence(request, requestId, env);
         } else {
           return createErrorResponse('NOT_FOUND', 'Analytics endpoint not found', { path: url.pathname }, 404, requestId);
         }

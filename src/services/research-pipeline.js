@@ -352,8 +352,9 @@ export async function executePipelineStage(job, stage, context = {}) {
         
         // Extract claims from brief evidence
         const claims = [];
-        if (brief?.evidencePack?.keyFacts) {
-          brief.evidencePack.keyFacts.forEach((fact, idx) => {
+        const briefEvidence = brief?.evidence || brief?.evidencePack || null;
+        if (briefEvidence?.keyFacts) {
+          briefEvidence.keyFacts.forEach((fact, idx) => {
             if (fact && fact.length > 20) { // Only verify substantial claims
               claims.push(fact.substring(0, 200)); // Limit claim length
             }
@@ -364,8 +365,9 @@ export async function executePipelineStage(job, stage, context = {}) {
           evidence.extractions.forEach(ext => {
             if (ext.claims && Array.isArray(ext.claims)) {
               ext.claims.forEach(claim => {
-                if (claim.claim && claim.claim.length > 20) {
-                  claims.push(claim.claim.substring(0, 200));
+                const claimText = claim.text || claim.claim || '';
+                if (claimText && claimText.length > 20) {
+                  claims.push(claimText.substring(0, 200));
                 }
               });
             }
@@ -381,8 +383,8 @@ export async function executePipelineStage(job, stage, context = {}) {
         const sources = [];
         
         // Gather sources from brief and evidence
-        if (brief?.evidencePack?.urls) {
-          sources.push(...brief.evidencePack.urls.slice(0, 5));
+        if (briefEvidence?.urls) {
+          sources.push(...briefEvidence.urls.slice(0, 5));
         }
         if (evidence?.extractions) {
           evidence.extractions.forEach(ext => {

@@ -1,0 +1,7 @@
+[
+  { "domain": "nike.com", "signalType": "pricing_page_visit", "source": "website_scan", "strength": 0.82 },
+  { "domain": "fleetfeet.com", "signalType": "website_scan", "source": "website_scan", "strength": 0.41 },
+  { "domain": "stripe.com", "signalType": "signup", "source": "product_signup", "strength": 0.95 },
+  { "domain": "vercel.com", "signalType": "intent_spike", "source": "intent_platform", "strength": 0.77 },
+  { "domain": "shopify.com", "signalType": "job_posting", "source": "linkedin_sales_navigator", "strength": 0.66 }
+]

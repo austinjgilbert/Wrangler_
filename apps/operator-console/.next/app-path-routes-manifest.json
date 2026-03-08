@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/console/account/[accountId]/route": "/api/console/account/[accountId]",
+  "/api/console/agents/route": "/api/console/agents",
+  "/api/console/command/route": "/api/console/command",
+  "/api/console/copilot/action/route": "/api/console/copilot/action",
+  "/api/console/copilot/explain/route": "/api/console/copilot/explain",
+  "/api/console/copilot/query/route": "/api/console/copilot/query",
+  "/api/console/copilot/route": "/api/console/copilot",
+  "/api/console/copilot/stream/route": "/api/console/copilot/stream",
+  "/api/console/diagnostics/route": "/api/console/diagnostics",
+  "/api/console/functions/route": "/api/console/functions",
+  "/api/console/simulate/route": "/api/console/simulate",
+  "/api/console/snapshot/route": "/api/console/snapshot",
+  "/api/molt/feedback/route": "/api/molt/feedback",
+  "/page": "/"
+}

@@ -1,0 +1,496 @@
+{
+  "runId": "run-2026-03-08T15-42-41-303Z",
+  "startedAt": "2026-03-08T15:42:41.303Z",
+  "completedAt": "2026-03-08T15:44:24.093Z",
+  "systemReliabilityScore": 82,
+  "flowResults": [
+    {
+      "id": "overview",
+      "kind": "flow",
+      "status": "failed",
+      "confidenceScore": 72,
+      "warnings": [],
+      "failures": [
+        {
+          "id": "overview-failure",
+          "scope": "flow",
+          "title": "Overview flow failed",
+          "message": "locator.waitFor: Timeout 7000ms exceeded.\nCall log:\n  - waiting for getByText(/Intelligence Status|Mission control/i).first() to be visible\n",
+          "severity": "high",
+          "category": "navigation",
+          "details": {
+            "sectionLabel": "Overview",
+            "command": null
+          }
+        }
+      ],
+      "metadata": {
+        "sectionLabel": "Overview"
+      },
+      "startedAtMs": 1772984570084,
+      "startedAt": "2026-03-08T15:42:50.084Z",
+      "completedAt": "2026-03-08T15:42:57.449Z",
+      "durationMs": 7365
+    },
+    {
+      "id": "accounts",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 94,
+      "warnings": [
+        "Command executed during accounts: scan nike.com"
+      ],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Accounts"
+      },
+      "startedAtMs": 1772984577451,
+      "startedAt": "2026-03-08T15:42:57.451Z",
+      "completedAt": "2026-03-08T15:42:58.351Z",
+      "durationMs": 900
+    },
+    {
+      "id": "account-detail",
+      "kind": "flow",
+      "status": "failed",
+      "confidenceScore": 72,
+      "warnings": [],
+      "failures": [
+        {
+          "id": "account-detail-failure",
+          "scope": "flow",
+          "title": "Account detail failed",
+          "message": "locator.waitFor: Timeout 7000ms exceeded.\nCall log:\n  - waiting for getByText(/Tech Stack|Signals Timeline|Actions \\+ Research/i).first() to be visible\n",
+          "severity": "high",
+          "category": "ui"
+        }
+      ],
+      "startedAtMs": 1772984586937,
+      "startedAt": "2026-03-08T15:43:06.937Z",
+      "completedAt": "2026-03-08T15:43:14.754Z",
+      "durationMs": 7817
+    },
+    {
+      "id": "people",
+      "kind": "flow",
+      "status": "failed",
+      "confidenceScore": 72,
+      "warnings": [],
+      "failures": [
+        {
+          "id": "people-failure",
+          "scope": "flow",
+          "title": "People flow failed",
+          "message": "locator.waitFor: Timeout 7000ms exceeded.\nCall log:\n  - waiting for getByText(/Person Layer|People Explorer/i).first() to be visible\n",
+          "severity": "high",
+          "category": "navigation",
+          "details": {
+            "sectionLabel": "People",
+            "command": null
+          }
+        }
+      ],
+      "metadata": {
+        "sectionLabel": "People"
+      },
+      "startedAtMs": 1772984602628,
+      "startedAt": "2026-03-08T15:43:22.628Z",
+      "completedAt": "2026-03-08T15:43:29.987Z",
+      "durationMs": 7359
+    },
+    {
+      "id": "signals",
+      "kind": "flow",
+      "status": "failed",
+      "confidenceScore": 72,
+      "warnings": [],
+      "failures": [
+        {
+          "id": "signals-failure",
+          "scope": "flow",
+          "title": "Signals flow failed",
+          "message": "locator.waitFor: Timeout 7000ms exceeded.\nCall log:\n  - waiting for getByText(/Signal Monitoring|Recent Signals/i).first() to be visible\n",
+          "severity": "high",
+          "category": "navigation",
+          "details": {
+            "sectionLabel": "Signals",
+            "command": null
+          }
+        }
+      ],
+      "metadata": {
+        "sectionLabel": "Signals"
+      },
+      "startedAtMs": 1772984617838,
+      "startedAt": "2026-03-08T15:43:37.838Z",
+      "completedAt": "2026-03-08T15:43:45.186Z",
+      "durationMs": 7348
+    },
+    {
+      "id": "patterns",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 94,
+      "warnings": [
+        "Command executed during patterns: preview strategy"
+      ],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Patterns"
+      },
+      "startedAtMs": 1772984625187,
+      "startedAt": "2026-03-08T15:43:45.187Z",
+      "completedAt": "2026-03-08T15:43:46.071Z",
+      "durationMs": 884
+    },
+    {
+      "id": "actions",
+      "kind": "flow",
+      "status": "failed",
+      "confidenceScore": 72,
+      "warnings": [],
+      "failures": [
+        {
+          "id": "actions-failure",
+          "scope": "flow",
+          "title": "Actions flow failed",
+          "message": "locator.waitFor: Timeout 7000ms exceeded.\nCall log:\n  - waiting for getByText(/Today's Actions|Action Queue|TOP ACTIONS TODAY|The most important page/i).first() to be visible\n",
+          "severity": "high",
+          "category": "navigation",
+          "details": {
+            "sectionLabel": "Actions",
+            "command": null
+          }
+        }
+      ],
+      "metadata": {
+        "sectionLabel": "Actions"
+      },
+      "startedAtMs": 1772984633918,
+      "startedAt": "2026-03-08T15:43:53.918Z",
+      "completedAt": "2026-03-08T15:44:01.289Z",
+      "durationMs": 7371
+    },
+    {
+      "id": "research",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 94,
+      "warnings": [
+        "Command executed during research: queue research fleetfeet.com"
+      ],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Research"
+      },
+      "startedAtMs": 1772984641290,
+      "startedAt": "2026-03-08T15:44:01.290Z",
+      "completedAt": "2026-03-08T15:44:02.182Z",
+      "durationMs": 892
+    },
+    {
+      "id": "jobs",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Jobs"
+      },
+      "startedAtMs": 1772984642184,
+      "startedAt": "2026-03-08T15:44:02.184Z",
+      "completedAt": "2026-03-08T15:44:02.541Z",
+      "durationMs": 357
+    },
+    {
+      "id": "metrics",
+      "kind": "flow",
+      "status": "repaired",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Metrics"
+      },
+      "startedAtMs": 1772984650422,
+      "startedAt": "2026-03-08T15:44:10.422Z",
+      "completedAt": "2026-03-08T15:44:10.770Z",
+      "durationMs": 348
+    },
+    {
+      "id": "system-lab",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 94,
+      "warnings": [
+        "Command executed during system-lab: preview strategy"
+      ],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "System Lab"
+      },
+      "startedAtMs": 1772984650771,
+      "startedAt": "2026-03-08T15:44:10.771Z",
+      "completedAt": "2026-03-08T15:44:11.669Z",
+      "durationMs": 898
+    },
+    {
+      "id": "capabilities",
+      "kind": "flow",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "sectionLabel": "Capabilities"
+      },
+      "startedAtMs": 1772984651671,
+      "startedAt": "2026-03-08T15:44:11.671Z",
+      "completedAt": "2026-03-08T15:44:12.031Z",
+      "durationMs": 360
+    }
+  ],
+  "scenarioResults": [
+    {
+      "id": "signup-signal",
+      "kind": "scenario",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "commands": [
+          "simulate signup-immediate-action",
+          "generate sdr actions"
+        ]
+      },
+      "startedAtMs": 1772984652078,
+      "startedAt": "2026-03-08T15:44:12.078Z",
+      "completedAt": "2026-03-08T15:44:16.453Z",
+      "durationMs": 4375
+    },
+    {
+      "id": "cms-displacement",
+      "kind": "scenario",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "commands": [
+          "simulate legacy-cms-displacement",
+          "preview strategy"
+        ]
+      },
+      "startedAtMs": 1772984656458,
+      "startedAt": "2026-03-08T15:44:16.458Z",
+      "completedAt": "2026-03-08T15:44:18.538Z",
+      "durationMs": 2080
+    },
+    {
+      "id": "enrichment",
+      "kind": "scenario",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "commands": [
+          "refresh stale entities",
+          "queue anti drift maintenance"
+        ]
+      },
+      "startedAtMs": 1772984658541,
+      "startedAt": "2026-03-08T15:44:18.541Z",
+      "completedAt": "2026-03-08T15:44:20.612Z",
+      "durationMs": 2071
+    },
+    {
+      "id": "draft-generation",
+      "kind": "scenario",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "commands": [
+          "generate sdr actions"
+        ]
+      },
+      "startedAtMs": 1772984660640,
+      "startedAt": "2026-03-08T15:44:20.640Z",
+      "completedAt": "2026-03-08T15:44:21.684Z",
+      "durationMs": 1044
+    },
+    {
+      "id": "opportunity-ranking",
+      "kind": "scenario",
+      "status": "passed",
+      "confidenceScore": 100,
+      "warnings": [],
+      "failures": [],
+      "metadata": {
+        "commands": [
+          "recalculate scores",
+          "generate sdr actions"
+        ]
+      },
+      "startedAtMs": 1772984661687,
+      "startedAt": "2026-03-08T15:44:21.687Z",
+      "completedAt": "2026-03-08T15:44:23.756Z",
+      "durationMs": 2069
+    }
+  ],
+  "diagnostics": {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+    ],
+    "networkFailures": [
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      },
+      {
+        "url": "http://127.0.0.1:3000/api/console/snapshot",
+        "status": 429,
+        "method": "GET"
+      }
+    ],
+    "pageErrors": [],
+    "stuckIndicators": [
+      "command-running-indicator-visible"
+    ],
+    "emptyStates": []
+  },
+  "repairLog": [
+    {
+      "failureId": "overview-failure",
+      "strategy": "reload-and-renavigate",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-overview-failure.png"
+    },
+    {
+      "failureId": "account-detail-failure",
+      "strategy": "reload-page",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-account-detail-failure.png"
+    },
+    {
+      "failureId": "people-failure",
+      "strategy": "reload-and-renavigate",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-people-failure.png"
+    },
+    {
+      "failureId": "signals-failure",
+      "strategy": "reload-and-renavigate",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-signals-failure.png"
+    },
+    {
+      "failureId": "actions-failure",
+      "strategy": "reload-and-renavigate",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-actions-failure.png"
+    },
+    {
+      "failureId": "metrics-failure",
+      "strategy": "reload-and-renavigate",
+      "outcome": "succeeded",
+      "screenshotPath": "/Users/austin.gilbert/website-scanner-worker/qa/reports/run-2026-03-08T15-42-41-303Z/screenshots/repair-metrics-failure.png"
+    }
+  ]
+}
