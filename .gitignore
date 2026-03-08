@@ -47,3 +47,7 @@ sanity/dist/
 # Archives
 docs/archive/
 
+# Local/sensitive data (excluded from public repo copy)
+data/*
+!data/README.md
+
