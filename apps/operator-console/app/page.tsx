@@ -10,34 +10,26 @@ import { TechStackChart } from '@/components/dashboard/tech-stack-chart'
 import { EnrichmentStatus } from '@/components/dashboard/enrichment-status'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { useDashboardStats, useAccounts, useEnrichments } from '@/lib/hooks/use-api'
-
-// Fallback mock data for development/demo
-import {
-  mockDashboardMetrics,
-  mockActivityFeed,
-  mockAccounts,
-  mockEnrichmentJobs,
-} from '@/lib/mock-data'
+import { Loader2 } from 'lucide-react'
 
 export default function DashboardPage() {
-  // Try to fetch live data, fall back to mock data if API unavailable
   const { data: statsData } = useDashboardStats()
-  const { data: accountsData } = useAccounts({ limit: 10 })
+  const { data: accountsData } = useAccounts()
   const { data: enrichmentsData } = useEnrichments()
 
-  // Transform API data or use mock data
-  const metrics = statsData ? {
-    totalAccounts: statsData.totalAccounts,
-    enrichedAccounts: statsData.enrichedAccounts,
-    activeScans: statsData.activeScans,
-    osintReports: statsData.osintReports,
-    enrichmentRate: statsData.enrichedAccounts / statsData.totalAccounts * 100,
-    topTechStacks: statsData.techStackDistribution?.map(t => ({
-      name: t.category,
-      count: t.count,
-      growth: 0,
-    })) || [],
-  } : mockDashboardMetrics
+  if (!statsData || !accountsData || !enrichmentsData) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <DashboardHeader breadcrumbs={[{ label: 'Dashboard' }]} />
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    )
+  }
 
   const activities = statsData?.recentActivity?.map(a => ({
     id: a.id,
@@ -46,20 +38,10 @@ export default function DashboardPage() {
     timestamp: a.timestamp,
     status: 'completed' as const,
     accountName: a.target,
-  })) || mockActivityFeed
+    title: a.action,
+    description: a.target,
+  })) || []
 
-  const accounts = accountsData?.accounts || mockAccounts
-  
-  const enrichmentJobs = enrichmentsData?.map(e => ({
-    id: e.id,
-    accountName: e.companyName,
-    progress: e.enrichmentProgress?.progress || 0,
-    stage: e.enrichmentProgress?.currentStep || e.status,
-    status: e.status === 'completed' ? 'completed' as const : 
-            e.status === 'failed' ? 'failed' as const : 
-            'in_progress' as const,
-    startedAt: e.createdAt,
-  })) || mockEnrichmentJobs
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -70,31 +52,24 @@ export default function DashboardPage() {
           ]}
         />
         <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
-          {/* Quick Actions */}
           <QuickActions />
 
-          {/* Metrics Overview */}
-          <MetricsCards metrics={metrics} />
+          <MetricsCards metrics={statsData} />
 
-          {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Activity Feed */}
             <div className="lg:col-span-2">
               <ActivityFeed activities={activities} />
             </div>
 
-            {/* Enrichment Status */}
             <div className="space-y-6">
-              <EnrichmentStatus jobs={enrichmentJobs} />
+              <EnrichmentStatus jobs={enrichmentsData || []} />
             </div>
           </div>
 
-          {/* Accounts Table */}
-          <AccountsTable accounts={accounts} />
+          <AccountsTable accounts={accountsData?.accounts || []} />
 
-          {/* Tech Stack Chart */}
           <div className="grid gap-6 lg:grid-cols-2">
-            <TechStackChart data={metrics.topTechStacks} />
+            <TechStackChart data={statsData.techStackDistribution || []} />
             <div className="flex items-center justify-center rounded-xl border border-dashed border-muted-foreground/25 p-8">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">

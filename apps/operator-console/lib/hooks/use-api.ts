@@ -15,20 +15,68 @@ import {
   type DashboardStats,
 } from '@/lib/api-client';
 
+const fetcher = (url: string) => fetch(url).then(res => res.json()).then(res => res.result || res.data || res);
+
+// ============================================
+// Snapshot Hook (Real Backend Data)
+// ============================================
+
+export function useSnapshot() {
+  return useSWR('/api/console/snapshot', fetcher, {
+    refreshInterval: 15000,
+  });
+}
+
 // ============================================
 // Dashboard Hooks
 // ============================================
 
 export function useDashboardStats() {
-  return useSWR<DashboardStats>('dashboard-stats', () => api.dashboard.getStats(), {
-    refreshInterval: 30000, // Refresh every 30 seconds
-  });
+  const { data: snapshot, ...rest } = useSnapshot();
+
+  const stats = snapshot ? {
+    totalAccounts: snapshot.overview?.intelligenceStatus?.accountsIndexed || 0,
+    enrichedAccounts: snapshot.overview?.intelligenceStatus?.peopleIndexed || 0, // Approx
+    activeScans: snapshot.jobs?.running || 0,
+    osintReports: snapshot.research?.briefs?.length || 0,
+    recentActivity: (snapshot.signals?.recent || []).slice(0, 10).map((s: any) => ({
+      id: s.id,
+      type: 'scan',
+      action: s.signalType,
+      target: s.accountName,
+      timestamp: s.timestamp
+    })),
+    techStackDistribution: (snapshot.entities?.accounts || [])
+      .flatMap((a: any) => a.technologies || [])
+      .reduce((acc: any, tech: string) => {
+        const existing = acc.find((t: any) => t.category === tech);
+        if (existing) existing.count++;
+        else acc.push({ category: tech, count: 1 });
+        return acc;
+      }, [])
+      .sort((a: any, b: any) => b.count - a.count)
+      .slice(0, 8),
+    enrichmentQueue: {
+      pending: snapshot.jobs?.queued || 0,
+      processing: snapshot.jobs?.running || 0,
+      completed: 0,
+      failed: 0,
+    }
+  } : undefined;
+
+  return { data: stats as DashboardStats, ...rest };
 }
 
 export function useRecentActivity(limit?: number) {
-  return useSWR(['recent-activity', limit], () => api.dashboard.getActivity(limit), {
-    refreshInterval: 10000, // Refresh every 10 seconds
-  });
+  const { data: snapshot, ...rest } = useSnapshot();
+  const activities = snapshot ? (snapshot.signals?.recent || []).slice(0, limit || 10).map((s: any) => ({
+    id: s.id,
+    type: 'scan',
+    action: s.signalType,
+    target: s.accountName,
+    timestamp: s.timestamp
+  })) : undefined;
+  return { data: activities, ...rest };
 }
 
 // ============================================
@@ -41,10 +89,7 @@ export function useScan(scanId: string | null) {
     () => api.scanner.getScan(scanId!),
     {
       refreshInterval: (data) => {
-        // Poll more frequently while scanning
-        if (data?.status === 'pending' || data?.status === 'scanning') {
-          return 2000;
-        }
+        if (data?.status === 'pending' || data?.status === 'scanning') return 2000;
         return 0;
       },
     }
@@ -60,7 +105,6 @@ export function useStartScan() {
     'start-scan',
     async (_, { arg }: { arg: ScanRequest }) => {
       const result = await api.scanner.startScan(arg);
-      // Invalidate scan history
       mutate((key) => Array.isArray(key) && key[0] === 'scan-history');
       return result;
     }
@@ -74,15 +118,7 @@ export function useStartScan() {
 export function useOsintReport(reportId: string | null) {
   return useSWR<OsintReport>(
     reportId ? ['osint-report', reportId] : null,
-    () => api.osint.getReport(reportId!),
-    {
-      refreshInterval: (data) => {
-        if (data?.status === 'pending' || data?.status === 'processing') {
-          return 3000;
-        }
-        return 0;
-      },
-    }
+    () => api.osint.getReport(reportId!)
   );
 }
 
@@ -94,9 +130,7 @@ export function useStartOsintReport() {
   return useSWRMutation(
     'start-osint',
     async (_, { arg }: { arg: OsintRequest }) => {
-      const result = await api.osint.startReport(arg);
-      mutate((key) => Array.isArray(key) && key[0] === 'osint-reports');
-      return result;
+      return await api.osint.startReport(arg);
     }
   );
 }
@@ -108,31 +142,35 @@ export function useStartOsintReport() {
 export function useEnrichment(enrichmentId: string | null) {
   return useSWR<EnrichedAccount>(
     enrichmentId ? ['enrichment', enrichmentId] : null,
-    () => api.enrichment.getEnrichment(enrichmentId!),
-    {
-      refreshInterval: (data) => {
-        if (data?.status === 'pending' || data?.status === 'enriching') {
-          return 2000;
-        }
-        return 0;
-      },
-    }
+    () => api.enrichment.getEnrichment(enrichmentId!)
   );
 }
 
 export function useEnrichments(status?: string) {
-  return useSWR(['enrichments', status], () => api.enrichment.getEnrichments(status), {
-    refreshInterval: 15000,
-  });
+  const { data: snapshot, ...rest } = useSnapshot();
+  
+  const enrichments = snapshot ? snapshot.jobs?.recent?.map((j: any) => ({
+    id: j.id,
+    companyName: j.targetEntity || j.id.split('.').pop() || j.id,
+    domain: '',
+    status: j.status === 'running' || j.status === 'in_progress' ? 'enriching' : j.status,
+    enrichmentProgress: {
+      stage: j.currentStage || 'Processing',
+      progress: j.status === 'completed' ? 100 : j.status === 'running' ? 50 : j.status === 'failed' ? 100 : 0,
+      currentStep: j.currentStage || j.jobType || j.status
+    },
+    createdAt: j.updatedAt,
+    updatedAt: j.updatedAt,
+  })) : undefined;
+
+  return { data: enrichments, ...rest };
 }
 
 export function useStartEnrichment() {
   return useSWRMutation(
     'start-enrichment',
     async (_, { arg }: { arg: EnrichmentRequest }) => {
-      const result = await api.enrichment.startEnrichment(arg);
-      mutate((key) => Array.isArray(key) && key[0] === 'enrichments');
-      return result;
+      return await api.enrichment.startEnrichment(arg);
     }
   );
 }
@@ -141,9 +179,7 @@ export function useBulkEnrichment() {
   return useSWRMutation(
     'bulk-enrichment',
     async (_, { arg }: { arg: EnrichmentRequest[] }) => {
-      const result = await api.enrichment.bulkEnrich(arg);
-      mutate((key) => Array.isArray(key) && key[0] === 'enrichments');
-      return result;
+      return await api.enrichment.bulkEnrich(arg);
     }
   );
 }
@@ -153,13 +189,28 @@ export function useBulkEnrichment() {
 // ============================================
 
 export function useAccounts(filters?: AccountsFilter) {
-  return useSWR(
-    ['accounts', filters],
-    () => api.accounts.getAccounts(filters),
-    {
-      refreshInterval: 30000,
-    }
-  );
+  const { data: snapshot, ...rest } = useSnapshot();
+
+  const accounts = snapshot ? {
+    accounts: (snapshot.entities?.accounts || []).map((a: any) => ({
+      id: a.id,
+      name: a.name,
+      domain: a.domain || 'unknown.com',
+      industry: 'Unknown',
+      employeeCount: '-',
+      revenue: '-',
+      status: a.completion > 80 ? 'qualified' : 'enriched',
+      enrichmentStatus: 'completed',
+      score: a.opportunityScore || 0,
+      signals: [],
+      lastActivity: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })),
+    total: snapshot.overview?.intelligenceStatus?.accountsIndexed || 0,
+  } : undefined;
+
+  return { data: accounts, ...rest };
 }
 
 export function useAccount(accountId: string | null) {
@@ -170,37 +221,15 @@ export function useAccount(accountId: string | null) {
 }
 
 export function useCreateAccount() {
-  return useSWRMutation(
-    'create-account',
-    async (_, { arg }: { arg: Partial<Account> }) => {
-      const result = await api.accounts.createAccount(arg);
-      mutate((key) => Array.isArray(key) && key[0] === 'accounts');
-      return result;
-    }
-  );
+  return useSWRMutation('create-account', async (_, { arg }: { arg: Partial<Account> }) => api.accounts.createAccount(arg));
 }
 
 export function useUpdateAccount() {
-  return useSWRMutation(
-    'update-account',
-    async (_, { arg }: { arg: { accountId: string; data: Partial<Account> } }) => {
-      const result = await api.accounts.updateAccount(arg.accountId, arg.data);
-      mutate((key) => Array.isArray(key) && key[0] === 'accounts');
-      mutate(['account', arg.accountId]);
-      return result;
-    }
-  );
+  return useSWRMutation('update-account', async (_, { arg }: { arg: { accountId: string; data: Partial<Account> } }) => api.accounts.updateAccount(arg.accountId, arg.data));
 }
 
 export function useDeleteAccount() {
-  return useSWRMutation(
-    'delete-account',
-    async (_, { arg }: { arg: string }) => {
-      const result = await api.accounts.deleteAccount(arg);
-      mutate((key) => Array.isArray(key) && key[0] === 'accounts');
-      return result;
-    }
-  );
+  return useSWRMutation('delete-account', async (_, { arg }: { arg: string }) => api.accounts.deleteAccount(arg));
 }
 
 // ============================================
@@ -208,19 +237,9 @@ export function useDeleteAccount() {
 // ============================================
 
 export function useAnalyzeLinkedIn() {
-  return useSWRMutation(
-    'analyze-linkedin',
-    async (_, { arg }: { arg: string }) => {
-      return api.linkedin.analyzeProfile(arg);
-    }
-  );
+  return useSWRMutation('analyze-linkedin', async (_, { arg }: { arg: string }) => api.linkedin.analyzeProfile(arg));
 }
 
 export function useFindLinkedInProfiles() {
-  return useSWRMutation(
-    'find-linkedin-profiles',
-    async (_, { arg }: { arg: { companyName: string; titles?: string[] } }) => {
-      return api.linkedin.findProfiles(arg.companyName, arg.titles);
-    }
-  );
+  return useSWRMutation('find-linkedin-profiles', async (_, { arg }: { arg: { companyName: string; titles?: string[] } }) => api.linkedin.findProfiles(arg.companyName, arg.titles));
 }

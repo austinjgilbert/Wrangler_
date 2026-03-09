@@ -6,7 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import type { EnrichmentJob } from '@/lib/types'
-import { enrichmentStages } from '@/lib/mock-data'
+
+const enrichmentStages = [
+  'Account Validation',
+  'Domain Resolution',
+  'Page Crawling',
+  'Technology Detection',
+  'Source Selection',
+  'Signal Extraction',
+  'Knowledge Graph Update',
+];
 
 interface EnrichmentStatusProps {
   jobs: EnrichmentJob[]
@@ -44,7 +53,7 @@ export function EnrichmentStatus({ jobs }: EnrichmentStatusProps) {
             </div>
           ) : (
             jobs.map((job) => {
-              const StatusIcon = statusIcons[job.status]
+              const StatusIcon = statusIcons[job.status] || Clock
               const progress = (job.currentStage / job.totalStages) * 100
               const currentStageName =
                 job.status === 'queued'
@@ -56,7 +65,7 @@ export function EnrichmentStatus({ jobs }: EnrichmentStatusProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <StatusIcon
-                        className={`size-4 ${statusColors[job.status]} ${
+                        className={`size-4 ${statusColors[job.status] || ''} ${
                           job.status === 'in_progress' ? 'animate-spin' : ''
                         }`}
                       />

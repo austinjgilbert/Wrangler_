@@ -6,12 +6,31 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { AccountsGrid } from '@/components/accounts/accounts-grid'
 import { AccountFilters } from '@/components/accounts/account-filters'
-import { mockAccounts } from '@/lib/mock-data'
+import { useAccounts } from '@/lib/hooks/use-api'
 import type { Account } from '@/lib/types'
+import { Loader2 } from 'lucide-react'
 
 export default function AccountsPage() {
-  const [filteredAccounts, setFilteredAccounts] = useState<Account[]>(mockAccounts)
+  const { data: accountsData } = useAccounts()
+  const accounts = (accountsData?.accounts || []) as Account[]
+  const [filteredAccounts, setFilteredAccounts] = useState<Account[] | null>(null)
   const [view, setView] = useState<'grid' | 'table'>('grid')
+
+  if (!accountsData) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <DashboardHeader breadcrumbs={[{ label: 'Accounts' }]} />
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    )
+  }
+
+  const displayAccounts = filteredAccounts || accounts;
 
   return (
     <SidebarProvider>
@@ -33,13 +52,13 @@ export default function AccountsPage() {
           </div>
 
           <AccountFilters
-            accounts={mockAccounts}
+            accounts={accounts}
             onFilter={setFilteredAccounts}
             view={view}
             onViewChange={setView}
           />
 
-          <AccountsGrid accounts={filteredAccounts} view={view} />
+          <AccountsGrid accounts={displayAccounts} view={view} />
         </div>
       </SidebarInset>
     </SidebarProvider>

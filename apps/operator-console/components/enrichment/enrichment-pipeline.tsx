@@ -30,7 +30,15 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import type { EnrichmentJob, Account } from '@/lib/types'
-import { enrichmentStages } from '@/lib/mock-data'
+const enrichmentStages = [
+  'Account Validation',
+  'Domain Resolution',
+  'Page Crawling',
+  'Technology Detection',
+  'Source Selection',
+  'Signal Extraction',
+  'Knowledge Graph Update',
+];
 
 interface EnrichmentPipelineProps {
   jobs: EnrichmentJob[]
