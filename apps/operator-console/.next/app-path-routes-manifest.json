@@ -1,6 +1,7 @@
 {
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
+  "/accounts/page": "/accounts",
   "/api/console/account/[accountId]/route": "/api/console/account/[accountId]",
   "/api/console/agents/route": "/api/console/agents",
   "/api/console/brief/[id]/route": "/api/console/brief/[id]",
@@ -18,7 +19,12 @@
   "/api/console/snapshot/route": "/api/console/snapshot",
   "/api/molt/feedback/route": "/api/molt/feedback",
   "/draft/[id]/page": "/draft/[id]",
+  "/enrichment/page": "/enrichment",
+  "/intelligence/osint/page": "/intelligence/osint",
+  "/intelligence/page": "/intelligence",
   "/job/[id]/page": "/job/[id]",
   "/page": "/",
-  "/research/[id]/page": "/research/[id]"
+  "/research/[id]/page": "/research/[id]",
+  "/research/page": "/research",
+  "/research/scan/page": "/research/scan"
 }

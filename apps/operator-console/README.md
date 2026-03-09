@@ -1,33 +1,35 @@
-# Operator Console (Dashboard)
+# Wrangler_Dash
 
-Next.js app for the website-scanner worker: overview, workspace, accounts, signals, patterns, actions, research, jobs, metrics, and system lab.
+This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
-**Part of the same repo as the worker.** From the repo root:
+## Built with v0
 
-- Run worker: `npm run dev` (→ http://localhost:8787)
-- Run this app: `npm run console:dev` (→ http://localhost:3000)
+This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
 
-## Setup
+[Continue working on v0 →](https://v0.app/chat/projects/prj_22O3AokaBYxQ5oFyNmAhFJT6jx1h)
 
-```bash
-# From repo root
-npm run console:dev
-```
+## Getting Started
 
-Or from this directory:
+First, run the development server:
 
 ```bash
-cd apps/operator-console
-npm install
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
 ```
 
-## Worker URL
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-The app proxies API calls to the worker. Default: `http://127.0.0.1:8787` (see `lib/server-proxy.ts`). Override with `WORKER_BASE_URL` in `.env.local` or environment.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Structure
+## Learn More
 
-- `app/` — Next.js App Router (pages, API routes that proxy to worker)
-- `components/` — Layout, command palette, section views (Overview, Workspace, Graph, Timeline, Pattern Discovery, Intelligence Map, etc.)
-- `lib/` — Types, API client, server proxy, pattern/territory/outcome data helpers
+To learn more, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+
+<a href="https://v0.app/chat/api/kiro/clone/austinjgilbert/Wrangler_Dash" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>

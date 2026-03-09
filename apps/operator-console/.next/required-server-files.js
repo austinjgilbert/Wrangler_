@@ -4,14 +4,14 @@ self.__SERVER_FILES_MANIFEST={
     "env": {},
     "webpack": null,
     "typescript": {
-      "ignoreBuildErrors": false
+      "ignoreBuildErrors": true
     },
     "typedRoutes": false,
     "distDir": ".next",
     "cleanDistDir": true,
     "assetPrefix": "",
     "cacheMaxMemorySize": 52428800,
-    "configOrigin": "next.config.ts",
+    "configOrigin": "next.config.mjs",
     "useFileSystemPublicRoutes": true,
     "generateEtags": true,
     "pageExtensions": [
@@ -67,7 +67,7 @@ self.__SERVER_FILES_MANIFEST={
       "qualities": [
         75
       ],
-      "unoptimized": false
+      "unoptimized": true
     },
     "devIndicators": {
       "position": "bottom-left"
@@ -83,7 +83,7 @@ self.__SERVER_FILES_MANIFEST={
     "productionBrowserSourceMaps": false,
     "excludeDefaultMomentLocales": true,
     "reactProductionProfiling": false,
-    "reactStrictMode": true,
+    "reactStrictMode": null,
     "reactMaxHeadersLength": 6000,
     "httpAgentOptions": {
       "keepAlive": true
@@ -100,7 +100,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/Users/austin.gilbert/website-scanner-worker/apps/operator-console",
+    "outputFileTracingRoot": "/Users/austin.gilbert",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -291,14 +291,14 @@ self.__SERVER_FILES_MANIFEST={
     },
     "htmlLimitedBots": "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight",
     "bundlePagesRouterDependencies": false,
-    "configFileName": "next.config.ts",
+    "configFileName": "next.config.mjs",
     "turbopack": {
-      "root": "/Users/austin.gilbert/website-scanner-worker/apps/operator-console"
+      "root": "/Users/austin.gilbert"
     },
     "distDirRoot": ".next"
   },
   "appDir": "/Users/austin.gilbert/website-scanner-worker/apps/operator-console",
-  "relativeAppDir": "",
+  "relativeAppDir": "website-scanner-worker/apps/operator-console",
   "files": [
     ".next/routes-manifest.json",
     ".next/server/pages-manifest.json",

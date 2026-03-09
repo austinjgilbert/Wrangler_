@@ -98,6 +98,12 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/accounts",
+      "regex": "^/accounts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/accounts(?:/)?$"
+    },
+    {
       "page": "/api/console/agents",
       "regex": "^/api/console/agents(?:/)?$",
       "routeKeys": {},
@@ -168,6 +174,36 @@
       "regex": "^/api/molt/feedback(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/molt/feedback(?:/)?$"
+    },
+    {
+      "page": "/enrichment",
+      "regex": "^/enrichment(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/enrichment(?:/)?$"
+    },
+    {
+      "page": "/intelligence",
+      "regex": "^/intelligence(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/intelligence(?:/)?$"
+    },
+    {
+      "page": "/intelligence/osint",
+      "regex": "^/intelligence/osint(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/intelligence/osint(?:/)?$"
+    },
+    {
+      "page": "/research",
+      "regex": "^/research(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/research(?:/)?$"
+    },
+    {
+      "page": "/research/scan",
+      "regex": "^/research/scan(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/research/scan(?:/)?$"
     }
   ],
   "dataRoutes": [],
