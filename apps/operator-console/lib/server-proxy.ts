@@ -1,7 +1,7 @@
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8787';
 
 export function workerBaseUrl() {
-  return process.env.WORKER_BASE_URL || DEFAULT_BASE_URL;
+  return process.env.NEXT_PUBLIC_API_URL || process.env.WORKER_BASE_URL || DEFAULT_BASE_URL;
 }
 
 export function workerHeaders() {

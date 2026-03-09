@@ -8198,6 +8198,17 @@ function JobsView(props) {
                                                 fileName: "[project]/components/operator-console.tsx",
                                                 lineNumber: 1387,
                                                 columnNumber: 17
+                                            }, this),
+                                            job.currentStage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "mt-1 truncate text-xs font-medium text-[var(--accent)]",
+                                                children: [
+                                                    "Stage: ",
+                                                    job.currentStage
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/components/operator-console.tsx",
+                                                lineNumber: 1389,
+                                                columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
@@ -8215,7 +8226,7 @@ function JobsView(props) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1390,
+                                                lineNumber: 1395,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8225,7 +8236,7 @@ function JobsView(props) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1391,
+                                                lineNumber: 1396,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8235,13 +8246,13 @@ function JobsView(props) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1392,
+                                                lineNumber: 1397,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1389,
+                                        lineNumber: 1394,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8251,18 +8262,18 @@ function JobsView(props) {
                                             children: job.error
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1395,
+                                            lineNumber: 1400,
                                             columnNumber: 30
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             children: formatTime(job.updatedAt)
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1395,
+                                            lineNumber: 1400,
                                             columnNumber: 88
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1394,
+                                        lineNumber: 1399,
                                         columnNumber: 15
                                     }, this)
                                 ]
@@ -8281,7 +8292,7 @@ function JobsView(props) {
                         children: "Click a job to open its detail page."
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1401,
+                        lineNumber: 1406,
                         columnNumber: 11
                     }, this)
                 ]
@@ -8310,7 +8321,7 @@ function MetricsView(props) {
                 description: "Confidence calibration, operator productivity, and reliability trends."
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1416,
+                lineNumber: 1421,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8321,12 +8332,12 @@ function MetricsView(props) {
                         tone: metric.severity === 'high' ? 'danger' : metric.severity === 'medium' ? 'warning' : 'neutral'
                     }, metric.metricType, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1419,
+                        lineNumber: 1424,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1417,
+                lineNumber: 1422,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8340,7 +8351,7 @@ function MetricsView(props) {
                             value: snap.actions.queue.totalActions
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1424,
+                            lineNumber: 1429,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8348,7 +8359,7 @@ function MetricsView(props) {
                             value: snap.research.drafts.length
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1425,
+                            lineNumber: 1430,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8356,7 +8367,7 @@ function MetricsView(props) {
                             value: snap.overview.intelligenceStatus.activeOpportunities
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1426,
+                            lineNumber: 1431,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8365,7 +8376,7 @@ function MetricsView(props) {
                             tone: snap.jobs.running > 0 ? 'warning' : 'neutral'
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1427,
+                            lineNumber: 1432,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8373,18 +8384,18 @@ function MetricsView(props) {
                             value: snap.overview.intelligenceStatus.signalsToday
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1428,
+                            lineNumber: 1433,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1423,
+                    lineNumber: 1428,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1422,
+                lineNumber: 1427,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8395,7 +8406,7 @@ function MetricsView(props) {
                     children: "No activity recorded yet. Use Workspace or run commands to see activity."
                 }, void 0, false, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1433,
+                    lineNumber: 1438,
                     columnNumber: 11
                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
                     className: "space-y-2",
@@ -8407,7 +8418,7 @@ function MetricsView(props) {
                                     children: new Date(a.at).toLocaleTimeString()
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1438,
+                                    lineNumber: 1443,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8415,23 +8426,23 @@ function MetricsView(props) {
                                     children: a.label
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1439,
+                                    lineNumber: 1444,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, a.id, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1437,
+                            lineNumber: 1442,
                             columnNumber: 15
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1435,
+                    lineNumber: 1440,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1431,
+                lineNumber: 1436,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8442,18 +8453,18 @@ function MetricsView(props) {
                     children: JSON.stringify(snap.metrics.drift, null, 2)
                 }, void 0, false, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1446,
+                    lineNumber: 1451,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1445,
+                lineNumber: 1450,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1415,
+        lineNumber: 1420,
         columnNumber: 5
     }, this);
 }
@@ -8470,7 +8481,7 @@ function SystemLabView(props) {
                 description: "Developer console + intelligence control panel for the platform."
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1472,
+                lineNumber: 1477,
                 columnNumber: 7
             }, this),
             strat && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8489,7 +8500,7 @@ function SystemLabView(props) {
                                             children: strat.name
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1479,
+                                            lineNumber: 1484,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8501,13 +8512,13 @@ function SystemLabView(props) {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1480,
+                                            lineNumber: 1485,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1478,
+                                    lineNumber: 1483,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8517,13 +8528,13 @@ function SystemLabView(props) {
                                     children: "Dismiss"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1482,
+                                    lineNumber: 1487,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1477,
+                            lineNumber: 1482,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8533,7 +8544,7 @@ function SystemLabView(props) {
                                     children: "Accounts affected"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1487,
+                                    lineNumber: 1492,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8541,14 +8552,14 @@ function SystemLabView(props) {
                                     children: strat.accountsAffected
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1488,
+                                    lineNumber: 1493,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     children: "New actions (est.)"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1489,
+                                    lineNumber: 1494,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8556,14 +8567,14 @@ function SystemLabView(props) {
                                     children: strat.newActionsEstimated
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1490,
+                                    lineNumber: 1495,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     children: "Recommended"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1491,
+                                    lineNumber: 1496,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8572,18 +8583,18 @@ function SystemLabView(props) {
                                         children: strat.recommended ? 'Yes' : 'Review'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1492,
+                                        lineNumber: 1497,
                                         columnNumber: 20
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1492,
+                                    lineNumber: 1497,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1486,
+                            lineNumber: 1491,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8591,7 +8602,7 @@ function SystemLabView(props) {
                             children: strat.scoreChangeSummary
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1494,
+                            lineNumber: 1499,
                             columnNumber: 13
                         }, this),
                         strat.risks.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8601,7 +8612,7 @@ function SystemLabView(props) {
                                     children: "Risks"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1497,
+                                    lineNumber: 1502,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -8610,18 +8621,18 @@ function SystemLabView(props) {
                                             children: r
                                         }, i, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1500,
+                                            lineNumber: 1505,
                                             columnNumber: 21
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1498,
+                                    lineNumber: 1503,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1496,
+                            lineNumber: 1501,
                             columnNumber: 15
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8632,7 +8643,7 @@ function SystemLabView(props) {
                                     onClick: ()=>props.onCommand('promote-pattern')
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1506,
+                                    lineNumber: 1511,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -8640,24 +8651,24 @@ function SystemLabView(props) {
                                     onClick: ()=>props.setStrategySimulationResult(null)
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1507,
+                                    lineNumber: 1512,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1505,
+                            lineNumber: 1510,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1476,
+                    lineNumber: 1481,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1475,
+                lineNumber: 1480,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8668,7 +8679,7 @@ function SystemLabView(props) {
                         value: lab.engineStatus.signalsProcessedToday
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1514,
+                        lineNumber: 1519,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8676,7 +8687,7 @@ function SystemLabView(props) {
                         value: lab.engineStatus.patternsActive
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1515,
+                        lineNumber: 1520,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8684,7 +8695,7 @@ function SystemLabView(props) {
                         value: lab.engineStatus.draftsGenerated
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1516,
+                        lineNumber: 1521,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8693,13 +8704,13 @@ function SystemLabView(props) {
                         tone: lab.engineStatus.driftRisk === 'HIGH' ? 'danger' : lab.engineStatus.driftRisk === 'MEDIUM' ? 'warning' : 'success'
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1517,
+                        lineNumber: 1522,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1513,
+                lineNumber: 1518,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8717,7 +8728,7 @@ function SystemLabView(props) {
                                             children: capability.label
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1525,
+                                            lineNumber: 1530,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -8725,23 +8736,23 @@ function SystemLabView(props) {
                                             children: capability.enabled ? 'enabled' : 'off'
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1526,
+                                            lineNumber: 1531,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, capability.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1524,
+                                    lineNumber: 1529,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1522,
+                            lineNumber: 1527,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1521,
+                        lineNumber: 1526,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8761,7 +8772,7 @@ function SystemLabView(props) {
                                                         children: operation.label
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1538,
+                                                        lineNumber: 1543,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8775,13 +8786,13 @@ function SystemLabView(props) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1539,
+                                                        lineNumber: 1544,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1537,
+                                                lineNumber: 1542,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -8789,34 +8800,34 @@ function SystemLabView(props) {
                                                 onClick: ()=>props.onCommand(mapBatchOperation(operation.id))
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1543,
+                                                lineNumber: 1548,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1536,
+                                        lineNumber: 1541,
                                         columnNumber: 17
                                     }, this)
                                 }, operation.id, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1535,
+                                    lineNumber: 1540,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1533,
+                            lineNumber: 1538,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1532,
+                        lineNumber: 1537,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1520,
+                lineNumber: 1525,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8834,7 +8845,7 @@ function SystemLabView(props) {
                                         value: lab.learningMode.operatorFeedbackCaptured
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1554,
+                                        lineNumber: 1559,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8842,7 +8853,7 @@ function SystemLabView(props) {
                                         value: lab.learningMode.signalWeightsUpdated
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1555,
+                                        lineNumber: 1560,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8850,7 +8861,7 @@ function SystemLabView(props) {
                                         value: lab.learningMode.patternsStrengthened
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1556,
+                                        lineNumber: 1561,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -8858,13 +8869,13 @@ function SystemLabView(props) {
                                         value: lab.learningMode.patternsWeakened
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1557,
+                                        lineNumber: 1562,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1553,
+                                lineNumber: 1558,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8875,7 +8886,7 @@ function SystemLabView(props) {
                                         children: lab.learningMode.enabled ? 'Learning enabled' : 'Learning off'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1560,
+                                        lineNumber: 1565,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -8883,13 +8894,13 @@ function SystemLabView(props) {
                                         children: lab.learningMode.safeLearningGuardrails ? 'Safe guardrails enabled' : 'Guardrails disabled'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1561,
+                                        lineNumber: 1566,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1559,
+                                lineNumber: 1564,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8905,18 +8916,18 @@ function SystemLabView(props) {
                                         ]
                                     }, event.id, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1567,
+                                        lineNumber: 1572,
                                         columnNumber: 15
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1565,
+                                lineNumber: 1570,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1552,
+                        lineNumber: 1557,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -8937,7 +8948,7 @@ function SystemLabView(props) {
                                                             children: pattern.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1580,
+                                                            lineNumber: 1585,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8953,26 +8964,26 @@ function SystemLabView(props) {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1581,
+                                                            lineNumber: 1586,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1579,
+                                                    lineNumber: 1584,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                     children: pattern.lifecycleState
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1585,
+                                                    lineNumber: 1590,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1578,
+                                            lineNumber: 1583,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8983,7 +8994,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('preview strategy')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1588,
+                                                    lineNumber: 1593,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -8991,7 +9002,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('preview strategy')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1589,
+                                                    lineNumber: 1594,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -8999,7 +9010,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('queue anti drift maintenance')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1590,
+                                                    lineNumber: 1595,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9007,35 +9018,35 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onRunSimulation()
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1591,
+                                                    lineNumber: 1596,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1587,
+                                            lineNumber: 1592,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, pattern.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1577,
+                                    lineNumber: 1582,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1575,
+                            lineNumber: 1580,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1574,
+                        lineNumber: 1579,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1551,
+                lineNumber: 1556,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9054,7 +9065,7 @@ function SystemLabView(props) {
                                             children: key.replace(/([A-Z])/g, ' $1')
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1604,
+                                            lineNumber: 1609,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9062,7 +9073,7 @@ function SystemLabView(props) {
                                             children: policy?.versionId || 'No version'
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1605,
+                                            lineNumber: 1610,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9073,7 +9084,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('preview strategy')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1607,
+                                                    lineNumber: 1612,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9081,7 +9092,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onRunSimulation()
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1608,
+                                                    lineNumber: 1613,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9089,7 +9100,7 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('generate sdr actions')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1609,
+                                                    lineNumber: 1614,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9097,29 +9108,29 @@ function SystemLabView(props) {
                                                     onClick: ()=>props.onCommand('preview strategy')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1610,
+                                                    lineNumber: 1615,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1606,
+                                            lineNumber: 1611,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, key, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1603,
+                                    lineNumber: 1608,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1601,
+                            lineNumber: 1606,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1600,
+                        lineNumber: 1605,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -9142,13 +9153,13 @@ function SystemLabView(props) {
                                                         className: "mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm outline-none"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1622,
+                                                        lineNumber: 1627,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1620,
+                                                lineNumber: 1625,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -9162,13 +9173,13 @@ function SystemLabView(props) {
                                                         className: "mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm outline-none"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1630,
+                                                        lineNumber: 1635,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1628,
+                                                lineNumber: 1633,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9176,13 +9187,13 @@ function SystemLabView(props) {
                                                 onClick: ()=>props.onRunSimulation()
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1637,
+                                                lineNumber: 1642,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1619,
+                                        lineNumber: 1624,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9197,7 +9208,7 @@ function SystemLabView(props) {
                                                         children: fixture.name
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1647,
+                                                        lineNumber: 1652,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9205,24 +9216,24 @@ function SystemLabView(props) {
                                                         children: fixture.description
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1648,
+                                                        lineNumber: 1653,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, fixture.id, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1641,
+                                                lineNumber: 1646,
                                                 columnNumber: 17
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1639,
+                                        lineNumber: 1644,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1618,
+                                lineNumber: 1623,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("pre", {
@@ -9230,19 +9241,19 @@ function SystemLabView(props) {
                                 children: JSON.stringify(props.simulationResult || lab.scenarioSimulator.suiteSummary, null, 2)
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1653,
+                                lineNumber: 1658,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1617,
+                        lineNumber: 1622,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1599,
+                lineNumber: 1604,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9263,7 +9274,7 @@ function SystemLabView(props) {
                                                 children: "Active modules"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1663,
+                                                lineNumber: 1668,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9272,18 +9283,18 @@ function SystemLabView(props) {
                                                         children: module
                                                     }, module, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1666,
+                                                        lineNumber: 1671,
                                                         columnNumber: 19
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1664,
+                                                lineNumber: 1669,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1662,
+                                        lineNumber: 1667,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9294,7 +9305,7 @@ function SystemLabView(props) {
                                                 children: "Services"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1671,
+                                                lineNumber: 1676,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9303,24 +9314,24 @@ function SystemLabView(props) {
                                                         children: service
                                                     }, service, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1674,
+                                                        lineNumber: 1679,
                                                         columnNumber: 19
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1672,
+                                                lineNumber: 1677,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1670,
+                                        lineNumber: 1675,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1661,
+                                lineNumber: 1666,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9331,7 +9342,7 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onCommand('generate sdr actions')
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1680,
+                                        lineNumber: 1685,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9339,7 +9350,7 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onDiagnostic('test_opportunity_engine')
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1681,
+                                        lineNumber: 1686,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9347,19 +9358,19 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onCommand('preview strategy')
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1682,
+                                        lineNumber: 1687,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1679,
+                                lineNumber: 1684,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1660,
+                        lineNumber: 1665,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -9376,7 +9387,7 @@ function SystemLabView(props) {
                                                 children: metric.label
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1690,
+                                                lineNumber: 1695,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9384,7 +9395,7 @@ function SystemLabView(props) {
                                                 children: metric.metricType
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1691,
+                                                lineNumber: 1696,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9395,7 +9406,7 @@ function SystemLabView(props) {
                                                         children: metric.value
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1693,
+                                                        lineNumber: 1698,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -9403,24 +9414,24 @@ function SystemLabView(props) {
                                                         children: metric.severity
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1694,
+                                                        lineNumber: 1699,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1692,
+                                                lineNumber: 1697,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, metric.metricType, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1689,
+                                        lineNumber: 1694,
                                         columnNumber: 15
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1687,
+                                lineNumber: 1692,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9430,12 +9441,12 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onDiagnostic(diagnostic.id)
                                     }, diagnostic.id, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1703,
+                                        lineNumber: 1708,
                                         columnNumber: 15
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1701,
+                                lineNumber: 1706,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("pre", {
@@ -9443,19 +9454,19 @@ function SystemLabView(props) {
                                 children: JSON.stringify(props.commandResult || lab.codeIntelligence, null, 2)
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1706,
+                                lineNumber: 1711,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1686,
+                        lineNumber: 1691,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1659,
+                lineNumber: 1664,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9474,7 +9485,7 @@ function SystemLabView(props) {
                                         tone: "success"
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1715,
+                                        lineNumber: 1720,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -9483,7 +9494,7 @@ function SystemLabView(props) {
                                         tone: lab.autopilot.runtimeHealth.flowsDegraded > 0 ? 'warning' : 'neutral'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1716,
+                                        lineNumber: 1721,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -9492,7 +9503,7 @@ function SystemLabView(props) {
                                         tone: lab.autopilot.runtimeHealth.flowsQuarantined > 0 ? 'danger' : 'neutral'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1717,
+                                        lineNumber: 1722,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -9501,13 +9512,13 @@ function SystemLabView(props) {
                                         tone: lab.autopilot.runtimeHealth.openIncidents > 0 ? 'warning' : 'neutral'
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1718,
+                                        lineNumber: 1723,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1714,
+                                lineNumber: 1719,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9518,7 +9529,7 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onCommand('run autopilot')
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1721,
+                                        lineNumber: 1726,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -9526,13 +9537,13 @@ function SystemLabView(props) {
                                         onClick: ()=>props.onDiagnostic('test_autopilot')
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1722,
+                                        lineNumber: 1727,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1720,
+                                lineNumber: 1725,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9543,13 +9554,13 @@ function SystemLabView(props) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1724,
+                                lineNumber: 1729,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1713,
+                        lineNumber: 1718,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -9573,7 +9584,7 @@ function SystemLabView(props) {
                                                             children: scenario.scenarioId
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1735,
+                                                            lineNumber: 1740,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9585,13 +9596,13 @@ function SystemLabView(props) {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1736,
+                                                            lineNumber: 1741,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1734,
+                                                    lineNumber: 1739,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -9602,13 +9613,13 @@ function SystemLabView(props) {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1738,
+                                                    lineNumber: 1743,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1733,
+                                            lineNumber: 1738,
                                             columnNumber: 17
                                         }, this),
                                         scenario.issues.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9616,29 +9627,29 @@ function SystemLabView(props) {
                                             children: scenario.issues.join(', ')
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1743,
+                                            lineNumber: 1748,
                                             columnNumber: 19
                                         }, this) : null
                                     ]
                                 }, `${scenario.scenarioId}-${scenario.generatedAt}`, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1732,
+                                    lineNumber: 1737,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1730,
+                            lineNumber: 1735,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1729,
+                        lineNumber: 1734,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1712,
+                lineNumber: 1717,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9656,7 +9667,7 @@ function SystemLabView(props) {
                                         value: lab.autopilot.repairActivity.attempted
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1754,
+                                        lineNumber: 1759,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -9665,7 +9676,7 @@ function SystemLabView(props) {
                                         tone: "success"
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1755,
+                                        lineNumber: 1760,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MetricCard, {
@@ -9674,13 +9685,13 @@ function SystemLabView(props) {
                                         tone: "warning"
                                     }, void 0, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1756,
+                                        lineNumber: 1761,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1753,
+                                lineNumber: 1758,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9696,18 +9707,18 @@ function SystemLabView(props) {
                                         ]
                                     }, attempt.attemptId, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1760,
+                                        lineNumber: 1765,
                                         columnNumber: 15
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1758,
+                                lineNumber: 1763,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1752,
+                        lineNumber: 1757,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -9726,7 +9737,7 @@ function SystemLabView(props) {
                                                     children: path.scenarioId
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1772,
+                                                    lineNumber: 1777,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -9737,13 +9748,13 @@ function SystemLabView(props) {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1773,
+                                                    lineNumber: 1778,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1771,
+                                            lineNumber: 1776,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9751,23 +9762,23 @@ function SystemLabView(props) {
                                             children: path.steps.join(' → ')
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1777,
+                                            lineNumber: 1782,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, path.scenarioId, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1770,
+                                    lineNumber: 1775,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1768,
+                            lineNumber: 1773,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1767,
+                        lineNumber: 1772,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -9786,7 +9797,7 @@ function SystemLabView(props) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1786,
+                                        lineNumber: 1791,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9796,7 +9807,7 @@ function SystemLabView(props) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1787,
+                                        lineNumber: 1792,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9806,7 +9817,7 @@ function SystemLabView(props) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1788,
+                                        lineNumber: 1793,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9816,7 +9827,7 @@ function SystemLabView(props) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1789,
+                                        lineNumber: 1794,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9826,19 +9837,19 @@ function SystemLabView(props) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1790,
+                                        lineNumber: 1795,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1785,
+                                lineNumber: 1790,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(EmptyState, {
                                 message: "No autonomy policy stored yet."
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1793,
+                                lineNumber: 1798,
                                 columnNumber: 13
                             }, this),
                             lab.autopilot.quarantinedFlows.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9852,30 +9863,30 @@ function SystemLabView(props) {
                                         ]
                                     }, flow.incidentId, true, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 1798,
+                                        lineNumber: 1803,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 1796,
+                                lineNumber: 1801,
                                 columnNumber: 13
                             }, this) : null
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1783,
+                        lineNumber: 1788,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1751,
+                lineNumber: 1756,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1471,
+        lineNumber: 1476,
         columnNumber: 5
     }, this);
 }
@@ -9895,7 +9906,7 @@ function CapabilitiesView(props) {
                 description: "Human-readable catalog of what the system can do, where to use it, and how to run it."
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1831,
+                lineNumber: 1836,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9914,7 +9925,7 @@ function CapabilitiesView(props) {
                                             children: category
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1838,
+                                            lineNumber: 1843,
                                             columnNumber: 17
                                         }, this),
                                         items.map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9930,7 +9941,7 @@ function CapabilitiesView(props) {
                                                                         children: item.name
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/components/operator-console.tsx",
-                                                                        lineNumber: 1843,
+                                                                        lineNumber: 1848,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9938,13 +9949,13 @@ function CapabilitiesView(props) {
                                                                         children: item.description
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/components/operator-console.tsx",
-                                                                        lineNumber: 1844,
+                                                                        lineNumber: 1849,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1842,
+                                                                lineNumber: 1847,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9954,26 +9965,26 @@ function CapabilitiesView(props) {
                                                                         children: item.entityScope
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/components/operator-console.tsx",
-                                                                        lineNumber: 1847,
+                                                                        lineNumber: 1852,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                                         children: item.outputType
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/components/operator-console.tsx",
-                                                                        lineNumber: 1848,
+                                                                        lineNumber: 1853,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1846,
+                                                                lineNumber: 1851,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1841,
+                                                        lineNumber: 1846,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9983,27 +9994,27 @@ function CapabilitiesView(props) {
                                                                 children: item.canBatch ? 'batch' : 'single'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1852,
+                                                                lineNumber: 1857,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                                 children: item.requiresConfirmation ? 'confirm' : 'direct'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1853,
+                                                                lineNumber: 1858,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                                 children: item.explainabilitySupported ? 'explainable' : 'opaque'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1854,
+                                                                lineNumber: 1859,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1851,
+                                                        lineNumber: 1856,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10014,7 +10025,7 @@ function CapabilitiesView(props) {
                                                                 onClick: ()=>props.onCommand((item.actionCommand || item.name).replace('{domain}', 'fleetfeet.com'))
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1857,
+                                                                lineNumber: 1862,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -10025,35 +10036,35 @@ function CapabilitiesView(props) {
                                                                     ])
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/operator-console.tsx",
-                                                                lineNumber: 1858,
+                                                                lineNumber: 1863,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/operator-console.tsx",
-                                                        lineNumber: 1856,
+                                                        lineNumber: 1861,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, item.id, true, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1840,
+                                                lineNumber: 1845,
                                                 columnNumber: 19
                                             }, this))
                                     ]
                                 }, category, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1837,
+                                    lineNumber: 1842,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1835,
+                            lineNumber: 1840,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1834,
+                        lineNumber: 1839,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10074,7 +10085,7 @@ function CapabilitiesView(props) {
                                                             children: agent.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1880,
+                                                            lineNumber: 1885,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10082,13 +10093,13 @@ function CapabilitiesView(props) {
                                                             children: agent.purpose
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1881,
+                                                            lineNumber: 1886,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1879,
+                                                    lineNumber: 1884,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -10096,13 +10107,13 @@ function CapabilitiesView(props) {
                                                     children: agent.currentStatus
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1883,
+                                                    lineNumber: 1888,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1878,
+                                            lineNumber: 1883,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10110,7 +10121,7 @@ function CapabilitiesView(props) {
                                             children: agent.workflowSteps.join(' → ')
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1887,
+                                            lineNumber: 1892,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10120,20 +10131,20 @@ function CapabilitiesView(props) {
                                                     children: agent.estimatedRuntime
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1891,
+                                                    lineNumber: 1896,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                     children: agent.mutationScope
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1892,
+                                                    lineNumber: 1897,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1890,
+                                            lineNumber: 1895,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10144,7 +10155,7 @@ function CapabilitiesView(props) {
                                                     onClick: ()=>props.onCommand(agent.runCommand.replace('{domain}', 'fleetfeet.com'))
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1895,
+                                                    lineNumber: 1900,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -10152,35 +10163,35 @@ function CapabilitiesView(props) {
                                                     onClick: ()=>props.onCommand('preview strategy')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1896,
+                                                    lineNumber: 1901,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1894,
+                                            lineNumber: 1899,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, agent.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1877,
+                                    lineNumber: 1882,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1875,
+                            lineNumber: 1880,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1874,
+                        lineNumber: 1879,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1833,
+                lineNumber: 1838,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10204,7 +10215,7 @@ function CapabilitiesView(props) {
                                     onChange: (value)=>props.setFlexScope(value)
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1907,
+                                    lineNumber: 1912,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SelectGroup, {
@@ -10219,7 +10230,7 @@ function CapabilitiesView(props) {
                                     onChange: (value)=>props.setFlexOutputMode(value)
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1913,
+                                    lineNumber: 1918,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SelectGroup, {
@@ -10233,13 +10244,13 @@ function CapabilitiesView(props) {
                                     onChange: (value)=>props.setFlexRunMode(value)
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1919,
+                                    lineNumber: 1924,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1906,
+                            lineNumber: 1911,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10253,7 +10264,7 @@ function CapabilitiesView(props) {
                                             children: "Selected Function Chain"
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1928,
+                                            lineNumber: 1933,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10268,20 +10279,20 @@ function CapabilitiesView(props) {
                                                             children: index + 1
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1934,
+                                                            lineNumber: 1939,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: definition?.name || id
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 1935,
+                                                            lineNumber: 1940,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, id, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1933,
+                                                    lineNumber: 1938,
                                                     columnNumber: 21
                                                 }, this);
                                             }) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10289,18 +10300,18 @@ function CapabilitiesView(props) {
                                                 children: "Add functions from the registry to build a workflow."
                                             }, void 0, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 1938,
+                                                lineNumber: 1943,
                                                 columnNumber: 22
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1929,
+                                            lineNumber: 1934,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1927,
+                                    lineNumber: 1932,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10311,7 +10322,7 @@ function CapabilitiesView(props) {
                                             children: "Workflow Preview"
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1942,
+                                            lineNumber: 1947,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10326,7 +10337,7 @@ function CapabilitiesView(props) {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1943,
+                                            lineNumber: 1948,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10337,7 +10348,7 @@ function CapabilitiesView(props) {
                                                     onClick: ()=>props.onCommand(resolveFlexCommand(props.flexSelectedFunctions, props.functionRegistry))
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1947,
+                                                    lineNumber: 1952,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -10345,42 +10356,42 @@ function CapabilitiesView(props) {
                                                     onClick: ()=>props.setFlexSelectedFunctions([])
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 1948,
+                                                    lineNumber: 1953,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 1946,
+                                            lineNumber: 1951,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 1941,
+                                    lineNumber: 1946,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 1926,
+                            lineNumber: 1931,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/operator-console.tsx",
-                    lineNumber: 1905,
+                    lineNumber: 1910,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1904,
+                lineNumber: 1909,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1830,
+        lineNumber: 1835,
         columnNumber: 5
     }, this);
 }
@@ -10394,7 +10405,7 @@ function Header(props) {
                 children: props.eyebrow
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1961,
+                lineNumber: 1966,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10405,20 +10416,20 @@ function Header(props) {
                         children: props.title
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1963,
+                        lineNumber: 1968,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
                         className: "h-4 w-4 text-[var(--muted)]"
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1964,
+                        lineNumber: 1969,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1962,
+                lineNumber: 1967,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -10426,13 +10437,13 @@ function Header(props) {
                 children: props.description
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1966,
+                lineNumber: 1971,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1960,
+        lineNumber: 1965,
         columnNumber: 5
     }, this);
 }
@@ -10449,7 +10460,7 @@ function Panel(props) {
                         children: props.title
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1975,
+                        lineNumber: 1980,
                         columnNumber: 9
                     }, this),
                     props.subtitle ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10457,20 +10468,20 @@ function Panel(props) {
                         children: props.subtitle
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 1976,
+                        lineNumber: 1981,
                         columnNumber: 27
                     }, this) : null
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1974,
+                lineNumber: 1979,
                 columnNumber: 7
             }, this),
             props.children
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1973,
+        lineNumber: 1978,
         columnNumber: 5
     }, this);
 }
@@ -10485,7 +10496,7 @@ function MetricCard(props) {
                 children: props.label
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1993,
+                lineNumber: 1998,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10493,13 +10504,13 @@ function MetricCard(props) {
                 children: props.value
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 1994,
+                lineNumber: 1999,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 1992,
+        lineNumber: 1997,
         columnNumber: 5
     }, this);
 }
@@ -10511,7 +10522,7 @@ function Badge(props) {
         children: props.children
     }, void 0, false, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2007,
+        lineNumber: 2012,
         columnNumber: 10
     }, this);
 }
@@ -10524,7 +10535,7 @@ function ActionButton(props) {
         children: props.label
     }, void 0, false, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2012,
+        lineNumber: 2017,
         columnNumber: 5
     }, this);
 }
@@ -10538,7 +10549,7 @@ function QuickStat(props) {
                 children: props.label
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2025,
+                lineNumber: 2030,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -10546,13 +10557,13 @@ function QuickStat(props) {
                 children: props.value
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2026,
+                lineNumber: 2031,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2024,
+        lineNumber: 2029,
         columnNumber: 5
     }, this);
 }
@@ -10563,7 +10574,7 @@ function EmptyState(props) {
         children: props.message
     }, void 0, false, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2033,
+        lineNumber: 2038,
         columnNumber: 5
     }, this);
 }
@@ -10576,7 +10587,7 @@ function SelectGroup(props) {
                 children: props.label
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2047,
+                lineNumber: 2052,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10588,18 +10599,18 @@ function SelectGroup(props) {
                         children: option
                     }, option, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2050,
+                        lineNumber: 2055,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2048,
+                lineNumber: 2053,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2046,
+        lineNumber: 2051,
         columnNumber: 5
     }, this);
 }
@@ -10619,7 +10630,7 @@ function CopilotPanel(props) {
                                 children: "AI Co-Pilot"
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 2088,
+                                lineNumber: 2093,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10627,7 +10638,7 @@ function CopilotPanel(props) {
                                 children: "Suggestions, Insights, Chat"
                             }, void 0, false, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 2089,
+                                lineNumber: 2094,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10639,13 +10650,13 @@ function CopilotPanel(props) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/operator-console.tsx",
-                                lineNumber: 2090,
+                                lineNumber: 2095,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2087,
+                        lineNumber: 2092,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -10657,18 +10668,18 @@ function CopilotPanel(props) {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2100,
+                            lineNumber: 2105,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2094,
+                        lineNumber: 2099,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2086,
+                lineNumber: 2091,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10692,7 +10703,7 @@ function CopilotPanel(props) {
                                                             children: suggestion.title
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 2111,
+                                                            lineNumber: 2116,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10700,13 +10711,13 @@ function CopilotPanel(props) {
                                                             children: suggestion.description
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/operator-console.tsx",
-                                                            lineNumber: 2112,
+                                                            lineNumber: 2117,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2110,
+                                                    lineNumber: 2115,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -10714,13 +10725,13 @@ function CopilotPanel(props) {
                                                     children: suggestion.priority
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2114,
+                                                    lineNumber: 2119,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2109,
+                                            lineNumber: 2114,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10730,20 +10741,20 @@ function CopilotPanel(props) {
                                                     children: suggestion.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2119,
+                                                    lineNumber: 2124,
                                                     columnNumber: 19
                                                 }, this),
                                                 suggestion.estimatedCount != null ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
                                                     children: suggestion.estimatedCount
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2120,
+                                                    lineNumber: 2125,
                                                     columnNumber: 56
                                                 }, this) : null
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2118,
+                                            lineNumber: 2123,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10754,7 +10765,7 @@ function CopilotPanel(props) {
                                                     onClick: ()=>props.onAction(suggestion.actionCommand, false)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2123,
+                                                    lineNumber: 2128,
                                                     columnNumber: 19
                                                 }, this),
                                                 props.selectedAccountId && state?.suggestionPreview.topCandidateId ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -10765,29 +10776,29 @@ function CopilotPanel(props) {
                                                         })
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2128,
+                                                    lineNumber: 2133,
                                                     columnNumber: 21
                                                 }, this) : null
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2122,
+                                            lineNumber: 2127,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, suggestion.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2108,
+                                    lineNumber: 2113,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2106,
+                            lineNumber: 2111,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2105,
+                        lineNumber: 2110,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10806,7 +10817,7 @@ function CopilotPanel(props) {
                                                     children: insight.title
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2144,
+                                                    lineNumber: 2149,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -10814,13 +10825,13 @@ function CopilotPanel(props) {
                                                     children: insight.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2145,
+                                                    lineNumber: 2150,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2143,
+                                            lineNumber: 2148,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10828,23 +10839,23 @@ function CopilotPanel(props) {
                                             children: insight.summary
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2149,
+                                            lineNumber: 2154,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, insight.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2142,
+                                    lineNumber: 2147,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2140,
+                            lineNumber: 2145,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2139,
+                        lineNumber: 2144,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10860,12 +10871,12 @@ function CopilotPanel(props) {
                                             children: message.text
                                         }, message.id, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2159,
+                                            lineNumber: 2164,
                                             columnNumber: 17
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2157,
+                                    lineNumber: 2162,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -10876,7 +10887,7 @@ function CopilotPanel(props) {
                                     className: "w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm outline-none placeholder:text-[var(--muted)]"
                                 }, void 0, false, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2171,
+                                    lineNumber: 2176,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10887,7 +10898,7 @@ function CopilotPanel(props) {
                                             onClick: ()=>props.onSubmitPrompt(props.prompt)
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2179,
+                                            lineNumber: 2184,
                                             columnNumber: 15
                                         }, this),
                                         (state?.conversationStarters || []).slice(0, 3).map((starter)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -10895,24 +10906,24 @@ function CopilotPanel(props) {
                                                 onClick: ()=>props.onSubmitPrompt(starter)
                                             }, starter, false, {
                                                 fileName: "[project]/components/operator-console.tsx",
-                                                lineNumber: 2181,
+                                                lineNumber: 2186,
                                                 columnNumber: 17
                                             }, this))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2178,
+                                    lineNumber: 2183,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2156,
+                            lineNumber: 2161,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2155,
+                        lineNumber: 2160,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10928,7 +10939,7 @@ function CopilotPanel(props) {
                                             children: update.title
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2191,
+                                            lineNumber: 2196,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -10936,23 +10947,23 @@ function CopilotPanel(props) {
                                             children: update.summary
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2192,
+                                            lineNumber: 2197,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, update.id, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2190,
+                                    lineNumber: 2195,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2188,
+                            lineNumber: 2193,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2187,
+                        lineNumber: 2192,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -10971,7 +10982,7 @@ function CopilotPanel(props) {
                                                     children: alert.summary
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2203,
+                                                    lineNumber: 2208,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Badge, {
@@ -10979,18 +10990,18 @@ function CopilotPanel(props) {
                                                     children: alert.level
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2204,
+                                                    lineNumber: 2209,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2202,
+                                            lineNumber: 2207,
                                             columnNumber: 17
                                         }, this)
                                     }, alert.id, false, {
                                         fileName: "[project]/components/operator-console.tsx",
-                                        lineNumber: 2201,
+                                        lineNumber: 2206,
                                         columnNumber: 15
                                     }, this)),
                                 props.pendingConfirmation ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -11001,7 +11012,7 @@ function CopilotPanel(props) {
                                             children: "Confirmation required"
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2210,
+                                            lineNumber: 2215,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -11009,7 +11020,7 @@ function CopilotPanel(props) {
                                             children: props.pendingConfirmation.message
                                         }, void 0, false, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2211,
+                                            lineNumber: 2216,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -11020,7 +11031,7 @@ function CopilotPanel(props) {
                                                     onClick: props.onConfirm
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2213,
+                                                    lineNumber: 2218,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActionButton, {
@@ -11028,30 +11039,30 @@ function CopilotPanel(props) {
                                                     onClick: props.onCancelConfirmation
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/operator-console.tsx",
-                                                    lineNumber: 2214,
+                                                    lineNumber: 2219,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/operator-console.tsx",
-                                            lineNumber: 2212,
+                                            lineNumber: 2217,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/operator-console.tsx",
-                                    lineNumber: 2209,
+                                    lineNumber: 2214,
                                     columnNumber: 15
                                 }, this) : null
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2199,
+                            lineNumber: 2204,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2198,
+                        lineNumber: 2203,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Panel, {
@@ -11062,24 +11073,24 @@ function CopilotPanel(props) {
                             children: JSON.stringify(props.queryResult || props.simulationResult || props.commandResult || state?.suggestionPreview || {}, null, 2)
                         }, void 0, false, {
                             fileName: "[project]/components/operator-console.tsx",
-                            lineNumber: 2222,
+                            lineNumber: 2227,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/operator-console.tsx",
-                        lineNumber: 2221,
+                        lineNumber: 2226,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/operator-console.tsx",
-                lineNumber: 2104,
+                lineNumber: 2109,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/operator-console.tsx",
-        lineNumber: 2085,
+        lineNumber: 2090,
         columnNumber: 5
     }, this);
 }

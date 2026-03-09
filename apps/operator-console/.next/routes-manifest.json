@@ -28,6 +28,54 @@
         "nxtPaccountId": "nxtPaccountId"
       },
       "namedRegex": "^/api/console/account/(?<nxtPaccountId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/console/brief/[id]",
+      "regex": "^/api/console/brief/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/console/brief/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/console/draft/[draftId]",
+      "regex": "^/api/console/draft/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPdraftId": "nxtPdraftId"
+      },
+      "namedRegex": "^/api/console/draft/(?<nxtPdraftId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/console/job/[id]",
+      "regex": "^/api/console/job/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/console/job/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/draft/[id]",
+      "regex": "^/draft/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/draft/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/job/[id]",
+      "regex": "^/job/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/job/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/research/[id]",
+      "regex": "^/research/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/research/(?<nxtPid>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [

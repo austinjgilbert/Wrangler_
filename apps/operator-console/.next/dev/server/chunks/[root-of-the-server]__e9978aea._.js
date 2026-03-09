@@ -48,7 +48,7 @@ __turbopack_context__.s([
 ]);
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8787';
 function workerBaseUrl() {
-    return process.env.WORKER_BASE_URL || DEFAULT_BASE_URL;
+    return process.env.NEXT_PUBLIC_API_URL || process.env.WORKER_BASE_URL || DEFAULT_BASE_URL;
 }
 function workerHeaders() {
     const headers = {

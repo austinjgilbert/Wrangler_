@@ -69,7 +69,7 @@ Intelligence Memory System
 Use Sanity for recall, summarize, patterns. For "what do we know about X":
 - queryData(type=context). Use contextType=all or contextType=summary, fullInsights=true, contextLimit=20. Pass accountKey or domain for company.
 - Returns: account intelligence, learnings, follow-ups, context. Use fully; don’t over-summarize when they asked for recall.
-- Store interactions: storeData(type=interaction) with sessionId and entities.
+- Store interactions: wranglerIngest() with userPrompt, gptResponse, and referencedAccounts.
 - Auto-enrichment runs in background; no need to trigger for recall/summarize.
 
 Quick examples: "Scan https://example.com" | "Recall prior insights on [brand]" | "Who are the competitors for [company]?" | "Good morning briefing"

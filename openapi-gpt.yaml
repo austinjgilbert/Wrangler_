@@ -1,10 +1,9 @@
 # OpenAPI schema for Custom GPT Actions (max 30 operations).
-# Use this file when configuring your Custom GPT; the full openapi.yaml exceeds the 30-op limit.
 openapi: 3.1.0
 info:
   title: Website Scanner API (GPT)
-  version: 1.0.0
-  description: Website scanner and sales intelligence API — 30 operations for Custom GPT.
+  version: 1.2.0
+  description: Website scanner and strategic intelligence platform API — 30 ops.
 
 servers:
   - url: https://website-scanner.austin-gilbert.workers.dev
@@ -30,148 +29,207 @@ components:
       additionalProperties: true
 
 paths:
-  /memory:
-    get:
-      operationId: memoryRecall
-      summary: Recall everything the system knows about entities (CALL THIS FIRST ON EVERY TURN)
-      description: |
-        Compare notes before responding. Pass domains mentioned by the user, the
-        thread ID, or a freeform query. Returns account intelligence, recent
-        interactions, follow-ups, and thread history. The "brief" field is a
-        pre-formatted text summary you can read at a glance.
-      parameters:
-        - name: domains
-          in: query
-          schema: { type: string }
-          description: Comma-separated domains (e.g. "acme.com,rival.io")
-        - name: q
-          in: query
-          schema: { type: string }
-          description: Freeform prompt — domains are auto-extracted
-        - name: threadId
-          in: query
-          schema: { type: string }
-          description: Thread or session ID for continuity across turns
-        - name: limit
-          in: query
-          schema: { type: integer, default: 10 }
-      responses:
-        "200":
-          description: Recall payload with structured `recall` and human-readable `brief`
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+  /query:
     post:
-      operationId: memorySync
-      summary: Store this exchange AND recall context in one call
-      description: |
-        After composing your response, call this with the user's message and
-        your summary. Returns the same recall payload as GET so you stay
-        up-to-date for the next turn.  This replaces the old
-        storeData(type=interaction) + queryData(type=context) two-call pattern.
+      operationId: queryData
+      summary: Query memory and data from Sanity
+      description: Execute raw GROQ queries. Example body `{"query": "*[_type == 'account']"}`.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userMessage]
               properties:
-                userMessage:
-                  type: string
-                  description: What the user said this turn
-                assistantMessage:
-                  type: string
-                  description: Your response summary (2-3 sentences)
-                domains:
-                  type: array
-                  items: { type: string }
-                  description: Domains discussed (auto-extracted from userMessage if omitted)
-                threadId:
-                  type: string
-                  description: Thread / conversation ID for session continuity
-                tags:
-                  type: array
-                  items: { type: string }
-                  description: Context tags (tech, competitor, research, person, etc.)
-                importance:
-                  type: number
-                  default: 0.6
-                followUpNeeded:
-                  type: boolean
-                  default: false
-                followUpNotes:
-                  type: string
+                query: { type: string }
+                params: { type: object }
       responses:
         "200":
-          description: Stored confirmation + full recall payload
+          description: Query results
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /wrangler/ingest:
+    post:
+      operationId: wranglerIngest
+      summary: Store Wrangler interaction (CALL AFTER RESPONSE)
+      description: Store a Wrangler Q&A exchange and auto-trigger background gap-fill jobs.
+      security: [{ MoltApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userPrompt, gptResponse]
+              properties:
+                userPrompt: { type: string }
+                gptResponse: { type: string }
+                sessionId: { type: string, nullable: true }
+                referencedAccounts: { type: array, items: { type: string } }
+                referencedPeople: { type: array, items: { type: string } }
+                contextTags: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Stored Wrangler interaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /operator/console/snapshot:
+    get:
+      operationId: operatorConsoleSnapshot
+      summary: Get live Intelligence Platform state
+      description: Returns the full state of the Operator Console including Emerging Patterns, Strategic Map clusters, Outcomes, running jobs, radar, and drift metrics.
+      responses:
+        "200":
+          description: Console snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /operator/console/command:
+    post:
+      operationId: operatorConsoleCommand
+      summary: Execute system command
+      description: Run system-wide commands like "refresh stale entities", "run autopilot", "queue research <domain>", etc.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: { type: string }
+      responses:
+        "200":
+          description: Command execution result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /user-patterns/query:
+    get:
+      operationId: userPatternsQuery
+      summary: Get successful workflow patterns
+      description: Retrieve what other reps are doing successfully in the system. Good for pattern discovery.
+      responses:
+        "200":
+          description: Top patterns
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /sdr/good-morning:
+    get:
+      operationId: sdrGoodMorning
+      summary: Generate SDR Morning Briefing
+      description: Assembles a daily briefing of top accounts, recent signals, and actions.
+      responses:
+        "200":
+          description: Morning briefing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /analytics/dashboard:
+    get:
+      operationId: analyticsDashboard
+      summary: System intelligence dashboard
+      description: Returns aggregate intelligence stats (coverage, scores, missing data).
+      responses:
+        "200":
+          description: Analytics dashboard data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /scan:
-    get:
+    post:
       operationId: scanHomepage
       summary: Scan a website homepage
-      description: Deep scan for full tech stack (17 categories), AI readiness, and performance. Auto-saves to Sanity. Detects CMS, frameworks, analytics, e-commerce, hosting, auth, search, monitoring, payments, marketing, chat, and more.
-      parameters:
-        - name: url
-          in: query
-          required: true
-          schema: { type: string, format: uri }
+      description: Deep scan for full tech stack, AI readiness, and performance. Auto-saves to Sanity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
       responses:
         "200":
-          description: Scan result with full technology stack
+          description: Scan result
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
-  /scan-batch:
-    get:
+  /scan/batch:
+    post:
       operationId: scanBatchAccounts
       summary: Batch scan multiple URLs
-      description: Comma-separated urls. mode=light (default) or full. Rank by opportunity.
-      parameters:
-        - name: urls
-          in: query
-          required: true
-          schema: { type: string }
-        - name: mode
-          in: query
-          schema: { type: string, enum: [light, full], default: light }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [urls]
+              properties:
+                urls: { type: array, items: { type: string } }
       responses:
         "200":
           description: Batch results
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
-  /linkedin-profile:
+  /linkedin/profile:
     post:
       operationId: scanLinkedInProfile
       summary: Scan LinkedIn profile
-      description: Provide profileUrl or profileHtml/profileText. May be blocked by LinkedIn.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [profileUrl]
               properties:
-                profileUrl: { type: string, description: "LinkedIn profile URL" }
-                profileHtml: { type: string }
-                profileText: { type: string }
+                profileUrl: { type: string }
+                accountKey: { type: string, nullable: true }
       responses:
         "200":
           description: Profile analysis
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /linkedin/search:
+    post:
+      operationId: linkedinSearch
+      summary: Search for people on LinkedIn
+      description: Find employees at a company.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyName]
+              properties:
+                companyName: { type: string }
+                titlePatterns: { type: array, items: { type: string } }
+                limit: { type: integer, default: 5 }
+      responses:
+        "200":
+          description: LinkedIn search results
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /extract:
     post:
@@ -183,16 +241,16 @@ paths:
           application/json:
             schema:
               type: object
+              required: [url, type]
               properties:
                 url: { type: string }
-                urls: { type: array, items: { type: string } }
+                type: { type: string, enum: [pricing, documentation, careers, contact, about, case_study] }
       responses:
         "200":
           description: Evidence pack
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /search:
     post:
@@ -207,36 +265,14 @@ paths:
               required: [query]
               properties:
                 query: { type: string, description: "Search query text" }
-                limit: { type: integer }
-                recencyDays: { type: integer }
-                mode: { type: string, enum: [fast, thorough], default: fast }
+                limit: { type: integer, default: 10 }
+                recencyDays: { type: integer, default: 30 }
       responses:
         "200":
           description: Search results
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /discover:
-    post:
-      operationId: discoverPages
-      summary: Discover pages on a site
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                url: { type: string }
-      responses:
-        "200":
-          description: Discovered URLs
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /crawl/smart:
     post:
@@ -248,23 +284,21 @@ paths:
           application/json:
             schema:
               type: object
-              required: [baseUrl]
+              required: [url]
               properties:
-                baseUrl: { type: string, description: "Seed URL to crawl from" }
-                maxPages: { type: integer }
-                targetPages: { type: array, items: { type: string } }
+                url: { type: string }
+                budget: { type: integer, default: 5 }
       responses:
         "200":
           description: Crawl results
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
-  /brief:
+  /research/brief:
     post:
       operationId: generateBrief
-      summary: Generate research brief
+      summary: Generate decision-ready brief
       requestBody:
         required: true
         content:
@@ -273,16 +307,13 @@ paths:
               type: object
               required: [companyOrSite]
               properties:
-                companyOrSite: { type: string, description: "Company name, domain, or URL to generate brief for" }
-                seedUrl: { type: string }
-                query: { type: string }
+                companyOrSite: { type: string }
       responses:
         "200":
           description: Brief
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /research/complete:
     post:
@@ -296,60 +327,33 @@ paths:
               type: object
               required: [input]
               properties:
-                input: { type: string, description: "Company name, domain, or URL" }
-                inputType: { type: string, enum: [auto, url, domain, company], default: auto }
-                includeCompetitors: { type: boolean, default: true }
-                mode: { type: string, enum: [fast, deep], default: fast }
+                input: { type: string }
       responses:
         "200":
           description: Research result
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /research/quick:
-    get:
-      operationId: researchQuick
-      summary: Quick lookup for an account (provide at least one identifier)
-      parameters:
-        - name: domain
-          in: query
-          schema: { type: string }
-          description: "Company domain (e.g. cloudflare.com)"
-        - name: accountKey
-          in: query
-          schema: { type: string }
-          description: "Sanity account key"
-        - name: url
-          in: query
-          schema: { type: string }
-          description: "Company URL"
-      responses:
-        "200":
-          description: Quick result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /research/intelligence:
-    get:
+    post:
       operationId: researchIntelligence
-      summary: Get full intelligence for account
-      parameters:
-        - name: accountKey
-          in: query
-          required: true
-          schema: { type: string }
-          description: "Sanity account key (required)"
+      summary: Strategic account intelligence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input: { type: string }
       responses:
         "200":
           description: Intelligence payload
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /orchestrate:
     post:
@@ -363,32 +367,13 @@ paths:
               type: object
               required: [input]
               properties:
-                input: { type: string, description: "Company name, domain, or URL" }
-                inputType: { type: string, enum: [url, domain, company], default: url }
-                runMode: { type: string, enum: [queue, sync], default: queue }
+                input: { type: string }
       responses:
-        "200":
-          description: Orchestration result
+        "202":
+          description: Orchestration queued
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /orchestrate/status:
-    get:
-      operationId: orchestrateStatus
-      summary: Get orchestration status
-      parameters:
-        - name: jobId
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: Status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /person/brief:
     post:
@@ -400,20 +385,17 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required: [companyName, personName, roleOrTitle]
               properties:
-                name: { type: string, description: "Person's full name" }
-                companyName: { type: string, description: "Company name" }
-                companyDomain: { type: string, description: "Company domain" }
-                profileUrl: { type: string, description: "LinkedIn profile URL" }
-                mode: { type: string, enum: [fast, deep], default: fast }
+                companyName: { type: string }
+                personName: { type: string }
+                roleOrTitle: { type: string }
       responses:
         "200":
           description: Person brief
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /verify:
     post:
@@ -425,200 +407,78 @@ paths:
           application/json:
             schema:
               type: object
+              required: [claims]
               properties:
-                claims: { type: array, items: { type: object } }
-                sources: { type: array, items: { type: string } }
+                claims: { type: array, items: { type: string } }
       responses:
         "200":
           description: Verification result
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
-  /store/{type}:
+  /data/store:
     post:
       operationId: storeData
-      summary: Store data in Sanity (scan, brief, interaction, etc.)
-      description: "type is one of: scan, linkedin, evidence, brief, person, account, interaction, session, learning. Body must include account (with canonicalUrl or domain) and data."
-      parameters:
-        - name: type
-          in: path
-          required: true
-          schema: { type: string, enum: [scan, linkedin, evidence, brief, person, account, interaction, session, learning] }
+      summary: Store data directly in Sanity
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [account, data]
+              required: [type, data]
               properties:
-                account:
-                  type: object
-                  properties:
-                    canonicalUrl: { type: string, description: "Account URL (or provide domain)" }
-                    domain: { type: string, description: "Account domain (alternative to canonicalUrl)" }
-                    companyName: { type: string }
-                data:
-                  type: object
-                  description: "For interaction: { userPrompt, gptResponse, sessionId? }. For others: payload object."
-                meta:
-                  type: object
+                type: { type: string, enum: [company, person, accountPack, learning, intent, interaction, opportunity] }
+                data: { type: object }
+                accountKey: { type: string, nullable: true }
       responses:
         "200":
           description: Stored
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /query:
-    get:
-      operationId: queryData
-      summary: Query Sanity or get context (recall/summarize)
-      description: type=context with accountKey/domain, contextType=all, fullInsights=true for recall.
-      parameters:
-        - name: type
-          in: query
-          schema: { type: string }
-        - name: accountKey
-          in: query
-          schema: { type: string }
-        - name: domain
-          in: query
-          schema: { type: string }
-        - name: contextType
-          in: query
-          schema: { type: string, enum: [summary, interactions, learnings, followUps, all] }
-        - name: contextLimit
-          in: query
-          schema: { type: integer }
-        - name: fullInsights
-          in: query
-          schema: { type: boolean }
-        - name: q
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: Query or context result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /update/{docId}:
-    put:
-      operationId: updateDocument
-      summary: Update a Sanity document
-      parameters:
-        - name: docId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        content:
-          application/json:
-            schema:
-                $ref: '#/components/schemas/GenericResponse'
-      responses:
-        "200":
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-    delete:
-      operationId: deleteDocument
-      summary: Delete a Sanity document
-      parameters:
-        - name: docId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /osint/queue:
     post:
       operationId: queueOsintJob
       summary: Queue OSINT year-ahead intelligence job
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
-              required: [url]
+              required: [companyName]
               properties:
-                url: { type: string, description: "Company URL to research" }
                 companyName: { type: string }
-                mode: { type: string, enum: [year_ahead, quick], default: year_ahead }
       responses:
-        "200":
+        "202":
           description: Job queued
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /osint/status:
-    get:
-      operationId: getOsintStatus
-      summary: Get OSINT job status
-      parameters:
-        - name: accountKey
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: Status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /osint/report:
-    get:
-      operationId: getOsintReport
-      summary: Get OSINT report
-      parameters:
-        - name: accountKey
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: Report
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /competitors/research:
     post:
       operationId: competitorsResearch
-      summary: Research competitors for an account
+      summary: Identify competitors
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [company, description]
               properties:
-                accountKey: { type: string }
-                domain: { type: string }
+                company: { type: string }
+                description: { type: string }
       responses:
         "200":
           description: Competitor research
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /competitors/opportunities:
     get:
@@ -629,93 +489,107 @@ paths:
           in: query
           required: true
           schema: { type: string }
-          description: "Account key to find displacement opportunities for"
       responses:
         "200":
           description: Opportunities
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /enrich/run:
     post:
       operationId: enrichRun
       summary: Trigger enrichment for an account
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [input]
               properties:
-                canonicalUrl: { type: string, description: "Account URL (or use url)" }
-                url: { type: string, description: "Alternative to canonicalUrl" }
-                accountKey: { type: string }
+                input: { type: string }
       responses:
         "200":
           description: Enrichment triggered
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
-
-  /enrich/status:
-    get:
-      operationId: enrichStatus
-      summary: Get enrichment pipeline status
-      parameters:
-        - name: accountKey
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: Status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /enrich/queue:
-    post:
+    get:
       operationId: enrichQueue
-      summary: Queue enrichment job
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                canonicalUrl: { type: string, description: "Account URL (or use url)" }
-                url: { type: string, description: "Alternative to canonicalUrl" }
-                accountKey: { type: string }
+      summary: View active enrichment queue
       responses:
         "200":
           description: Queued
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /molt/run:
     post:
       operationId: moltRun
       summary: Run MoltBot orchestration
-      security:
-        - MoltApiKey: []
+      security: [{ MoltApiKey: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [requestText]
+              required: [instruction]
               properties:
-                requestText: { type: string }
+                instruction: { type: string }
       responses:
         "200":
           description: MoltBot result
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/GenericResponse'
+              schema: { $ref: '#/components/schemas/GenericResponse' }
 
+  /molt/approve:
+    post:
+      operationId: moltApprove
+      summary: Approve pending Molt action
+      security: [{ MoltApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approvalId, approved]
+              properties:
+                approvalId: { type: string }
+                approved: { type: boolean }
+                feedback: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Approval processed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /molt/jobs/run:
+    post:
+      operationId: moltJobsRun
+      summary: Force execute pending autonomous jobs
+      security: [{ MoltApiKey: [] }]
+      responses:
+        "200":
+          description: Jobs processed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: System health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }

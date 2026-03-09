@@ -3,6 +3,7 @@
   "/_not-found/page": "/_not-found",
   "/api/console/account/[accountId]/route": "/api/console/account/[accountId]",
   "/api/console/agents/route": "/api/console/agents",
+  "/api/console/brief/[id]/route": "/api/console/brief/[id]",
   "/api/console/command/route": "/api/console/command",
   "/api/console/copilot/action/route": "/api/console/copilot/action",
   "/api/console/copilot/explain/route": "/api/console/copilot/explain",
@@ -10,9 +11,14 @@
   "/api/console/copilot/route": "/api/console/copilot",
   "/api/console/copilot/stream/route": "/api/console/copilot/stream",
   "/api/console/diagnostics/route": "/api/console/diagnostics",
+  "/api/console/draft/[draftId]/route": "/api/console/draft/[draftId]",
   "/api/console/functions/route": "/api/console/functions",
+  "/api/console/job/[id]/route": "/api/console/job/[id]",
   "/api/console/simulate/route": "/api/console/simulate",
   "/api/console/snapshot/route": "/api/console/snapshot",
   "/api/molt/feedback/route": "/api/molt/feedback",
-  "/page": "/"
+  "/draft/[id]/page": "/draft/[id]",
+  "/job/[id]/page": "/job/[id]",
+  "/page": "/",
+  "/research/[id]/page": "/research/[id]"
 }

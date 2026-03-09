@@ -152,6 +152,7 @@ export type ConsoleSnapshot = {
       nextAttemptAt: string | null;
       updatedAt: string;
       error: string | null;
+      currentStage?: string | null;
     }>;
   };
   metrics: {

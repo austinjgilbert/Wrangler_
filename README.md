@@ -5,6 +5,15 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare)](https://workers.cloudflare.com)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+This repo is **worker + dashboard together**: the Cloudflare Worker (API) and the Operator Console (Next.js UI) live in one place. Run both for the full stack.
+
+| Part | Location | Run command |
+|------|----------|--------------|
+| **Worker (API)** | project root | `npm run dev` → http://localhost:8787 |
+| **Dashboard (UI)** | `apps/operator-console/` | `npm run console:dev` → http://localhost:3000 |
+
+The dashboard proxies API requests to the worker; point it at your worker URL (see [apps/operator-console/README.md](apps/operator-console/README.md)).
+
 ## Deploy in minimal clicks (new users)
 
 **Prerequisites:** Node.js 18+ and a [Cloudflare account](https://dash.cloudflare.com/sign-up).
@@ -24,6 +33,28 @@ Then:
 5. **Deploy:** `npm run deploy` — set production secrets with `wrangler secret put SANITY_PROJECT_ID --env=production` (and `SANITY_TOKEN`, etc.) before or after first deploy.
 
 Optional: [Chrome extension](CHROME-EXTENSION-SETUP.md), [Telegram bot](TELEGRAM-BOT-SETUP.md), [Custom GPT](UPDATE-INSTRUCTIONS.md). Full details: [SETUP.md](SETUP.md).
+
+### Run the full stack (worker + dashboard)
+
+One repo, two processes:
+
+```bash
+# Terminal 1: Worker API
+npm run dev
+# → http://localhost:8787
+
+# Terminal 2: Operator Console (UI)
+npm run console:dev
+# → http://localhost:3000
+```
+
+Open http://localhost:3000 — the dashboard talks to the worker at 8787 by default (see `apps/operator-console/lib/server-proxy.ts` and `WORKER_BASE_URL`).
+
+### Deploy worker + dashboard (Cloudflare + Vercel)
+
+- **Worker:** `npm run deploy` (Cloudflare). See [SETUP.md](SETUP.md) and `wrangler secret put`.
+- **Dashboard:** Deploy `apps/operator-console` to [Vercel](https://vercel.com) with **Root Directory** = `apps/operator-console`, and set **NEXT_PUBLIC_API_URL** to your worker URL (e.g. `https://website-scanner.<your-subdomain>.workers.dev`).  
+  Full steps: [docs/DEPLOY-WORKER-AND-DASHBOARD.md](docs/DEPLOY-WORKER-AND-DASHBOARD.md).
 
 ### Production URL and custom domain (open source / self-hosted)
 
@@ -57,34 +88,16 @@ A comprehensive website scanning and research API built on Cloudflare Workers. P
 ## Architecture
 
 ```
-src/
-├── index.js              # Main router + queue consumer
-├── config/
-│   └── constants.js      # App constants & limits
-├── utils/                # Shared utilities
-│   ├── headers.js        # HTTP header generation
-│   ├── validation.js     # URL validation & SSRF protection
-│   ├── http.js           # Fetch wrappers & concurrency
-│   ├── response.js       # Response helpers & CORS
-│   ├── cache.js          # Cache interface
-│   └── text.js           # Text processing
-├── services/             # Business logic
-│   ├── scanner.js        # Website scanning
-│   ├── detector.js       # Tech stack detection
-│   ├── analyzer.js       # Business analysis
-│   ├── sanity.js         # Sanity CMS client
-│   └── linkedin.js       # LinkedIn scraping
-├── osint/                # OSINT pipeline
-│   ├── types.js          # Type definitions
-│   ├── pipeline.js       # Pipeline stages
-│   └── scoring.js        # Ranking algorithm
-├── durable/              # Durable Objects
-│   └── osintJobState.js  # Job state tracker
-└── handlers/             # Request handlers
-    ├── scan.js           # /scan endpoint
-    ├── batch.js          # /scan-batch endpoint
-    ├── osint.js          # OSINT endpoints
-    └── ...               # Other endpoints
+├── apps/operator-console/   # Dashboard (Next.js) — npm run console:dev
+├── src/                     # Worker
+│   ├── index.js             # Main router + queue consumer
+│   ├── config/
+│   ├── utils/
+│   ├── services/
+│   ├── osint/
+│   ├── durable/
+│   └── handlers/            # /scan, /scan-batch, OSINT, etc.
+└── wrangler.toml
 ```
 
 ## Quick Start

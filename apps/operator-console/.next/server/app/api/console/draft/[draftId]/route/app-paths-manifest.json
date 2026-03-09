@@ -1,0 +1,3 @@
+{
+  "/api/console/draft/[draftId]/route": "app/api/console/draft/[draftId]/route.js"
+}

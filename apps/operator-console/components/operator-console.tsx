@@ -1385,6 +1385,11 @@ function JobsView(props: { snapshot: ConsoleSnapshot; onCommand: (command: strin
               <div className="min-w-0">
                 <div className="truncate font-semibold text-[var(--text)]">{job.jobType}</div>
                 <div className="truncate text-xs text-[var(--muted)]">{job.id}</div>
+                {job.currentStage && (
+                  <div className="mt-1 truncate text-xs font-medium text-[var(--accent)]">
+                    Stage: {job.currentStage}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-[var(--muted)]">
                 <div>Status: {job.status}</div>

@@ -54,7 +54,7 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
       fetchSignals(env),
       fetchActionCandidates(env),
       fetchDocumentsByType(env, 'molt.job', 120),
-      fetchDocumentsByType(env, 'enrich.job', 120).catch(() => []),
+      fetchDocumentsByType(env, 'enrichmentJob', 120).catch(() => []),
       fetchDocumentsByType(env, 'molt.pattern', 80).catch(() => []),
       fetchDocumentsByType(env, 'gmailDraft', 120).catch(() => []),
       fetchLatestDocumentByType(env, 'operatorDailyBriefing').catch(() => null),
@@ -127,8 +127,18 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
         nextStages: account.profileCompleteness?.nextStages || [],
       }));
 
-    const runningJobs = jobs.filter((job: any) => job.status === 'running');
-    const queuedJobs = jobs.filter((job: any) => job.status === 'queued');
+    const runningJobs = [
+      ...jobs.filter((job: any) => job.status === 'running'),
+      ...enrichJobs.filter((job: any) => job.status === 'in_progress')
+    ];
+    const queuedJobs = [
+      ...jobs.filter((job: any) => job.status === 'queued'),
+      ...enrichJobs.filter((job: any) => job.status === 'pending')
+    ];
+    
+    const allRecentJobs = [...jobs, ...enrichJobs]
+      .sort((a: any, b: any) => new Date(b.updatedAt || b._updatedAt || 0).getTime() - new Date(a.updatedAt || a._updatedAt || 0).getTime())
+      .slice(0, 40);
 
     const snapshot = {
       generatedAt: new Date().toISOString(),
@@ -221,16 +231,17 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
       jobs: {
         running: runningJobs.length,
         queued: queuedJobs.length,
-        enrichQueued: enrichJobs.filter((job: any) => job.status === 'queued').length,
-        recent: jobs.slice(0, 40).map((job: any) => ({
+        enrichQueued: enrichJobs.filter((job: any) => job.status === 'queued' || job.status === 'pending').length,
+        recent: allRecentJobs.map((job: any) => ({
           id: job._id,
-          jobType: job.jobType,
+          jobType: job.jobType || (job._type === 'enrichmentJob' ? 'Account Enrichment' : job._type) || 'unknown',
           status: job.status,
-          priority: job.priority,
-          attempts: job.attempts,
+          priority: job.priority || 'normal',
+          attempts: job.attempts || 0,
           nextAttemptAt: job.nextAttemptAt || null,
           updatedAt: job.updatedAt || job._updatedAt,
-          error: job.error || null,
+          error: job.error || job.failedStages?.join(', ') || null,
+          currentStage: job.currentStage || null,
         })),
       },
       metrics: {

@@ -1879,7 +1879,7 @@ const createSuccessResponse = createSuccessResponseUtil;
 /**
  * Search endpoint - SERP triage + dedupe ranking
  */
-async function handleSearch(request, requestId) {
+async function handleSearch(request, requestId, env) {
   try {
     // Parse request body
     let body;
@@ -1939,6 +1939,29 @@ async function handleSearch(request, requestId) {
     
     // Limit to requested number
     const limitedResults = rankedResults.slice(0, limitNum);
+    
+    // Create a live job so the dashboard sees the search happening
+    if (env) {
+      try {
+        const { upsertDocument } = await import('./sanity-client.js');
+        const { initSanityClient } = await import('./sanity-client.js');
+        const client = initSanityClient(env);
+        if (client) {
+          await upsertDocument(client, {
+            _type: 'molt.job',
+            _id: `search.${requestId}`,
+            jobType: 'Web Search',
+            status: 'completed', // completed because this is synchronous, but it shows in recent!
+            priority: 1,
+            attempts: 1,
+            targetEntity: queryTrimmed,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error('Failed to log search job:', err);
+      }
+    }
     
     return createSuccessResponse(
       { results: limitedResults },
@@ -6920,7 +6943,7 @@ const workerHandler = {
             return await handleDiscover(req, reqId);
           },
           handleSearch: async (req, reqId) => {
-            return await handleSearch(req, reqId);
+            return await handleSearch(req, reqId, env);
           },
           handleExtract: async (req, reqId, env) => {
             return await handleExtract(req, reqId, env);
@@ -7307,7 +7330,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     return await handleAccountPage(request, requestId, env);
       } else if (url.pathname === '/search') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        return await handleSearch(request, requestId);
+        return await handleSearch(request, requestId, env);
       } else if (url.pathname === '/discover') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         return await handleDiscover(request, requestId);
