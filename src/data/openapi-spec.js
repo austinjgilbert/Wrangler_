@@ -93,7 +93,7 @@ components:
               items:
                 type: string
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     MoltRunRequest:
       type: object
@@ -168,7 +168,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     HealthResponse:
       type: object
@@ -277,7 +277,7 @@ components:
         sitemapChecks:
           type: array
           items:
-            \$ref: "#/components/schemas/SitemapCheck"
+            \\\$ref: "#/components/schemas/SitemapCheck"
         technologyStack:
           type: object
           description: Detected CMS/frameworks/legacy/PIM/DAM/LMS and ROI/migration signals
@@ -386,7 +386,7 @@ components:
           properties: {}
           additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     ExtractRequest:
       type: object
@@ -556,7 +556,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     SchemaResponse:
       type: object
@@ -567,7 +567,7 @@ components:
           properties: {}
           additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     AccountIdentity:
       type: object
@@ -620,15 +620,15 @@ components:
       required: [account, collected, payload]
       properties:
         account:
-          \$ref: "#/components/schemas/AccountIdentity"
+          \\\$ref: "#/components/schemas/AccountIdentity"
         collected:
-          \$ref: "#/components/schemas/IngestionMetadata"
+          \\\$ref: "#/components/schemas/IngestionMetadata"
         payload:
           type: object
           required: [scan]
           properties:
             scan:
-              \$ref: "#/components/schemas/ScanResponse"
+              \\\$ref: "#/components/schemas/ScanResponse"
             batch:
               type: object
               nullable: true
@@ -676,17 +676,17 @@ components:
       enum: [scan, linkedin, evidence, brief, account, person, interaction, session, learning]
       description: |
         Data type to store.
-        - Use \`account\` to store a company/account with relationships (persons, tech stack).
-        - Use \`interaction\` to store Q&A exchanges between user and GPT (WRANGLER).
-        - Use \`session\` to group multiple interactions into one conversation.
-        - Use \`learning\` to store derived insights from interactions.
+        - Use \\\`account\\\` to store a company/account with relationships (persons, tech stack).
+        - Use \\\`interaction\\\` to store Q&A exchanges between user and GPT (WRANGLER).
+        - Use \\\`session\\\` to group multiple interactions into one conversation.
+        - Use \\\`learning\\\` to store derived insights from interactions.
 
     StoreRequest:
       type: object
       required: [account, data]
       properties:
         account:
-          \$ref: "#/components/schemas/AccountIdentity"
+          \\\$ref: "#/components/schemas/AccountIdentity"
         data:
           description: |
             Payload to store. For type=account, data can include:
@@ -733,7 +733,7 @@ components:
               type: string
               description: Sanity document ID
             type:
-              \$ref: "#/components/schemas/StoreType"
+              \\\$ref: "#/components/schemas/StoreType"
             updated:
               type: boolean
               nullable: true
@@ -742,17 +742,17 @@ components:
               format: uri
               nullable: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     QueryType:
       type: string
       enum: [companies, search, context, quick]
       description: |
         Query type for GET /query endpoint.
-        - \`companies\`: Query company accounts with filters (minScore, limit)
-        - \`search\`: Search documents across types by term (requires \`q\` parameter)
-        - \`context\`: Retrieve context and memory for intelligence system (interactions, learnings, follow-ups)
-        - \`quick\`: Quick account lookup using \`queryType\` parameter (exists, profile, similar, search) - auto-triggers enrichment
+        - \\\`companies\\\`: Query company accounts with filters (minScore, limit)
+        - \\\`search\\\`: Search documents across types by term (requires \\\`q\\\` parameter)
+        - \\\`context\\\`: Retrieve context and memory for intelligence system (interactions, learnings, follow-ups)
+        - \\\`quick\\\`: Quick account lookup using \\\`queryType\\\` parameter (exists, profile, similar, search) - auto-triggers enrichment
 
     QueryGetResponse:
       type: object
@@ -766,7 +766,7 @@ components:
           properties: {}
           additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     GroqQueryRequest:
       type: object
@@ -803,7 +803,7 @@ components:
               type: string
               nullable: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     UpdateRequest:
       type: object
@@ -836,7 +836,7 @@ components:
             id:
               type: string
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     DeleteResponse:
       type: object
@@ -854,7 +854,7 @@ components:
             id:
               type: string
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     ResearchRequest:
       type: object
@@ -962,7 +962,7 @@ components:
                 properties: {}
                 additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     IntelligenceResponse:
       type: object
@@ -1009,7 +1009,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     EnrichmentQueueRequest:
       type: object
@@ -1044,7 +1044,7 @@ components:
             message:
               type: string
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     EnrichmentStatusResponse:
       type: object
@@ -1061,7 +1061,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     ResearchSetResponse:
       type: object
@@ -1078,7 +1078,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     EnrichmentExecuteRequest:
       type: object
@@ -1110,7 +1110,7 @@ components:
               properties: {}
               additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     EnrichmentJobsResponse:
       type: object
@@ -1130,7 +1130,7 @@ components:
             count:
               type: integer
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     CompetitorResearchRequest:
       type: object
@@ -1179,7 +1179,7 @@ components:
                 type: object
                 additionalProperties: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     OpportunitiesResponse:
       type: object
@@ -1204,7 +1204,7 @@ components:
             highPriorityCount:
               type: integer
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     OsintQueueRequest:
       type: object
@@ -1256,7 +1256,7 @@ components:
               type: string
               nullable: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     OsintStatusResponse:
       type: object
@@ -1298,7 +1298,7 @@ components:
               nullable: true
               description: Sanity document ID of report
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     OsintInitiative:
       type: object
@@ -1411,12 +1411,12 @@ components:
         initiatives:
           type: array
           items:
-            \$ref: "#/components/schemas/OsintInitiative"
+            \\\$ref: "#/components/schemas/OsintInitiative"
         historicalInitiatives:
           type: array
           description: Initiatives from 12 months ago for comparison
           items:
-            \$ref: "#/components/schemas/OsintInitiative"
+            \\\$ref: "#/components/schemas/OsintInitiative"
         timelineAnalysis:
           type: object
           description: Timeline analysis including completion rates and status changes
@@ -1492,9 +1492,9 @@ components:
           required: [report]
           properties:
             report:
-              \$ref: "#/components/schemas/OsintReport"
+              \\\$ref: "#/components/schemas/OsintReport"
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     OsintRunRequest:
       type: object
@@ -1538,10 +1538,10 @@ components:
               type: string
               nullable: true
             report:
-              \$ref: "#/components/schemas/OsintReport"
+              \\\$ref: "#/components/schemas/OsintReport"
               nullable: true
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     PersonBriefRequest:
       type: object
@@ -1835,7 +1835,7 @@ components:
                   description: Conversational next-step question (advances conversation, not pitch)
           additionalProperties: false
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     GoodMorningRequest:
       type: object
@@ -2035,7 +2035,7 @@ components:
                 emailsQueued:
                   type: integer
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     UserPatternStoreRequest:
       type: object
@@ -2105,7 +2105,7 @@ components:
             patternId:
               type: string
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
     UserPatternsResponse:
       type: object
@@ -2136,7 +2136,7 @@ components:
               type: object
               description: Pattern data (structure varies by queryType)
         requestId:
-          \$ref: "#/components/schemas/RequestId"
+          \\\$ref: "#/components/schemas/RequestId"
 
 paths:
   /wrangler/ingest:
@@ -2152,32 +2152,32 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/WranglerIngestRequest"
+              \\\$ref: "#/components/schemas/WranglerIngestRequest"
       responses:
         "200":
           description: Stored Wrangler interaction
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/WranglerIngestResponse"
+                \\\$ref: "#/components/schemas/WranglerIngestResponse"
         "401":
           description: Missing or invalid API key (set MOLT_API_KEY in worker and use Authentication in GPT)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /extension/capture:
     post:
       operationId: extensionCapture
@@ -2285,19 +2285,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Unauthorized
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /molt/run:
     post:
       operationId: moltRun
@@ -2311,26 +2311,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/MoltRunRequest"
+              \\\$ref: "#/components/schemas/MoltRunRequest"
       responses:
         "200":
           description: MoltBot run result
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /molt/approve:
     post:
       operationId: moltApprove
@@ -2344,26 +2344,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/MoltApproveRequest"
+              \\\$ref: "#/components/schemas/MoltApproveRequest"
       responses:
         "200":
           description: Approval decision processed
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /molt/log:
     post:
       operationId: moltLog
@@ -2377,26 +2377,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/MoltLogRequest"
+              \\\$ref: "#/components/schemas/MoltLogRequest"
       responses:
         "200":
           description: Molt event logged
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /molt/jobs/run:
     post:
       operationId: moltJobsRun
@@ -2411,13 +2411,13 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /health:
     get:
       operationId: healthCheck
@@ -2430,13 +2430,13 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/HealthResponse"
+                \\\$ref: "#/components/schemas/HealthResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /sanity/status:
     get:
@@ -2450,7 +2450,7 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/SanityStatusResponse"
+                \\\$ref: "#/components/schemas/SanityStatusResponse"
 
   /scan:
     get:
@@ -2472,19 +2472,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ScanResponse"
+                \\\$ref: "#/components/schemas/ScanResponse"
         "400":
           description: Bad request (invalid URL or blocked URL)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error or fetch failure
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /scan-batch:
     get:
@@ -2505,19 +2505,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/BatchScanResponse"
+                \\\$ref: "#/components/schemas/BatchScanResponse"
         "400":
           description: Bad request (invalid URLs or too many URLs)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /linkedin-profile:
     post:
@@ -2530,32 +2530,32 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/LinkedInProfileRequest"
+              \\\$ref: "#/components/schemas/LinkedInProfileRequest"
       responses:
         "200":
           description: Successful profile scan
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request (invalid URL or missing parameter)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "403":
           description: LinkedIn blocked the request (bot protection or authentication required)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /extract:
     post:
@@ -2568,26 +2568,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/ExtractRequest"
+              \\\$ref: "#/components/schemas/ExtractRequest"
       responses:
         "200":
           description: Successful extraction
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /search:
     post:
@@ -2600,26 +2600,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/SearchRequest"
+              \\\$ref: "#/components/schemas/SearchRequest"
       responses:
         "200":
           description: Search results
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /discover:
     post:
@@ -2632,26 +2632,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/DiscoverRequest"
+              \\\$ref: "#/components/schemas/DiscoverRequest"
       responses:
         "200":
           description: Discovered pages
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /crawl:
     post:
@@ -2696,19 +2696,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /crawl/smart:
     post:
@@ -2747,19 +2747,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /brief:
     post:
@@ -2772,26 +2772,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/BriefRequest"
+              \\\$ref: "#/components/schemas/BriefRequest"
       responses:
         "200":
           description: Generated brief
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /research/complete:
     post:
@@ -2804,26 +2804,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/OneClickResearchRequest"
+              \\\$ref: "#/components/schemas/OneClickResearchRequest"
       responses:
         "200":
           description: Complete research response
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /research/quick:
     get:
@@ -2854,25 +2854,25 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not found
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /research/intelligence:
     get:
@@ -2892,25 +2892,25 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/IntelligenceResponse"
+                \\\$ref: "#/components/schemas/IntelligenceResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Not found
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /orchestrate:
     post:
@@ -2923,32 +2923,32 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/OrchestrateRequest"
+              \\\$ref: "#/components/schemas/OrchestrateRequest"
       responses:
         "200":
           description: Orchestration created or executed
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Service configuration error (Sanity not configured)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /orchestrate/status:
     get:
@@ -2973,19 +2973,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /person/brief:
     post:
@@ -2999,32 +2999,32 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/PersonBriefRequest"
+              \\\$ref: "#/components/schemas/PersonBriefRequest"
       responses:
         "200":
           description: Person brief generated successfully
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/PersonBriefResponse"
+                \\\$ref: "#/components/schemas/PersonBriefResponse"
         "400":
           description: Bad request (missing required fields, invalid parameters)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Service configuration error (Sanity not configured)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /verify:
     post:
@@ -3037,26 +3037,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/VerifyRequest"
+              \\\$ref: "#/components/schemas/VerifyRequest"
       responses:
         "200":
           description: Verification results
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/GenericOkDataResponse"
+                \\\$ref: "#/components/schemas/GenericOkDataResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /store/{type}:
     post:
@@ -3072,46 +3072,46 @@ paths:
           in: path
           required: true
           schema:
-            \$ref: "#/components/schemas/StoreType"
+            \\\$ref: "#/components/schemas/StoreType"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/StoreRequest"
+              \\\$ref: "#/components/schemas/StoreRequest"
       responses:
         "200":
           description: Data stored successfully
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/StoreResponse"
+                \\\$ref: "#/components/schemas/StoreResponse"
         "400":
           description: Bad request (invalid type or missing data)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error or Sanity not configured
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /query:
     get:
       operationId: queryData
       summary: Query Sanity documents or retrieve context
       description: |
-        Query by type: \`companies\` (minScore/limit), \`search\` (q required), or \`context\` (memory). For recall/summarize use type=context, contextType=all, fullInsights=true, contextLimit=20, accountKey/domain. Returns stored account intelligence; missing data auto-enriched on context query.
+        Query by type: \\\`companies\\\` (minScore/limit), \\\`search\\\` (q required), or \\\`context\\\` (memory). For recall/summarize use type=context, contextType=all, fullInsights=true, contextLimit=20, accountKey/domain. Returns stored account intelligence; missing data auto-enriched on context query.
       tags: [Sanity]
       parameters:
         - name: type
           in: query
           required: false
           schema:
-            \$ref: "#/components/schemas/QueryType"
+            \\\$ref: "#/components/schemas/QueryType"
           description: Query type (companies, search, or context)
         - name: q
           in: query
@@ -3211,19 +3211,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/QueryGetResponse"
+                \\\$ref: "#/components/schemas/QueryGetResponse"
         "400":
           description: Bad request (invalid type or missing required parameters)
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error or Sanity not configured
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
   /update/{docId}:
     put:
       operationId: updateDocument
@@ -3241,26 +3241,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/UpdateRequest"
+              \\\$ref: "#/components/schemas/UpdateRequest"
       responses:
         "200":
           description: Document updated successfully
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/UpdateResponse"
+                \\\$ref: "#/components/schemas/UpdateResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error or Sanity not configured
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: deleteDocument
       summary: Delete a Sanity document
@@ -3285,19 +3285,19 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/DeleteResponse"
+                \\\$ref: "#/components/schemas/DeleteResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error or Sanity not configured
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /osint/queue:
     post:
@@ -3312,26 +3312,26 @@ paths:
         content:
           application/json:
             schema:
-              \$ref: "#/components/schemas/OsintQueueRequest"
+              \\\$ref: "#/components/schemas/OsintQueueRequest"
       responses:
         "200":
           description: Job queued successfully
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/OsintQueueResponse"
+                \\\$ref: "#/components/schemas/OsintQueueResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /osint/status:
     get:
@@ -3352,25 +3352,25 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/OsintStatusResponse"
+                \\\$ref: "#/components/schemas/OsintStatusResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Job not found
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   /osint/report:
     get:
@@ -3391,25 +3391,25 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/OsintReportResponse"
+                \\\$ref: "#/components/schemas/OsintReportResponse"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Report not found
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                \$ref: "#/components/schemas/ErrorResponse"
+                \\\$ref: "#/components/schemas/ErrorResponse"
 
   # ═══════════════════════════════════════════════════════════════════════
   # Competitors
@@ -3990,8 +3990,8 @@ paths:
         account's profile completeness is below 80% or has identified gaps.
 
         Setup in Sanity: Manage → API → Webhooks → Create webhook pointing to
-        this URL, filtered on \`_type == "account"\`, with projection
-        \`{_id, accountKey, domain, rootDomain, profileCompleteness}\`.
+        this URL, filtered on \\\`_type == "account"\\\`, with projection
+        \\\`{_id, accountKey, domain, rootDomain, profileCompleteness}\\\`.
 
         Optionally secured with HMAC-SHA256 via SANITY_WEBHOOK_SECRET.
       tags: [Webhooks]
@@ -4032,5 +4032,4 @@ paths:
                   ok:
                     type: boolean
                   data:
-                    type: object
-`;
+                    type: object`;

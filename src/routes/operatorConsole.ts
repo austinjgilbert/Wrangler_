@@ -235,6 +235,7 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
         recent: allRecentJobs.map((job: any) => ({
           id: job._id,
           jobType: job.jobType || (job._type === 'enrichmentJob' ? 'Account Enrichment' : job._type) || 'unknown',
+          targetEntity: job.targetEntity || job.accountKey || job.entityId || null,
           status: job.status,
           priority: job.priority || 'normal',
           attempts: job.attempts || 0,

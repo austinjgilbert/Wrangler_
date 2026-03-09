@@ -1,116 +1,110 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { DashboardHeader } from '@/components/dashboard-header'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { AppPageFrame } from '@/components/app-page-frame'
 import { ScanForm } from '@/components/research/scan-form'
 import { ScanResults } from '@/components/research/scan-results'
-import { useStartScan, useScan } from '@/lib/hooks/use-api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import type { ScanResult } from '@/lib/types'
 
-// Transform API response to ScanResult format
-function transformScanResponse(response: {
-  id: string;
-  url: string;
-  result?: {
-    companyInfo?: {
-      name?: string;
-      description?: string;
-    };
-    techStack?: Array<{
-      category: string;
-      technologies: string[];
-    }>;
-    performance?: {
-      loadTime?: number;
-      pageSize?: string;
-      requests?: number;
-      score?: number;
-    };
-    aiSignals?: Array<{
-      signal: string;
-      confidence: number;
-      insight: string;
-    }>;
-  };
-  createdAt: string;
-}): ScanResult {
-  const result = response.result
+function transformScanResponse(response: any): ScanResult {
+  const result = response?.data || response
+  const technologyStack = result?.technologyStack || result?.techStack || {}
+  const categories = Object.entries(technologyStack).filter(
+    ([key, value]) => Array.isArray(value) && value.length > 0 && key !== 'allDetected',
+  )
+
+  const flattenedStack = categories.flatMap(([category, technologies]) =>
+    (technologies as string[]).map((tech) => ({
+      name: tech,
+      category: category.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()),
+      confidence: 0.9,
+    })),
+  )
+
+  const aiSignals = [
+    ...((result?.digitalGoals?.initiatives || []).slice(0, 4).map((signal: string) => ({
+      type: 'Initiative',
+      description: signal,
+      confidence: 0.8,
+      source: 'Digital goals',
+    })) || []),
+    ...((result?.aiReadiness?.recommendations || []).slice(0, 3).map((signal: string) => ({
+      type: 'AI Readiness',
+      description: signal,
+      confidence: 0.75,
+      source: 'AI readiness analysis',
+    })) || []),
+  ]
+
   return {
-    url: response.url,
-    title: result?.companyInfo?.name || response.url,
-    description: result?.companyInfo?.description || '',
-    techStack: result?.techStack?.flatMap((cat) =>
-      cat.technologies.map((tech) => ({
-        name: tech,
-        category: cat.category,
-        confidence: 0.9,
-      }))
-    ) || [],
-    businessUnits: [],
+    url: result?.finalUrl || result?.input || '',
+    title: result?.companyName || result?.finalUrl || result?.input || 'Website scan',
+    description: result?.aiReadiness?.summary || '',
+    techStack: flattenedStack,
+    businessUnits: result?.businessUnits?.detectedAreas || [],
     performance: {
-      loadTime: result?.performance?.loadTime || 0,
+      loadTime: result?.performance?.responseTime || 0,
       ttfb: 0,
       cls: 0,
-      lcp: result?.performance?.loadTime || 0,
+      lcp: result?.performance?.responseTime || 0,
     },
-    aiSignals: result?.aiSignals?.map((s) => ({
-      type: s.signal,
-      description: s.insight,
-      confidence: s.confidence,
-      source: 'AI Analysis',
-    })) || [],
-    timestamp: response.createdAt,
+    aiSignals,
+    timestamp: result?.fetchedAt || new Date().toISOString(),
   }
 }
 
 export default function ScanPage() {
+  const [autoUrl, setAutoUrl] = useState('')
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
-  const [currentScanId, setCurrentScanId] = useState<string | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const { trigger: startScan, isMutating: isStarting } = useStartScan()
-  const { data: scanData, isLoading: isFetching } = useScan(currentScanId)
-
-  const isScanning = isStarting || (scanData?.status === 'pending' || scanData?.status === 'scanning')
-
-  // Handle scan completion
-  useEffect(() => {
-    if (scanData?.status === 'completed' && scanData.result) {
-      setScanResult(transformScanResponse(scanData))
-      setCurrentScanId(null)
-    } else if (scanData?.status === 'failed') {
-      setError('Scan failed. Please try again.')
-      setCurrentScanId(null)
-    }
-  }, [scanData])
+  const autoRanRef = useRef(false)
 
   const handleScan = useCallback(async (url: string) => {
     setError(null)
     setScanResult(null)
-    
+    setIsScanning(true)
+
     try {
-      const response = await startScan({ url, depth: 'standard' })
-      setCurrentScanId(response.id)
+      const res = await fetch('/api/research/scan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const payload = await res.json()
+      if (!res.ok || payload?.ok === false) {
+        throw new Error(payload?.error?.message || 'Failed to scan website')
+      }
+      setScanResult(transformScanResponse(payload))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start scan')
+    } finally {
+      setIsScanning(false)
     }
-  }, [startScan])
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const nextUrl = new URLSearchParams(window.location.search).get('url') || ''
+    setAutoUrl(nextUrl)
+  }, [])
+
+  useEffect(() => {
+    if (autoUrl && !autoRanRef.current) {
+      autoRanRef.current = true
+      void handleScan(autoUrl)
+    }
+  }, [autoUrl, handleScan])
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          breadcrumbs={[
-            { label: 'Research', href: '/research' },
-            { label: 'Website Scan' },
-          ]}
-        />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <AppPageFrame
+      breadcrumbs={[
+        { label: 'Research', href: '/research' },
+        { label: 'Website Scan' },
+      ]}
+    >
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">Website Scanner</h1>
             <p className="text-muted-foreground">
@@ -128,8 +122,6 @@ export default function ScanPage() {
           <ScanForm onScan={handleScan} isScanning={isScanning} />
 
           {scanResult && <ScanResults result={scanResult} />}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </AppPageFrame>
   )
 }

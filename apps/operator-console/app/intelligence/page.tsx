@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { DashboardHeader } from '@/components/dashboard-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { AppPageFrame } from '@/components/app-page-frame'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { FileText, Building2, BrainCircuit, ArrowRight } from 'lucide-react'
 
 const intelligenceTools = [
@@ -28,15 +26,11 @@ const intelligenceTools = [
 
 export default function IntelligencePage() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          breadcrumbs={[
-            { label: 'Intelligence' },
-          ]}
-        />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <AppPageFrame
+      breadcrumbs={[
+        { label: 'Intelligence' },
+      ]}
+    >
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">Intelligence Hub</h1>
             <p className="text-muted-foreground">
@@ -62,8 +56,6 @@ export default function IntelligencePage() {
               </Link>
             ))}
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </AppPageFrame>
   )
 }

@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Empty } from '@/components/ui/empty'
+import { EmptyContent, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
 import type { Account } from '@/lib/types'
 
 interface AccountsGridProps {
@@ -264,11 +265,12 @@ function AccountsTableView({ accounts }: { accounts: Account[] }) {
 export function AccountsGrid({ accounts, view }: AccountsGridProps) {
   if (accounts.length === 0) {
     return (
-      <Empty
-        title="No accounts found"
-        description="Try adjusting your filters or add a new account"
-      >
-        <Button size="sm">Add Account</Button>
+      <Empty>
+        <EmptyContent>
+          <EmptyTitle>No accounts found</EmptyTitle>
+          <EmptyDescription>Try adjusting your filters or add a new account</EmptyDescription>
+          <Button size="sm">Add Account</Button>
+        </EmptyContent>
       </Empty>
     )
   }

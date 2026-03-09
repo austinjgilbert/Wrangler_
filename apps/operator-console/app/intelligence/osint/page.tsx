@@ -1,10 +1,9 @@
 'use client'
 
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { DashboardHeader } from '@/components/dashboard-header'
+import { AppPageFrame } from '@/components/app-page-frame'
 import { OSINTReportView } from '@/components/intelligence/osint-report-view'
 import { useSnapshot } from '@/lib/hooks/use-api'
+import type { OSINTReport } from '@/lib/types'
 import { Loader2, Search } from 'lucide-react'
 
 export default function OSINTPage() {
@@ -12,29 +11,25 @@ export default function OSINTPage() {
 
   if (!snapshot) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <DashboardHeader breadcrumbs={[{ label: 'Intelligence' }, { label: 'OSINT Reports' }]} />
+      <AppPageFrame breadcrumbs={[{ label: 'Intelligence' }, { label: 'OSINT Reports' }]}>
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        </SidebarInset>
-      </SidebarProvider>
+      </AppPageFrame>
     )
   }
 
   // Find the first brief as the OSINT report
   const brief = snapshot.research?.briefs?.[0];
 
-  const report = brief ? {
+  const report: OSINTReport | null = brief ? {
     _id: brief.id,
-    accountKey: brief.title,
-    companyName: brief.title,
-    executiveSummary: brief.summaryMarkdown || brief.summary || "No summary available.",
-    initiatives: brief.topActions?.map((action: any) => ({
-      title: action.action,
-      description: action.whyNow,
+    accountKey: brief.title || brief.id,
+    companyName: brief.title || brief.id,
+    executiveSummary: brief.summaryMarkdown || brief.summary || 'No summary available.',
+    initiatives: brief.topActions?.map((action) => ({
+      title: action.action || 'Recommended next move',
+      description: action.whyNow || 'No rationale available.',
       importanceScore: Math.round((action.score || 0) * 100),
       confidence: (action.confidence || 0) > 0.7 ? 'high' : 'medium',
       timeHorizon: '0-3mo',
@@ -45,22 +40,18 @@ export default function OSINTPage() {
     risks: [],
     hiringSignals: [],
     digitalSignals: [],
-    recommendedNextSteps: brief.topActions?.map((action: any) => action.action) || [],
+    recommendedNextSteps: brief.topActions?.map((action) => action.action || 'Review report') || [],
     generatedAt: brief.generatedAt || new Date().toISOString(),
     confidence: 'high' as const,
   } : null;
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          breadcrumbs={[
-            { label: 'Intelligence', href: '/intelligence' },
-            { label: 'OSINT Reports' },
-          ]}
-        />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <AppPageFrame
+      breadcrumbs={[
+        { label: 'Intelligence', href: '/intelligence' },
+        { label: 'OSINT Reports' },
+      ]}
+    >
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">OSINT Intelligence</h1>
             <p className="text-muted-foreground">
@@ -76,8 +67,6 @@ export default function OSINTPage() {
                <p className="text-muted-foreground">No OSINT Reports found. Run a brief first.</p>
              </div>
           )}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </AppPageFrame>
   )
 }

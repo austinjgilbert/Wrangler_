@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
+  reactStrictMode: true,
+  turbopack: {
+    root: process.cwd(),
   },
   images: {
     unoptimized: true,

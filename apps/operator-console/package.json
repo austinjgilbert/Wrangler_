@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "npm run typecheck",
+    "verify": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

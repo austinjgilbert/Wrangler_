@@ -1,7 +1,15 @@
-// API Client for Wrangler Worker
-// Configure NEXT_PUBLIC_API_URL in your environment variables
+// Legacy direct worker client used by a few non-primary hooks.
+// Prefer Next.js server routes for production-safe calls.
+const LOCAL_API_BASE_URL = 'http://localhost:8787';
+const PRODUCTION_API_BASE_URL = 'https://website-scanner.austin-gilbert.workers.dev';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+function getApiBaseUrl() {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return LOCAL_API_BASE_URL;
+  }
+  return PRODUCTION_API_BASE_URL;
+}
 
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -31,7 +39,7 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const response = await fetch(`${getApiBaseUrl()}${endpoint}`, config);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

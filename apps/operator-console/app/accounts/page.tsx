@@ -1,47 +1,53 @@
 'use client'
 
 import { useState } from 'react'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { DashboardHeader } from '@/components/dashboard-header'
+import { AppPageFrame } from '@/components/app-page-frame'
 import { AccountsGrid } from '@/components/accounts/accounts-grid'
 import { AccountFilters } from '@/components/accounts/account-filters'
 import { useAccounts } from '@/lib/hooks/use-api'
 import type { Account } from '@/lib/types'
-import { Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function AccountsPage() {
-  const { data: accountsData } = useAccounts()
+  const { data: accountsData, error } = useAccounts()
   const accounts = (accountsData?.accounts || []) as Account[]
   const [filteredAccounts, setFilteredAccounts] = useState<Account[] | null>(null)
   const [view, setView] = useState<'grid' | 'table'>('grid')
 
+  if (error) {
+    return (
+      <AppPageFrame breadcrumbs={[{ label: 'Accounts' }]}>
+          <div className="flex flex-1 items-center justify-center p-6">
+            <Alert variant="destructive" className="max-w-xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error.message || 'Failed to load accounts.'}
+              </AlertDescription>
+            </Alert>
+          </div>
+      </AppPageFrame>
+    )
+  }
+
   if (!accountsData) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
-          <DashboardHeader breadcrumbs={[{ label: 'Accounts' }]} />
+      <AppPageFrame breadcrumbs={[{ label: 'Accounts' }]}>
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        </SidebarInset>
-      </SidebarProvider>
+      </AppPageFrame>
     )
   }
 
   const displayAccounts = filteredAccounts || accounts;
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          breadcrumbs={[
-            { label: 'Accounts' },
-          ]}
-        />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <AppPageFrame
+      breadcrumbs={[
+        { label: 'Accounts' },
+      ]}
+    >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
@@ -59,8 +65,6 @@ export default function AccountsPage() {
           />
 
           <AccountsGrid accounts={displayAccounts} view={view} />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </AppPageFrame>
   )
 }

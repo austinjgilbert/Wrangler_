@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/app-sidebar'
-import { DashboardHeader } from '@/components/dashboard-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { AppPageFrame } from '@/components/app-page-frame'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Globe, Upload, Search, ArrowRight } from 'lucide-react'
 
 const researchTools = [
@@ -28,15 +26,11 @@ const researchTools = [
 
 export default function ResearchPage() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          breadcrumbs={[
-            { label: 'Research' },
-          ]}
-        />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <AppPageFrame
+      breadcrumbs={[
+        { label: 'Research' },
+      ]}
+    >
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">Research Tools</h1>
             <p className="text-muted-foreground">
@@ -62,8 +56,6 @@ export default function ResearchPage() {
               </Link>
             ))}
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </AppPageFrame>
   )
 }

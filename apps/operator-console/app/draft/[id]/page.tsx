@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -19,7 +19,6 @@ type DraftDoc = {
 
 export default function DraftPage() {
   const params = useParams();
-  const router = useRouter();
   const id = typeof params?.id === 'string' ? params.id : '';
   const [draft, setDraft] = useState<DraftDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,10 +104,13 @@ export default function DraftPage() {
 
         <div className="card rounded-[var(--card-radius)] p-6">
           <h2 className="text-sm font-medium uppercase tracking-wider text-[var(--muted)] mb-3">Body</h2>
-          <div
-            className="prose prose-sm max-w-none text-[var(--text)]"
-            dangerouslySetInnerHTML={{ __html: body ? body.replace(/\n/g, '<br />') : '<p class="text-[var(--muted)]">No body.</p>' }}
-          />
+          {body ? (
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap break-words text-[var(--text)]">
+              {body}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted)]">No body.</p>
+          )}
         </div>
 
         {draft.composeUrl && (

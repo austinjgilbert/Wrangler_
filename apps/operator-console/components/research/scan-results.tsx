@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ExternalLink,
   CheckCircle2,
@@ -54,7 +56,39 @@ function getPerformanceScore(metrics: ScanResult['performance']): number {
 }
 
 export function ScanResults({ result }: ScanResultsProps) {
+  const router = useRouter()
   const performanceScore = getPerformanceScore(result.performance)
+  const [isQueueing, setIsQueueing] = useState(false)
+
+  const normalizedDomain = result.url
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .trim()
+
+  async function queueResearch() {
+    if (!normalizedDomain) return
+    setIsQueueing(true)
+    try {
+      await fetch('/api/console/command', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ command: `queue research ${normalizedDomain}` }),
+      })
+      router.push('/enrichment')
+    } finally {
+      setIsQueueing(false)
+    }
+  }
+
+  function exportResult() {
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' })
+    const href = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = href
+    link.download = `${normalizedDomain || 'scan-result'}.json`
+    link.click()
+    URL.revokeObjectURL(href)
+  }
 
   return (
     <div className="space-y-6">
@@ -81,13 +115,13 @@ export function ScanResults({ result }: ScanResultsProps) {
             </div>
             <CardAction>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={exportResult}>
                   <Download className="mr-2 size-4" />
                   Export
                 </Button>
-                <Button size="sm">
+                <Button size="sm" onClick={() => void queueResearch()} disabled={isQueueing}>
                   <Sparkles className="mr-2 size-4" />
-                  Run Enrichment
+                  {isQueueing ? 'Queueing...' : 'Queue Research'}
                 </Button>
               </div>
             </CardAction>
@@ -319,13 +353,13 @@ export function ScanResults({ result }: ScanResultsProps) {
             Want more detailed intelligence on this company?
           </p>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => router.push('/intelligence/osint')}>
               <FileText className="mr-2 size-4" />
-              Generate OSINT Report
+              View OSINT Reports
             </Button>
-            <Button>
+            <Button onClick={() => router.push('/enrichment')}>
               <Sparkles className="mr-2 size-4" />
-              Full Account Enrichment
+              Open Enrichment Pipeline
             </Button>
           </div>
         </CardContent>

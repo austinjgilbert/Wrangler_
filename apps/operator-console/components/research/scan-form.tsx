@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { Badge } from '@/components/ui/badge'
 
 interface ScanFormProps {
   onScan: (url: string) => void
@@ -15,6 +14,7 @@ interface ScanFormProps {
 
 export function ScanForm({ onScan, isScanning }: ScanFormProps) {
   const [url, setUrl] = useState('')
+  const suggestedUrls = ['https://stripe.com', 'https://vercel.com', 'https://linear.app']
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,15 +67,17 @@ export function ScanForm({ onScan, isScanning }: ScanFormProps) {
             </form>
 
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
-                Try: stripe.com
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
-                Try: vercel.com
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
-                Try: linear.app
-              </Badge>
+              {suggestedUrls.map((suggestedUrl) => (
+                <Button
+                  key={suggestedUrl}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUrl(suggestedUrl)}
+                >
+                  Try: {suggestedUrl.replace(/^https?:\/\//, '')}
+                </Button>
+              ))}
             </div>
           </div>
 

@@ -1,7 +1,10 @@
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8787';
+const LOCAL_BASE_URL = 'http://127.0.0.1:8787';
+const PRODUCTION_BASE_URL = 'https://website-scanner.austin-gilbert.workers.dev';
 
 export function workerBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_URL || process.env.WORKER_BASE_URL || DEFAULT_BASE_URL;
+  if (process.env.WORKER_BASE_URL) return process.env.WORKER_BASE_URL;
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  return process.env.NODE_ENV === 'production' ? PRODUCTION_BASE_URL : LOCAL_BASE_URL;
 }
 
 export function workerHeaders() {
@@ -18,14 +21,29 @@ export function workerHeaders() {
 }
 
 export async function proxyToWorker(path: string, init?: RequestInit) {
-  const response = await fetch(`${workerBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      ...workerHeaders(),
-      ...(init?.headers || {}),
-    },
-    cache: 'no-store',
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${workerBaseUrl()}${path}`, {
+      ...init,
+      headers: {
+        ...workerHeaders(),
+        ...(init?.headers || {}),
+      },
+      cache: 'no-store',
+    });
+  } catch (error: any) {
+    return Response.json(
+      {
+        ok: false,
+        error: {
+          message: error?.message || 'Failed to reach worker backend',
+          workerBaseUrl: workerBaseUrl(),
+          path,
+        },
+      },
+      { status: 503 },
+    );
+  }
 
   const payload = await response.text();
   return new Response(payload, {

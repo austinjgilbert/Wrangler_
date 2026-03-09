@@ -1,22 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, Upload, FileText, Sparkles, Globe, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
 
 export function QuickActions() {
+  const router = useRouter()
   const [url, setUrl] = useState('')
-  const [isScanning, setIsScanning] = useState(false)
 
   const handleScan = async () => {
     if (!url) return
-    setIsScanning(true)
-    // Simulate scan - in production this would call the API
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsScanning(false)
+    router.push(`/research/scan?url=${encodeURIComponent(url)}`)
     setUrl('')
   }
 
@@ -40,31 +37,24 @@ export function QuickActions() {
               onKeyDown={(e) => e.key === 'Enter' && handleScan()}
             />
           </div>
-          <Button onClick={handleScan} disabled={!url || isScanning}>
-            {isScanning ? (
-              <>
-                <Spinner className="mr-2" />
-                Scanning
-              </>
-            ) : (
-              <>
-                Scan
-                <ArrowRight className="ml-2 size-4" />
-              </>
-            )}
+          <Button onClick={handleScan} disabled={!url}>
+            <>
+              Scan
+              <ArrowRight className="ml-2 size-4" />
+            </>
           </Button>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <Button variant="outline" size="sm" className="justify-start">
+          <Button variant="outline" size="sm" className="justify-start" onClick={() => router.push('/research/batch')}>
             <Upload className="mr-2 size-4" />
             Batch Upload
           </Button>
-          <Button variant="outline" size="sm" className="justify-start">
+          <Button variant="outline" size="sm" className="justify-start" onClick={() => router.push('/intelligence/osint')}>
             <FileText className="mr-2 size-4" />
             OSINT Report
           </Button>
-          <Button variant="outline" size="sm" className="justify-start">
+          <Button variant="outline" size="sm" className="justify-start" onClick={() => router.push('/enrichment')}>
             <Sparkles className="mr-2 size-4" />
             Enrich Account
           </Button>
