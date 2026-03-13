@@ -39,6 +39,7 @@ export function normalizeDomain(url) {
 
 // Re-export from sanity-client.js so all code uses the same normalization and key generation
 import { normalizeCanonicalUrl as _normalizeCanonicalUrl, generateAccountKey as _generateAccountKey } from '../sanity-client.js';
+import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
 export const normalizeCanonicalUrl = _normalizeCanonicalUrl;
 export const generateAccountKey = _generateAccountKey;
 
@@ -211,13 +212,24 @@ export async function findOrCreateMasterAccount(
   // Create new account if not found
   if (!existingAccount) {
     const accountId = `account.${finalAccountKey}`;
+    const rawName = companyName || scanData?.businessUnits?.companyName || domain;
+    const displayName = normalizeAccountDisplayName({
+      companyName: rawName,
+      name: rawName,
+      domain,
+      rootDomain: domain,
+      accountKey: finalAccountKey,
+      _id: accountId,
+    }) || rawName;
     const accountDoc = {
       _type: 'account',
       _id: accountId,
       accountKey: finalAccountKey,
       canonicalUrl,
       domain: domain,
-      companyName: companyName || scanData?.businessUnits?.companyName || null,
+      rootDomain: domain,
+      name: displayName,
+      companyName: displayName,
       technologyStack: scanData?.technologyStack || null,
       aiReadiness: scanData?.aiReadiness ? { score: scanData.aiReadiness.score } : null,
       opportunityScore: scanData?.technologyStack?.opportunityScore || null,
@@ -247,9 +259,18 @@ export async function findOrCreateMasterAccount(
     updatedAt: new Date().toISOString(),
     lastScannedAt: new Date().toISOString(),
   };
-  
-  if (companyName && !existingAccount.companyName) {
-    updateData.companyName = companyName;
+
+  const mergedForNormalizer = { ...existingAccount, companyName: companyName || existingAccount.companyName };
+  const displayName = normalizeAccountDisplayName(mergedForNormalizer);
+
+  if (!existingAccount.companyName) {
+    updateData.companyName = displayName || companyName || null;
+  }
+  if (!existingAccount.name) {
+    updateData.name = displayName || companyName || null;
+  }
+  if (!existingAccount.rootDomain) {
+    updateData.rootDomain = domain;
   }
   
   if (scanData) {

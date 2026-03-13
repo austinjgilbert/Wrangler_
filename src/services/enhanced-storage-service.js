@@ -4,6 +4,7 @@
  */
 
 import { generateAccountKey, normalizeCanonicalUrl } from '../sanity-client.js';
+import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
 import { checkAndMergeAccount, checkAndMergePerson } from './deduplication-service.js';
 import { detectAccountRelationships, storeAccountRelationships } from './relationship-service.js';
 
@@ -94,15 +95,26 @@ export async function storeAccountWithRelationships(
       }
     }
 
-    // Step 2: Store/update account
+    // Step 2: Store/update account (normalize name/companyName for consistent display)
+    const accountId = `account.${accountKey}`;
+    const rawCompanyName = finalAccountData.companyName || finalAccountData.businessUnits?.companyName;
+    const displayName = normalizeAccountDisplayName({
+      companyName: rawCompanyName,
+      name: rawCompanyName,
+      domain: finalAccountData.domain || finalAccountData.rootDomain,
+      rootDomain: finalAccountData.rootDomain || extractRootDomain(finalAccountData.canonicalUrl || finalAccountData.url),
+      accountKey,
+      _id: accountId,
+    });
     const accountDoc = {
       _type: 'account',
-      _id: `account.${accountKey}`,
+      _id: accountId,
       accountKey,
       canonicalUrl: finalAccountData.canonicalUrl || normalizeCanonicalUrl(finalAccountData.url),
       rootDomain: finalAccountData.rootDomain || extractRootDomain(finalAccountData.canonicalUrl || finalAccountData.url),
       domain: finalAccountData.domain || finalAccountData.rootDomain || extractRootDomain(finalAccountData.canonicalUrl || finalAccountData.url),
-      companyName: finalAccountData.companyName || finalAccountData.businessUnits?.companyName,
+      companyName: displayName || rawCompanyName,
+      name: displayName || rawCompanyName,
       technologyStack: finalAccountData.technologyStack || finalAccountData.accountPack?.techStack || {},
       opportunityScore: finalAccountData.opportunityScore || finalAccountData.accountPack?.scan?.technologyStack?.opportunityScore || 0,
       aiReadiness: finalAccountData.aiReadiness || {},

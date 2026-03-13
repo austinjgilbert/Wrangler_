@@ -19,6 +19,8 @@
 import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
 import { buildEventDoc } from '../lib/events.ts';
 import { createMoltEvent } from '../lib/sanity.ts';
+import { buildDeterministicSnapshotId, buildExtensionCaptureBucketId } from '../../shared/accountStoragePolicy.ts';
+import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
 
 interface CapturedPerson {
   name?: string;
@@ -66,6 +68,19 @@ interface CapturePayload {
   title: string;
   source: string;
   capturedAt: string;
+  domain?: string;
+  companyName?: string;
+  captureSource?: string;
+  pageSource?: string;
+  interaction?: {
+    _type?: string;
+    source?: string;
+    domain?: string;
+    url?: string;
+    title?: string;
+    companyName?: string;
+    timestamp?: string;
+  };
   people: CapturedPerson[];
   accounts: CapturedAccount[];
   technologies: string[];
@@ -110,6 +125,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
       normalizeCanonicalUrl,
       extractDomain,
     } = await import('../sanity-client.js');
+    const { findOrCreateMasterAccount } = await import('../services/sanity-account.js');
 
     const client = initSanityClient(env);
     if (!client) {
@@ -126,6 +142,25 @@ export async function handleExtensionCapture(request: Request, requestId: string
     };
 
     const pasteContext = classifyPasteContext(body);
+    const captureUrl = body.interaction?.url || body.url;
+    const captureTitle = body.interaction?.title || body.title || captureUrl;
+    const captureTimestamp = body.interaction?.timestamp || body.capturedAt || new Date().toISOString();
+    const captureSource = body.interaction?.source || body.captureSource || 'chrome_extension';
+    const captureDomain = normalizeCapturedDomain(
+      body.interaction?.domain
+      || body.domain
+      || extractDomain(captureUrl),
+    );
+
+    if (!captureDomain || !captureSource) {
+      return createErrorResponse(
+        'VALIDATION_ERROR',
+        'domain and source are required',
+        { url: captureUrl, source: captureSource, domain: captureDomain },
+        400,
+        requestId,
+      );
+    }
 
     // ── 1. Process accounts (merge with existing when present) ───────────
     const accounts = body.accounts || [];
@@ -137,23 +172,42 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (!domain) continue;
 
         const canonicalUrl = normalizeCanonicalUrl(acct.url || acct.website || `https://${domain}`);
-        const accountKey = await generateAccountKey(canonicalUrl);
-        if (!accountKey) continue;
+        const resolvedAccount = await findOrCreateMasterAccount(
+          groqQuery,
+          upsertDocument,
+          patchDocument,
+          client,
+          canonicalUrl,
+          acct.name || body.companyName || null,
+          null,
+        );
+        const accountKey = resolvedAccount?.accountKey;
+        const accountId = resolvedAccount?.accountId;
+        if (!accountKey || !accountId) continue;
 
-        const accountId = `account-${accountKey}`;
-
+        const rootDomain = extractDomain(canonicalUrl);
+        const displayName = normalizeAccountDisplayName({
+          companyName: acct.name ?? undefined,
+          name: acct.name ?? undefined,
+          domain,
+          rootDomain,
+          accountKey,
+          _id: accountId,
+        });
         const accountDoc: Record<string, any> = {
           _type: 'account',
           _id: accountId,
           accountKey,
           canonicalUrl,
           domain,
-          rootDomain: extractDomain(canonicalUrl),
+          rootDomain,
           updatedAt: new Date().toISOString(),
         };
 
-        if (acct.name) accountDoc.companyName = acct.name;
-        if (acct.name) accountDoc.name = acct.name;
+        if (displayName || acct.name) {
+          accountDoc.companyName = displayName || (acct.name ?? null);
+          accountDoc.name = displayName || (acct.name ?? null);
+        }
         if (acct.industry) accountDoc.industry = acct.industry;
         if (acct.description || acct.about) {
           accountDoc.description = acct.description || acct.about;
@@ -180,6 +234,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
         await upsertDocument(client, merged);
 
         results.accountsResolved.push({
+          accountId,
           accountKey,
           domain,
           name: merged.companyName || merged.name || acct.name || domain,
@@ -214,6 +269,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
         if (person.headline || person.title) personDoc.headline = person.headline || person.title;
         if (person.currentCompany) personDoc.currentCompany = person.currentCompany;
+        if (person.currentTitle || person.title) personDoc.title = person.currentTitle || person.title;
         if (person.currentTitle || person.title) personDoc.currentTitle = person.currentTitle || person.title;
         if (person.linkedinUrl || person.linkedInUrl) {
           personDoc.linkedinUrl = person.linkedinUrl || person.linkedInUrl;
@@ -229,6 +285,8 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (person.languages?.length) personDoc.languages = person.languages;
         if (person.connections != null) personDoc.connections = typeof person.connections === 'number' ? person.connections : parseInt(String(person.connections), 10) || null;
         if (person.email) personDoc.email = person.email;
+        if (person.phone) personDoc.phone = person.phone;
+        if (person.source) personDoc.sourceSystems = [person.source];
 
         const titleStr = person.currentTitle || person.title || person.headline || '';
         personDoc.roleCategory = classifyRole(titleStr);
@@ -243,6 +301,8 @@ export async function handleExtensionCapture(request: Request, requestId: string
           if (matchedAccount) {
             personDoc.relatedAccountKey = matchedAccount.accountKey;
             personDoc.rootDomain = matchedAccount.domain;
+            personDoc.companyRef = { _type: 'reference', _ref: matchedAccount.accountId };
+            if (!personDoc.currentCompany) personDoc.currentCompany = matchedAccount.name || person.currentCompany;
           }
         }
 
@@ -300,7 +360,16 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (canonicalUrl && domain) {
           const contextAccountKey = await generateAccountKey(canonicalUrl);
           if (contextAccountKey) {
-            const contextAccountId = `account-${contextAccountKey}`;
+            const resolvedAccount = await findOrCreateMasterAccount(
+              groqQuery,
+              upsertDocument,
+              patchDocument,
+              client,
+              canonicalUrl,
+              body.companyName || body.domain || null,
+              null,
+            );
+            const contextAccountId = resolvedAccount?.accountId || `account.${contextAccountKey}`;
             const existingAccount = await getDocument(client, contextAccountId) as Record<string, any> | null;
             const existingRefs = (existingAccount?.technologies || []).map((r: { _ref?: string }) => ({ _ref: r._ref || r, _key: (r._ref || r).toString().replace('technology-', '') }));
             const seen = new Set(existingRefs.map((r: { _ref: string }) => r._ref));
@@ -331,6 +400,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
             if (!results.accountsResolved.some((a) => a.accountKey === contextAccountKey)) {
               results.accountsResolved.push({
+                accountId: contextAccountId,
                 accountKey: contextAccountKey,
                 domain,
                 name: domain,
@@ -342,6 +412,47 @@ export async function handleExtensionCapture(request: Request, requestId: string
         console.error('Extension: contextUrl tech link error:', err?.message);
       }
     }
+
+    // ── 3c. Store extension interaction with normalized page metadata ──────
+    const primaryResolvedAccount = results.accountsResolved[0] || null;
+    const interactionId = buildExtensionCaptureBucketId({
+      accountKey: primaryResolvedAccount?.accountKey || null,
+      domain: captureDomain,
+      date: captureTimestamp.slice(0, 10),
+    });
+    const interactionCompanyName = inferCapturedCompanyName(body, captureDomain)
+      || primaryResolvedAccount?.name
+      || null;
+
+    const dataAdded: string[] = [];
+    if (results.accountsResolved.length) dataAdded.push('account');
+    if (results.peopleResolved.length) dataAdded.push('person');
+    if (results.technologiesLinked) dataAdded.push('technology');
+    const influencedAreas: string[] = [...new Set(dataAdded)];
+
+    await upsertDocument(client, {
+      _type: 'interaction',
+      _id: `interaction.${interactionId}`,
+      interactionId,
+      userPrompt: `Captured page: ${captureTitle}`,
+      gptResponse: `Chrome extension captured ${interactionCompanyName || captureDomain} from ${body.source || 'website'} and stored the page context for enrichment.`,
+      timestamp: captureTimestamp,
+      source: captureSource,
+      pageSource: body.pageSource || body.source,
+      domain: captureDomain,
+      url: captureUrl,
+      title: captureTitle,
+      companyName: interactionCompanyName,
+      accountKey: primaryResolvedAccount?.accountKey || '',
+      contextTags: uniqueStrings(['extension', 'chrome_extension', body.source, pasteContext, captureDomain]),
+      requestId,
+      createdAt: captureTimestamp,
+      updatedAt: new Date().toISOString(),
+      eventSummary: `Extension capture from ${body.source}: ${results.accountsResolved.length} account(s), ${results.peopleResolved.length} contact(s), ${results.technologiesLinked} tech(s) linked.`,
+      dataAdded: dataAdded.length ? dataAdded : undefined,
+      influencedAreas: influencedAreas.length ? influencedAreas : undefined,
+      userId: 'chrome_extension',
+    });
 
     // ── 4. Store capture event ──────────────────────────────────────────
     const entities = [
@@ -392,6 +503,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
         technologiesLinked: results.technologiesLinked,
         entitiesResolved: results.entitiesResolved,
         jobsQueued: results.jobsQueued,
+        interactionId,
         eventId: eventDoc._id,
         backgroundEnrichment: true,
       },
@@ -530,10 +642,19 @@ export async function handleExtensionLearn(request: Request, requestId: string, 
     });
     await upsertDocument(client, mergedSession);
 
-    const crawlSnapshotId = `crawlSnapshot-${toSafeId(`${sessionId}-${body.fingerprint || body.url}`)}`;
+    const crawlSnapshotId = buildDeterministicSnapshotId({
+      namespace: 'crawl.snapshot.learn',
+      accountKey: intel.primaryAccount?.accountKey || null,
+      accountId: intel.primaryAccount?._id || null,
+      urlOrPath: `${host}-${pathTemplate}`,
+    });
     await upsertDocument(client, {
       _id: crawlSnapshotId,
       _type: 'crawl.snapshot',
+      accountRef: intel.primaryAccount?._id ? { _type: 'reference', _ref: intel.primaryAccount._id } : null,
+      accountKey: intel.primaryAccount?.accountKey || '',
+      snapshotClass: 'learn_mode',
+      sourceType: body.source,
       url: body.url,
       status: 200,
       snippet: truncateLongText(body.rawText || body.title || body.url, 1000),
@@ -1039,6 +1160,41 @@ function truncateLongText(value: string, maxLen: number) {
   return text.length <= maxLen ? text : `${text.slice(0, maxLen)}…`;
 }
 
+function normalizeCapturedDomain(value: string | null | undefined): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, '');
+}
+
+function inferCapturedCompanyName(body: CapturePayload, domain: string): string {
+  const topLevel = String(body.interaction?.companyName || body.companyName || '').trim();
+  if (topLevel) return topLevel;
+
+  const accountName = (body.accounts || []).find((item) => item?.name)?.name;
+  if (accountName) return String(accountName).trim();
+
+  const personCompany = (body.people || []).find((item) => item?.currentCompany)?.currentCompany;
+  if (personCompany) return String(personCompany).trim();
+
+  const metaSiteName = String(
+    body.metadata?.ogSiteName
+      || body.metadata?.['og:site_name']
+      || body.metadata?.['application-name']
+      || '',
+  ).trim();
+  if (metaSiteName) return metaSiteName;
+
+  const titleRoot = String(body.interaction?.title || body.title || '')
+    .split(/\s+[\|\-–—]\s+/)
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (titleRoot) return titleRoot;
+
+  const domainRoot = normalizeCapturedDomain(domain).split('.')[0] || '';
+  return domainRoot ? domainRoot.charAt(0).toUpperCase() + domainRoot.slice(1) : '';
+}
+
 function classifyRole(title: string): string {
   const t = (title || '').toLowerCase();
   if (/cto|vp.*eng|head.*eng|director.*eng|software|developer|architect|devops|sre/i.test(t)) return 'engineering';
@@ -1111,7 +1267,7 @@ function mergeAccountForExtension(existing: Record<string, any> | null, incoming
 function mergePersonForExtension(existing: Record<string, any> | null, incoming: Record<string, any>): Record<string, any> {
   const out = { ...incoming };
   if (!existing) return out;
-  for (const k of ['name', 'headline', 'currentCompany', 'currentTitle', 'linkedinUrl', 'email', 'location', 'about']) {
+  for (const k of ['name', 'title', 'headline', 'currentCompany', 'currentTitle', 'linkedinUrl', 'email', 'phone', 'location', 'about']) {
     if (out[k] != null && out[k] !== '') continue;
     if (existing[k] != null && existing[k] !== '') out[k] = existing[k];
   }
@@ -1119,6 +1275,13 @@ function mergePersonForExtension(existing: Record<string, any> | null, incoming:
     const combined = [...new Set([...(out.skills || []), ...existing.skills])];
     out.skills = combined;
   }
+  if (Array.isArray(existing.sourceSystems) && existing.sourceSystems.length) {
+    const combined = [...new Set([...(out.sourceSystems || []), ...existing.sourceSystems])];
+    out.sourceSystems = combined;
+  }
+  if (!out.companyRef && existing.companyRef) out.companyRef = existing.companyRef;
+  if (!out.relatedAccountKey && existing.relatedAccountKey) out.relatedAccountKey = existing.relatedAccountKey;
+  if (!out.rootDomain && existing.rootDomain) out.rootDomain = existing.rootDomain;
   if (Array.isArray(existing.experience) && existing.experience.length && !(out.experience?.length)) out.experience = existing.experience;
   if (Array.isArray(existing.education) && existing.education.length && !(out.education?.length)) out.education = existing.education;
   return out;

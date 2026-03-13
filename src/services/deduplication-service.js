@@ -4,6 +4,7 @@
  */
 
 import { normalizeDomain, normalizeCanonicalUrl } from './sanity-account.js';
+import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
 
 /**
  * Check if account is duplicate and merge if needed
@@ -217,6 +218,13 @@ async function mergeAccountData(existingAccount, newAccountData, groqQuery, upse
 
     if (newAccountData.businessScale && (!merged.businessScale || Object.keys(newAccountData.businessScale).length > Object.keys(merged.businessScale || {}).length)) {
       merged.businessScale = { ...merged.businessScale, ...newAccountData.businessScale };
+    }
+
+    // Normalize display name for consistent display everywhere
+    const displayName = normalizeAccountDisplayName(merged);
+    if (displayName) {
+      merged.companyName = displayName;
+      merged.name = displayName;
     }
 
     // Update timestamps

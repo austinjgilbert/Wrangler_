@@ -173,21 +173,63 @@ export async function handleAccountPage(
 
     const section = (
       title: string,
-      content: string,
+      summary: string,
+      fullContent: string,
       isPresent: boolean,
       gapKey?: string,
     ) => {
       const gap = gapKey ? gaps.includes(gapKey) : false;
+      const sectionId = (gapKey || title.replace(/\s+/g, '-').toLowerCase()).replace(/[^a-z0-9-]/g, '-');
       return `
-      <section class="card ${isPresent ? '' : 'card--empty'}">
+      <section class="card card--clickable ${isPresent ? '' : 'card--empty'}" data-section="${escapeHtml(sectionId)}">
         <h2 class="section-title">${escapeHtml(title)}</h2>
-        <div class="section-body">${content}</div>
-        ${gap ? `<p class="section-hint">Missing — queue enrichment below to fill.</p>` : ''}
+        <div class="section-summary" data-section-title="${escapeHtml(title)}">${summary}</div>
+        <div class="section-full-details" data-section-id="${escapeHtml(sectionId)}" style="display:none">${fullContent}</div>
+        ${gap ? `<p class="section-hint">Missing — queue enrichment to fill.</p>` : ''}
+        <div class="section-actions">
+          <button type="button" class="btn btn--secondary btn--details">View full details</button>
+          <button type="button" class="btn btn--primary btn--enrich" data-section="${escapeHtml(sectionId)}" data-label="${escapeHtml(title)}">Queue enrichment</button>
+        </div>
       </section>`;
     };
 
     const row = (label: string, value: string | number | null | undefined) =>
       `<tr><td class="row-label">${escapeHtml(label)}</td><td>${value != null && value !== '' ? escapeHtml(String(value)) : '<span class="muted">—</span>'}</td></tr>`;
+
+    const techStackCategories: [string, string][] = [
+      ['cms', 'Primary CMS'],
+      ['frameworks', 'Frameworks'],
+      ['legacySystems', 'Legacy systems'],
+      ['pimSystems', 'PIM systems'],
+      ['damSystems', 'DAM systems'],
+      ['lmsSystems', 'LMS systems'],
+      ['analytics', 'Analytics'],
+      ['ecommerce', 'E‑commerce'],
+      ['hosting', 'Hosting'],
+      ['marketing', 'Marketing'],
+      ['payments', 'Payments'],
+      ['chat', 'Chat'],
+      ['monitoring', 'Monitoring'],
+      ['authProviders', 'Auth providers'],
+      ['searchTech', 'Search'],
+      ['cssFrameworks', 'CSS frameworks'],
+      ['cdnMedia', 'CDN / media'],
+    ];
+    const techStackFullHtml = (() => {
+      const ts = account.technologyStack || {};
+      const parts: string[] = [];
+      for (const [key, label] of techStackCategories) {
+        const arr = ts[key];
+        if (Array.isArray(arr) && arr.length > 0) {
+          parts.push(`<div class="detail-block"><strong>${escapeHtml(label)}</strong><div class="tags">${arr.map((t: string) => `<span class="tag">${escapeHtml(String(t))}</span>`).join('')}</div></div>`);
+        }
+      }
+      const linked = (account.technologies || []).map((t: any) => t?.name ?? t).filter(Boolean);
+      if (linked.length > 0) {
+        parts.push(`<div class="detail-block"><strong>Linked technologies</strong><div class="tags">${linked.map((t: string) => `<span class="tag">${escapeHtml(String(t))}</span>`).join('')}</div></div>`);
+      }
+      return parts.length ? parts.join('') : '<p class="muted">No technology data yet.</p>';
+    })();
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -236,11 +278,27 @@ export async function handleAccountPage(
     .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 0.5rem; }
     .progress-fill { height: 100%; background: #0f766e; border-radius: 3px; transition: width 0.2s; }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+    .section-actions { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f1f5f9; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .btn--enrich { font-size: 0.8rem; padding: 0.35rem 0.75rem; }
+    .btn--details { font-size: 0.8rem; padding: 0.35rem 0.75rem; }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .section-summary { font-size: 0.95rem; color: #334155; }
+    .card--clickable .section-summary { cursor: pointer; }
+    .detail-block { margin-bottom: 1rem; }
+    .detail-block strong { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.is-open { display: flex; }
+    .modal-content { background: #fff; border-radius: 12px; max-width: 560px; width: 100%; max-height: 85vh; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; }
+    .modal-title { margin: 0; font-size: 1rem; font-weight: 600; color: #1e293b; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; color: #64748b; cursor: pointer; padding: 0.25rem; }
+    .modal-close:hover { color: #1e293b; }
+    .modal-body { padding: 1.25rem; overflow: auto; font-size: 0.95rem; }
   </style>
 </head>
 <body>
-  <div class="container">
-    ${queued ? '<div class="notice">Enrichment queued. The pipeline runs in the background (cron every 15 min). Refresh to see progress.</div>' : ''}
+  <div class="container" data-account-key="${escapeHtml(accountKey || '')}" data-canonical-url="${escapeHtml(canonicalUrl)}" data-enrichment-active="${jobStatus === 'pending' || jobStatus === 'in_progress' ? '1' : ''}">
+    ${queued ? '<div class="notice" id="queued-notice">Enrichment queued. Progress will update below.</div>' : ''}
 
     <header class="header">
       <h1>${escapeHtml(name)}</h1>
@@ -257,19 +315,27 @@ export async function handleAccountPage(
       </div>
     </header>
 
-    ${section(
-      'Enrichment progress',
-      jobStatus
-        ? `<p><strong>Status:</strong> ${escapeHtml(jobStatus)}</p>
-           ${currentStage ? `<p><strong>Current stage:</strong> ${escapeHtml(currentStage)}</p>` : ''}
-           <div class="progress-bar"><div class="progress-fill" style="width: ${Math.round((completedStages.length / 7) * 100)}%"></div></div>
-           <p class="section-hint">Completed: ${(completedStages as string[]).length ? (completedStages as string[]).join(', ') : 'none yet'}</p>`
-        : '<p class="muted">No enrichment job yet. Use "Queue missing enrichment" above to start the pipeline.</p>',
-      !!enrichmentJob,
-    )}
+    <section class="card card--clickable" id="enrichment-progress-card">
+      <h2 class="section-title">Enrichment progress</h2>
+      <div class="section-summary" data-section-title="Enrichment progress">${jobStatus ? `${jobStatus} · ${Math.round((completedStages.length / 7) * 100)}% · ${currentStage || '—'}` : 'No job yet'}</div>
+      <div class="section-body" id="enrichment-progress-content">
+        ${jobStatus
+          ? `<p><strong>Status:</strong> ${escapeHtml(jobStatus)}</p>
+             ${currentStage ? `<p><strong>Current stage:</strong> ${escapeHtml(currentStage)}</p>` : ''}
+             <div class="progress-bar"><div class="progress-fill" style="width: ${Math.round((completedStages.length / 7) * 100)}%"></div></div>
+             <p class="section-hint">Completed: ${(completedStages as string[]).length ? (completedStages as string[]).join(', ') : 'none yet'}</p>`
+          : '<p class="muted">No enrichment job yet. Use "Queue enrichment" on any section below to start.</p>'}
+      </div>
+      <div class="section-full-details" data-section-id="enrichment-progress" style="display:none"><div id="enrichment-progress-full-content"></div></div>
+      <div class="section-actions">
+        <button type="button" class="btn btn--secondary btn--details">View full details</button>
+        <button type="button" class="btn btn--primary btn--enrich" data-section="enrichment-progress" data-label="Enrichment progress">Queue enrichment</button>
+      </div>
+    </section>
 
     ${section(
       'Overview',
+      [account.industry, account.classification?.segment, account.lastScannedAt ? new Date(account.lastScannedAt).toLocaleDateString() : null].filter(Boolean).join(' · ') || '—',
       `<table>
         ${row('Industry', account.industry)}
         ${row('Segment', account.classification?.segment)}
@@ -283,6 +349,11 @@ export async function handleAccountPage(
 
     ${section(
       'Benchmarks',
+      (() => {
+        const b = account.benchmarks || {};
+        const parts = [b.estimatedEmployees, b.estimatedRevenue, b.headquarters].filter((v: any) => v != null && v !== '');
+        return parts.length ? parts.join(' · ') : '—';
+      })(),
       `<table>
         ${row('Employees', account.benchmarks?.estimatedEmployees)}
         ${row('Revenue', account.benchmarks?.estimatedRevenue)}
@@ -298,9 +369,8 @@ export async function handleAccountPage(
 
     ${section(
       'Technology stack',
-      techFlat.length
-        ? `<div class="tags">${techFlat.map((t: string) => `<span class="tag">${escapeHtml(String(t))}</span>`).join('')}</div>`
-        : '<p class="muted">No technologies linked yet.</p>',
+      techFlat.length ? `${techFlat.length} technologies${techStack.cms?.length ? ` · CMS: ${(techStack.cms as string[]).slice(0, 3).join(', ')}${(techStack.cms as string[]).length > 3 ? '…' : ''}` : ''}` : 'No technologies yet',
+      techStackFullHtml,
       techFlat.length > 0,
       'technologies',
     )}
@@ -308,15 +378,13 @@ export async function handleAccountPage(
     ${section(
       'Pipeline stages',
       (() => {
-        const stages = [
-          'scan',
-          'discovery',
-          'crawl',
-          'extraction',
-          'linkedin',
-          'brief',
-          'verification',
-        ];
+        const payload = accountPack?.payload || {};
+        const researchSet = payload.researchSet || {};
+        const done = [!!payload.scan, !!payload.discovery || !!researchSet.discovery, !!payload.crawl || !!researchSet.crawl, !!payload.evidence || !!researchSet.evidence, !!payload.linkedin || !!researchSet.linkedin, !!payload.brief || !!researchSet.brief, !!payload.verification || !!researchSet.verification].filter(Boolean).length;
+        return `${done}/7 stages complete${currentStage ? ` · Current: ${currentStage}` : ''}`;
+      })(),
+      (() => {
+        const stages = ['scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'];
         const payload = accountPack?.payload || {};
         const researchSet = payload.researchSet || {};
         const hasScan = !!payload.scan;
@@ -327,18 +395,14 @@ export async function handleAccountPage(
         const hasBrief = !!payload.brief || !!researchSet.brief;
         const hasVerification = !!payload.verification || !!researchSet.verification;
         const present = { scan: hasScan, discovery: hasDiscovery, crawl: hasCrawl, extraction: hasExtraction, linkedin: hasLinkedin, brief: hasBrief, verification: hasVerification };
-        return stages
-          .map(
-            (s) =>
-              `<span class="tag tag--${present[s as keyof typeof present] ? 'done' : completedStages.includes(s) ? 'progress' : 'missing'}">${DIMENSION_LABELS[s] || s}: ${present[s as keyof typeof present] ? 'Done' : completedStages.includes(s) ? 'In progress' : 'Missing'}</span>`,
-          )
-          .join('');
+        return stages.map((s) => `<span class="tag tag--${present[s as keyof typeof present] ? 'done' : completedStages.includes(s) ? 'progress' : 'missing'}">${DIMENSION_LABELS[s] || s}: ${present[s as keyof typeof present] ? 'Done' : completedStages.includes(s) ? 'In progress' : 'Missing'}</span>`).join('');
       })(),
       true,
     )}
 
     ${section(
       'Competitors & classification',
+      [account.competitorResearch?.count != null ? `${account.competitorResearch.count} competitors` : null, account.classification?.industry].filter(Boolean).join(' · ') || '—',
       `<table>
         ${row('Competitors researched', account.competitorResearch?.count != null ? String(account.competitorResearch.count) : null)}
         ${row('Industry (classification)', account.classification?.industry)}
@@ -352,13 +416,9 @@ export async function handleAccountPage(
 
     ${section(
       'Leadership',
+      leadership.length ? `${leadership.length} person(s)` : 'No leadership yet',
       leadership.length
-        ? leadership
-            .map(
-              (p: any) =>
-                `<div class="pain-item">${escapeHtml(p?.name || '—')}${p?.headline ? ` · ${escapeHtml(p.headline)}` : ''}</div>`,
-            )
-            .join('')
+        ? leadership.map((p: any) => `<div class="pain-item">${escapeHtml(p?.name || '—')}${p?.headline ? ` · ${escapeHtml(p.headline)}` : ''}</div>`).join('')
         : '<p class="muted">No leadership contacts yet.</p>',
       leadership.length > 0,
       'leadership',
@@ -366,13 +426,9 @@ export async function handleAccountPage(
 
     ${section(
       'Pain points',
+      painPoints.length ? `${painPoints.length} pain point(s)` : 'No pain points yet',
       painPoints.length
-        ? painPoints
-            .map(
-              (p: any) =>
-                `<div class="pain-item"><strong>${escapeHtml(p.category || 'General')}</strong>${p.severity ? ` · ${escapeHtml(p.severity)}` : ''}${p.description ? `<div style="margin-top:4px;color:#64748b">${escapeHtml(p.description)}</div>` : ''}</div>`,
-            )
-            .join('')
+        ? painPoints.map((p: any) => `<div class="pain-item"><strong>${escapeHtml(p.category || 'General')}</strong>${p.severity ? ` · ${escapeHtml(p.severity)}` : ''}${p.description ? `<div style="margin-top:4px;color:#64748b">${escapeHtml(p.description)}</div>` : ''}</div>`).join('')
         : '<p class="muted">No pain points yet.</p>',
       painPoints.length > 0,
       'painPoints',
@@ -380,12 +436,158 @@ export async function handleAccountPage(
 
     ${section(
       'Profile gaps',
+      gaps.length ? `Missing: ${gaps.length} area(s)` : 'Profile complete',
       gaps.length
-        ? `<p>Missing: ${gaps.map((g: string) => DIMENSION_LABELS[g] || g).join(', ')}</p><p><a href="${escapeHtml(basePath)}?action=queue-enrichment" class="btn btn--primary">Queue missing enrichment</a></p>`
+        ? `<p>Missing: ${gaps.map((g: string) => DIMENSION_LABELS[g] || g).join(', ')}</p>`
         : '<p class="muted">No gaps — profile is complete.</p>',
       false,
     )}
   </div>
+
+  <div class="modal-overlay" id="details-modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Details</h3>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var container = document.querySelector('.container');
+    if (!container) return;
+    var accountKey = container.getAttribute('data-account-key');
+    var canonicalUrl = container.getAttribute('data-canonical-url');
+    var progressEl = document.getElementById('enrichment-progress-content');
+    var pollTimer = null;
+
+    function renderProgress(data) {
+      if (!progressEl) return;
+      if (data.status === 'in_progress') {
+        var pct = (data.progress != null ? data.progress : 0);
+        var stage = data.currentStage || 'running';
+        progressEl.innerHTML = '<p><strong>Status:</strong> in progress</p>' +
+          '<p><strong>Current stage:</strong> ' + stage + '</p>' +
+          '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+          '<p class="section-hint">Enrichment is running. This page will update automatically.</p>';
+      } else if (data.status === 'complete') {
+        progressEl.innerHTML = '<p><strong>Status:</strong> complete</p>' +
+          '<div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>' +
+          '<p class="section-hint">Done. <a href="' + (window.location.pathname + window.location.search).replace(/[?&]queued=1/, '') + '">Refresh page</a> to see updated data.</p>';
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+        document.querySelectorAll('.btn--enrich').forEach(function(b) { b.disabled = false; });
+        return;
+      } else {
+        progressEl.innerHTML = '<p class="muted">No active job. Use "Queue enrichment" on any section to start.</p>';
+      }
+    }
+
+    function poll() {
+      if (!accountKey) return;
+      fetch(window.location.origin + '/enrich/status?accountKey=' + encodeURIComponent(accountKey))
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          var data = (res && res.data && res.data.status && typeof res.data.status === 'object') ? res.data.status : (res.data || res);
+          renderProgress(data);
+          if (data.status === 'in_progress' && progressEl)
+            pollTimer = setTimeout(poll, 4000);
+        })
+        .catch(function() {
+          if (progressEl) progressEl.innerHTML = '<p class="muted">Could not load status.</p>';
+          if (pollTimer) pollTimer = setTimeout(poll, 5000);
+        });
+    }
+
+    function queueThenPoll() {
+      if (!accountKey || !canonicalUrl) return;
+      document.querySelectorAll('.btn--enrich').forEach(function(b) { b.disabled = true; });
+      if (progressEl) progressEl.innerHTML = '<p class="muted">Queuing enrichment...</p>';
+      fetch(window.location.origin + '/enrich/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountKey: accountKey, canonicalUrl: canonicalUrl })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          var ok = res && (res.ok === true || (res.data && res.data.queued));
+          if (progressEl)
+            progressEl.innerHTML = ok ? '<p class="muted">Queued. Checking progress...</p>' : '<p class="muted">' + (res.data && res.data.message || 'Queue failed.') + '</p>';
+          if (ok) setTimeout(poll, 1500);
+          else document.querySelectorAll('.btn--enrich').forEach(function(b) { b.disabled = false; });
+        })
+        .catch(function() {
+          if (progressEl) progressEl.innerHTML = '<p class="muted">Request failed. Try again.</p>';
+          document.querySelectorAll('.btn--enrich').forEach(function(b) { b.disabled = false; });
+        });
+    }
+
+    document.querySelectorAll('.btn--enrich').forEach(function(btn) {
+      btn.addEventListener('click', queueThenPoll);
+    });
+
+    var modal = document.getElementById('details-modal');
+    var modalTitle = document.getElementById('modal-title');
+    var modalBody = document.getElementById('modal-body');
+    var modalClose = document.getElementById('modal-close');
+
+    function openModal(title, content) {
+      if (!modal || !modalTitle || !modalBody) return;
+      modalTitle.textContent = title;
+      modalBody.innerHTML = content || '';
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeModal() {
+      if (!modal) return;
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function openDetailsForSection(sectionEl) {
+      if (!sectionEl) return;
+      var titleEl = sectionEl.querySelector('.section-summary');
+      var fullEl = sectionEl.querySelector('.section-full-details');
+      var title = (titleEl && titleEl.getAttribute('data-section-title')) || sectionEl.querySelector('.section-title')?.textContent || 'Details';
+      var sectionId = fullEl && fullEl.getAttribute('data-section-id');
+      var content;
+      if (sectionId === 'enrichment-progress') {
+        var progressContent = document.getElementById('enrichment-progress-content');
+        content = progressContent ? progressContent.innerHTML : '';
+      } else {
+        content = fullEl ? fullEl.innerHTML : '';
+      }
+      openModal(title, content);
+    }
+
+    document.querySelectorAll('.btn--details').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var card = btn.closest('.card');
+        if (card) openDetailsForSection(card);
+      });
+    });
+
+    document.querySelectorAll('.card--clickable .section-summary').forEach(function(summary) {
+      summary.addEventListener('click', function(e) {
+        if (e.target.closest('button')) return;
+        var card = summary.closest('.card');
+        if (card) openDetailsForSection(card);
+      });
+    });
+
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeModal();
+    });
+
+    if (container.getAttribute('data-enrichment-active') === '1' || (window.location.search || '').indexOf('queued=1') !== -1) {
+      poll();
+    }
+  })();
+  <\/script>
 </body>
 </html>`;
 
