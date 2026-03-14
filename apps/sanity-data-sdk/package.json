@@ -1,0 +1,30 @@
+{
+  "name": "sanity-data-sdk",
+  "version": "1.0.0",
+  "description": "Sanity SDK app for account data exploration",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "sh -ac 'set -a; [ -f ./.env ] && . ./.env; set +a; sanity dev'",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "check": "sanity build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@sanity/sdk": "^2.8.0",
+    "@sanity/sdk-react": "^2.8.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sanity": "^5.14.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  },
+  "private": "true"
+}

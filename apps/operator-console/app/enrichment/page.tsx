@@ -39,14 +39,12 @@ export default function EnrichmentPage() {
 
   return (
     <AppPageFrame
-      breadcrumbs={[
-        { label: 'Enrichment' },
-      ]}
+      breadcrumbs={[{ label: 'Research' }]}
     >
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Account Enrichment</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Research</h1>
             <p className="text-muted-foreground">
-              Multi-stage enrichment pipeline for comprehensive account intelligence.
+              Queue and track research jobs by account.
             </p>
           </div>
 

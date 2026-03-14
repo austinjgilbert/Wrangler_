@@ -14,7 +14,7 @@ export default function LearningsPage() {
     return (
       <AppPageFrame
         breadcrumbs={[
-          { label: 'Intelligence', href: '/intelligence' },
+          { label: 'Intel', href: '/intelligence' },
           { label: 'Learnings' },
         ]}
       >
@@ -30,7 +30,7 @@ export default function LearningsPage() {
     return (
       <AppPageFrame
         breadcrumbs={[
-          { label: 'Intelligence', href: '/intelligence' },
+          { label: 'Intel', href: '/intelligence' },
           { label: 'Learnings' },
         ]}
       >
@@ -47,14 +47,14 @@ export default function LearningsPage() {
   return (
     <AppPageFrame
       breadcrumbs={[
-        { label: 'Intelligence', href: '/intelligence' },
+        { label: 'Intel', href: '/intelligence' },
         { label: 'Learnings' },
       ]}
     >
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">System Learnings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Learnings</h1>
         <p className="text-muted-foreground">
-          Live operator feedback, pattern reinforcement, and the strongest reusable learnings currently in the system.
+          Operator feedback and reusable learnings.
         </p>
       </div>
 

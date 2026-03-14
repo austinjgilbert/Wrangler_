@@ -158,7 +158,7 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <FileText className="mr-2 size-4" />
-                        Generate OSINT Report
+                        Report
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Sparkles className="mr-2 size-4" />

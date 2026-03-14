@@ -81,12 +81,12 @@ export default function SearchResearchPage() {
   return (
     <AppPageFrame
       breadcrumbs={[
-        { label: 'Research', href: '/research' },
+        { label: 'Scan', href: '/research' },
         { label: 'Search' },
       ]}
     >
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Web Search Intelligence</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
         <p className="text-muted-foreground">
           Search the web with the live worker, store the action in the job feed, and queue deeper background research.
         </p>

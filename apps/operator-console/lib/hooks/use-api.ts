@@ -1,6 +1,6 @@
  'use client';
 
-import useSWR, { mutate } from 'swr';
+import useSWR, { mutate, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import {
   api,
@@ -31,6 +31,15 @@ const ENRICHMENT_STAGES = [
 ];
 
 type Snapshot = {
+  serviceHealth?: {
+    status?: string;
+    code?: string;
+    title?: string;
+    message?: string;
+    action?: string;
+    manageUrl?: string;
+    providerMessage?: string | null;
+  };
   overview?: {
     intelligenceStatus?: {
       accountsIndexed?: number;
@@ -43,8 +52,10 @@ type Snapshot = {
   entities?: {
     accounts?: Array<{
       id: string;
+      accountKey?: string;
       name: string;
       domain: string | null;
+      canonicalUrl?: string | null;
       completion: number;
       opportunityScore: number;
       missing?: string[];
@@ -226,14 +237,19 @@ function toUiAccounts(snapshot?: Snapshot): UiAccount[] {
 
   return (snapshot?.entities?.accounts || []).map((account) => {
     const lastSignal = recentSignals.find((signal) => signal.accountName === account.name);
-    const matchingJob = jobs.find((job) => job.id.includes(account.id) || job.id.includes(account.domain || ''));
+    const matchingJob = jobs.find(
+      (job) =>
+        job.targetEntity === account.accountKey ||
+        job.id.includes(account.id) ||
+        job.id.includes(account.domain || '')
+    );
     const jobStatus = normalizeAccountJobStatus(matchingJob?.status);
 
     return {
       _id: account.id,
-      accountKey: account.id,
+      accountKey: account.accountKey ?? account.id,
       companyName: account.name,
-      canonicalUrl: account.domain ? `https://${account.domain}` : '#',
+      canonicalUrl: account.canonicalUrl || (account.domain ? `https://${account.domain}` : '#'),
       domain: account.domain || '',
       industry: 'Tracked Account',
       employeeCount: undefined,
@@ -443,6 +459,98 @@ export function useAccount(accountId: string | null) {
   return useSWR<ApiAccount>(
     accountId ? ['account', accountId] : null,
     () => api.accounts.getAccount(accountId!)
+  );
+}
+
+// ============================================
+// Console Enrichment (proxy via Next.js)
+// ============================================
+
+export type EnrichmentStatusState =
+  | 'not_run'
+  | 'queued'
+  | 'in_progress'
+  | 'complete'
+  | 'failed';
+
+export interface EnrichmentStatusResponse {
+  status: EnrichmentStatusState;
+  jobId?: string;
+  progress?: number;
+  currentStage?: string;
+  estimatedTimeRemaining?: number;
+  hasResearchSet?: boolean;
+  advanceError?: string;
+  [key: string]: unknown;
+}
+
+async function fetchConsoleJson(path: string, init?: RequestInit) {
+  const res = await fetch(path, { ...init, cache: 'no-store' });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error?.message || `Request failed: ${res.status}`);
+  return json?.data ?? json?.result ?? json;
+}
+
+function normalizeEnrichmentStatus(r: EnrichmentStatusResponse): EnrichmentStatusResponse {
+  const raw = (r?.status ?? 'not_run') as string;
+  const status = raw === 'not_started' ? 'not_run' : (raw as EnrichmentStatusState);
+  const progress = r?.progress ?? 0;
+  const displayStatus =
+    status === 'in_progress' && progress === 0 ? 'queued' : status;
+  return { ...r, status: displayStatus as EnrichmentStatusState, progress };
+}
+
+export function useEnrichmentStatus(accountKey: string | null) {
+  return useSWR<EnrichmentStatusResponse>(
+    accountKey ? ['enrichment-status', accountKey] : null,
+    () =>
+      fetchConsoleJson(
+        `/api/console/enrich/status?${new URLSearchParams({ accountKey: accountKey! })}`
+      ).then((r) => normalizeEnrichmentStatus(r?.status ?? r)),
+    { refreshInterval: (data) => (data?.status === 'in_progress' || data?.status === 'queued' ? 3000 : 0) }
+  );
+}
+
+export function useResearchSet(accountKey: string | null) {
+  return useSWR(
+    accountKey ? ['research-set', accountKey] : null,
+    () =>
+      fetchConsoleJson(
+        `/api/console/enrich/research?${new URLSearchParams({ accountKey: accountKey! })}`
+      ).then((r) => r?.researchSet ?? r)
+  );
+}
+
+export function useAccountDetail(accountId: string | null) {
+  return useSWR(
+    accountId ? ['account-detail', accountId] : null,
+    () =>
+      fetchConsoleJson(`/api/console/account/${encodeURIComponent(accountId!)}`).then(
+        (r) => r?.account ?? r
+      )
+  );
+}
+
+export function useQueueEnrichment() {
+  const { mutate } = useSWRConfig();
+  return useSWRMutation(
+    'queue-enrichment',
+    async (
+      _,
+      {
+        arg,
+      }: {
+        arg: { accountKey: string; canonicalUrl?: string; accountId?: string };
+      }
+    ) => {
+      const res = await fetchConsoleJson('/api/console/enrich/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(arg),
+      });
+      mutate('/api/console/snapshot');
+      return res;
+    }
   );
 }
 

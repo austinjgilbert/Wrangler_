@@ -1,6 +1,7 @@
 /**
  * Enrichment Pipeline Executor
- * Automatically executes enrichment stages in background
+ * Automatically executes enrichment stages in background.
+ * Cron uses processPendingEnrichmentJobs to advance enrich.job (and legacy enrichmentJob) via the same executeEnrichmentStage path as the UI.
  */
 
 import {
@@ -10,6 +11,7 @@ import {
   PIPELINE_STAGES,
 } from './research-pipeline.js';
 import { getDocument } from '../sanity-client.js';
+import { executeEnrichmentStage, trimAccountPackPayload } from './enrichment-service.js';
 
 /**
  * Execute enrichment pipeline stages automatically
@@ -82,11 +84,18 @@ export async function executeEnrichmentPipeline(
         try {
           const existingPack = await getDocument(client, packId);
           const existingPayload = existingPack?.payload || {};
-          const updatedPayload = {
+          const updatedPayload = trimAccountPackPayload({
             ...existingPayload,
+            scan: researchSet.scan || existingPayload.scan || null,
+            discovery: researchSet.discovery || existingPayload.discovery || null,
+            crawl: researchSet.crawl || existingPayload.crawl || null,
+            evidence: researchSet.evidence || existingPayload.evidence || null,
+            linkedin: researchSet.linkedin || existingPayload.linkedin || null,
+            brief: researchSet.brief || existingPayload.brief || null,
+            verification: researchSet.verification || existingPayload.verification || null,
             researchSet: researchSet,
             enrichmentCompletedAt: new Date().toISOString(),
-          };
+          });
           const now = new Date().toISOString();
           if (existingPack && existingPack._id) {
             await patchDocument(client, packId, {
@@ -147,8 +156,8 @@ export async function executeEnrichmentPipeline(
 }
 
 /**
- * Process pending enrichment jobs
- * Called periodically to advance pipeline stages
+ * Process pending enrichment jobs (canonical enrich.job first, then legacy enrichmentJob).
+ * Advances one stage per job per run using the same executeEnrichmentStage path as POST /enrich/advance.
  */
 export async function processPendingEnrichmentJobs(
   groqQuery,
@@ -158,35 +167,33 @@ export async function processPendingEnrichmentJobs(
   context,
   options = {}
 ) {
-  const { limit = 5, maxStagesPerJob = 1 } = options;
-  
+  const { limit = 5 } = options;
+  const results = [];
+
   try {
-    // Get pending/in-progress jobs
-    const query = `*[
-      _type == "enrichmentJob" 
+    // Canonical: enrich.job (same type the UI and queue use)
+    const canonicalQuery = `*[
+      _type == "enrich.job"
       && status in ["pending", "in_progress"]
-    ] | order(priority desc, startedAt asc) [0...${limit}]`;
-    
-    const jobs = await groqQuery(client, query);
-    
-    const results = [];
-    
+    ] | order(priority asc, startedAt asc) [0...${limit}]`;
+    let jobs = await groqQuery(client, canonicalQuery);
+    if (!Array.isArray(jobs)) jobs = [];
+
     for (const job of jobs) {
       try {
-        const result = await executeEnrichmentPipeline(
+        const result = await executeEnrichmentStage(
           groqQuery,
           upsertDocument,
           patchDocument,
           client,
           job._id,
-          context,
-          { maxStagesPerRun: maxStagesPerJob }
+          context
         );
-        
         results.push({
           jobId: job._id,
           accountKey: job.accountKey,
-          ...result,
+          success: true,
+          completed: result.completed === true,
         });
       } catch (error) {
         results.push({
@@ -197,18 +204,58 @@ export async function processPendingEnrichmentJobs(
         });
       }
     }
-    
+
+    // If we had fewer than limit canonical jobs, fill with legacy enrichmentJob
+    if (results.length < limit) {
+      const legacyQuery = `*[
+        _type == "enrichmentJob"
+        && status in ["pending", "in_progress"]
+      ] | order(priority desc, startedAt asc) [0...${limit - results.length}]`;
+      const legacyJobs = await groqQuery(client, legacyQuery);
+      const legacyList = Array.isArray(legacyJobs) ? legacyJobs : [];
+
+      for (const job of legacyList) {
+        try {
+          const result = await executeEnrichmentPipeline(
+            groqQuery,
+            upsertDocument,
+            patchDocument,
+            client,
+            job._id,
+            context,
+            { maxStagesPerRun: 1 }
+          );
+          results.push({
+            jobId: job._id,
+            accountKey: job.accountKey,
+            completed: result.completed === true,
+            ...result,
+          });
+        } catch (error) {
+          results.push({
+            jobId: job._id,
+            accountKey: job.accountKey,
+            success: false,
+            error: error.message,
+          });
+        }
+      }
+    }
+
     return {
       processed: results.length,
-      completed: results.filter(r => r.completed).length,
-      inProgress: results.filter(r => !r.completed && r.success).length,
-      failed: results.filter(r => !r.success).length,
+      completed: results.filter((r) => r.completed).length,
+      inProgress: results.filter((r) => !r.completed && r.success !== false).length,
+      failed: results.filter((r) => r.success === false).length,
       results,
     };
-    
   } catch (error) {
     return {
-      processed: 0,
+      processed: results.length,
+      completed: results.filter((r) => r.completed).length,
+      inProgress: results.filter((r) => !r.completed && r.success !== false).length,
+      failed: results.filter((r) => r.success === false).length,
+      results,
       error: error.message,
     };
   }

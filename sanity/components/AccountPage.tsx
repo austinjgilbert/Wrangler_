@@ -5,9 +5,11 @@
  * tech stack, pain points, leadership, and related data.
  */
 
+import React, { useEffect, useState } from 'react';
+import { useClient } from 'sanity';
 import { type UserViewComponent } from 'sanity/structure';
-import React from 'react';
 import styled from 'styled-components';
+import { computeAccountStorageBudget, type AccountStorageCounts } from '../../shared/accountStoragePolicy';
 
 const Container = styled.div`
   padding: 1.5rem;
@@ -99,7 +101,48 @@ const Empty = styled.span`
   font-size: 0.9rem;
 `;
 
+const BudgetGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+`;
+
+const BudgetCard = styled.div<{ $tone?: 'healthy' | 'warning' | 'over' }>`
+  border: 1px solid var(--card-border-color, #e5e7eb);
+  border-left: 4px solid ${(p) => (
+    p.$tone === 'over'
+      ? '#dc2626'
+      : p.$tone === 'warning'
+        ? '#d97706'
+        : '#16a34a'
+  )};
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: var(--card-bg-color, #fff);
+`;
+
+const BudgetLabel = styled.div`
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--card-muted-fg, #6b7280);
+`;
+
+const BudgetValue = styled.div`
+  margin-top: 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+`;
+
+const BudgetHint = styled.div`
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--card-muted-fg, #6b7280);
+`;
+
 interface AccountDisplayed {
+  _id?: string;
+  accountKey?: string;
   companyName?: string;
   name?: string;
   domain?: string;
@@ -134,6 +177,50 @@ interface AccountDisplayed {
 
 export const AccountPage: UserViewComponent = (props) => {
   const doc = props.document?.displayed as AccountDisplayed | undefined;
+  const client = useClient({ apiVersion: '2024-01-01' });
+  const [storageCounts, setStorageCounts] = useState<AccountStorageCounts | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const accountId = doc?._id;
+    const accountKey = doc?.accountKey || '';
+    const domain = doc?.domain || doc?.rootDomain || '';
+
+    if (!accountId) {
+      setStorageCounts(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    client.fetch(`
+      {
+        "person": count(*[_type == "person" && (companyRef._ref == $accountId || relatedAccountKey == $accountKey)]),
+        "signal": count(*[_type == "signal" && (account._ref == $accountId || companyRef._ref == $accountId)]),
+        "interaction": count(*[_type == "interaction" && (accountKey == $accountKey || domain == $domain)]),
+        "crawlSnapshot": count(*[_type == "crawl.snapshot" && (accountRef._ref == $accountId || accountKey == $accountKey)]),
+        "evidencePack": count(*[_type == "evidencePack" && (references($accountId) || accountRef._ref == $accountId || accountId == $accountId || accountKey == $accountKey)]),
+        "actionCandidate": count(*[_type == "actionCandidate" && account._ref == $accountId]),
+        "learning": count(*[_type == "learning" && references($accountId)]),
+        "enrichmentJob": count(*[_type == "enrichmentJob" && accountKey == $accountKey]),
+        "enrichJob": count(*[_type == "enrich.job" && (entityId == $accountId || accountKey == $accountKey)]),
+        "gmailDraft": count(*[_type == "gmailDraft" && (account._ref == $accountId || accountId == $accountId || accountKey == $accountKey)]),
+        "opportunityBrief": count(*[_type == "opportunityBrief" && (accountRef._ref == $accountId || accountId == $accountId || accountKey == $accountKey)])
+      }
+    `, {
+      accountId,
+      accountKey,
+      domain,
+    }).then((result: AccountStorageCounts) => {
+      if (!cancelled) setStorageCounts(result || null);
+    }).catch(() => {
+      if (!cancelled) setStorageCounts(null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client, doc?._id, doc?.accountKey, doc?.domain, doc?.rootDomain]);
 
   if (!doc) {
     return (
@@ -157,6 +244,7 @@ export const AccountPage: UserViewComponent = (props) => {
   ].slice(0, 12);
 
   const painPoints = doc.painPoints || [];
+  const storageBudget = storageCounts ? computeAccountStorageBudget(storageCounts) : null;
 
   return (
     <Container>
@@ -186,6 +274,46 @@ export const AccountPage: UserViewComponent = (props) => {
           <span>{doc.industry || doc.classification?.industry}</span>
         </Section>
       )}
+
+      <Section>
+        <SectionTitle>Storage Budget</SectionTitle>
+        {storageBudget ? (
+          <>
+            <BudgetGrid>
+              <BudgetCard $tone={storageBudget.totalStatus}>
+                <BudgetLabel>Active Docs</BudgetLabel>
+                <BudgetValue>{storageBudget.totalActiveDocs} / {storageBudget.totalBudget}</BudgetValue>
+                <BudgetHint>
+                  {storageBudget.totalStatus === 'over'
+                    ? `Over budget by ${storageBudget.overBudgetBy}`
+                    : storageBudget.totalStatus === 'warning'
+                      ? 'Approaching account storage budget'
+                      : 'Within account storage budget'}
+                </BudgetHint>
+              </BudgetCard>
+              {storageBudget.byType
+                .filter((item) => item.count > 0 || item.status !== 'healthy')
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 6)
+                .map((item) => (
+                  <BudgetCard key={item.key} $tone={item.status}>
+                    <BudgetLabel>{item.key}</BudgetLabel>
+                    <BudgetValue>{item.count} / {item.limit}</BudgetValue>
+                    <BudgetHint>
+                      {item.status === 'over'
+                        ? `Reduce by ${item.overBy}`
+                        : item.status === 'warning'
+                          ? 'Near limit'
+                          : 'Healthy'}
+                    </BudgetHint>
+                  </BudgetCard>
+                ))}
+            </BudgetGrid>
+          </>
+        ) : (
+          <Empty>Storage budget metrics unavailable.</Empty>
+        )}
+      </Section>
 
       {doc.benchmarks && Object.keys(doc.benchmarks).length > 0 && (
         <Section>

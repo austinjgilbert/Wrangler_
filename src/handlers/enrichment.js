@@ -8,6 +8,7 @@ import {
   getEnrichmentStatus,
   getCompleteResearchSet,
   executeEnrichmentStage,
+  executeVirtualEnrichmentStage,
   listEnrichmentJobs,
   autoEnrichAccount,
 } from '../services/enrichment-service.js';
@@ -15,6 +16,108 @@ import {
 import { getPipelineProgress } from '../services/research-pipeline.js';
 
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+
+const FULL_PIPELINE_STAGES = ['initial_scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'];
+
+function buildEnrichmentQueueOptions(body = {}) {
+  const mode = body.mode || 'standard';
+  const requestedStages = Array.isArray(body.stages || body.requestedStages)
+    ? [...new Set((body.stages || body.requestedStages).filter(Boolean))]
+    : [];
+  const baseOptions = {
+    ...(body.options || {}),
+    requestedStages,
+    source: body.options?.source || `sdk_${mode}`,
+    metadata: {
+      ...(body.options?.metadata || {}),
+      runMode: mode,
+      selfHealRequested: body.selfHeal !== false,
+    },
+  };
+
+  if (mode === 'deep') {
+    return {
+      ...baseOptions,
+      goalKey: `deep_pipeline_${Date.now()}`,
+      requestedStages: requestedStages.length > 0 ? requestedStages : FULL_PIPELINE_STAGES,
+      includeLinkedIn: true,
+      includeBrief: true,
+      includeVerification: true,
+      maxDepth: Math.max(Number(baseOptions.maxDepth || 0), 3),
+      budget: Math.max(Number(baseOptions.budget || 0), 40),
+      priority: Math.min(Number(baseOptions.priority || 3), 3),
+    };
+  }
+
+  if (mode === 'restart') {
+    return {
+      ...baseOptions,
+      goalKey: `restart_${Date.now()}`,
+      priority: Math.min(Number(baseOptions.priority || 5), 5),
+      metadata: {
+        ...baseOptions.metadata,
+        restartRequestedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  return baseOptions;
+}
+
+async function attemptAutomaticResolution({
+  env,
+  requestId,
+  accountKey,
+  canonicalUrl,
+}) {
+  const actions = [];
+
+  const tasks = [];
+
+  tasks.push(
+    import('../services/self-heal.js')
+      .then(({ runAutomaticSelfHeal }) => runAutomaticSelfHeal(env, { requestId }))
+      .then(() => {
+        actions.push('self-heal');
+      })
+      .catch(() => {})
+  );
+
+  if (accountKey) {
+    tasks.push(
+      import('../services/gap-fill-orchestrator.js')
+        .then(({ triggerGapFill }) => triggerGapFill({
+          env,
+          accountKey,
+          canonicalUrl,
+          trigger: 'enrich_auto_resolution',
+        }))
+        .then(() => {
+          actions.push('gap-fill');
+        })
+        .catch(() => {})
+    );
+  }
+
+  await Promise.allSettled(tasks);
+  return actions;
+}
+
+async function scheduleAutomaticResolution(executionContext, params) {
+  if (executionContext?.waitUntil) {
+    executionContext.waitUntil(attemptAutomaticResolution(params));
+    return {
+      selfHealingScheduled: true,
+      repairActions: ['scheduled'],
+    };
+  }
+
+  const repairActions = await attemptAutomaticResolution(params);
+  return {
+    selfHealingScheduled: repairActions.length > 0,
+    repairActions,
+  };
+}
 
 /**
  * Queue enrichment job for account
@@ -26,26 +129,38 @@ export async function handleQueueEnrichment(
   env,
   groqQuery,
   upsertDocument,
-  assertSanityConfigured
+  assertSanityConfigured,
+  executionContext = null
 ) {
   try {
     const body = await request.json();
-    const canonicalUrl = body.canonicalUrl || body.url;
-    const accountKey = body.accountKey;
-    
+    let canonicalUrl = body.canonicalUrl || body.url;
+    let accountKey = body.accountKey;
+    const accountId = body.accountId;
+    const client = assertSanityConfigured(env);
+
+    if (accountId && !canonicalUrl) {
+      const altId = accountId.startsWith('account.') ? accountId.replace('account.', 'account-') : accountId.replace('account-', 'account.');
+      const account = await groqQuery(client, `*[_type == "account" && (_id == $accountId || _id == $altId)]{ _id, accountKey, canonicalUrl, domain, rootDomain }[0]`, {
+        accountId,
+        altId,
+      });
+      if (account) {
+        accountKey = account.accountKey || accountId.replace(/^account[.-]/, '');
+        canonicalUrl = account.canonicalUrl || (account.domain ? `https://${account.domain}` : null) || (account.rootDomain ? `https://${account.rootDomain}` : null);
+      }
+    }
+
     if (!canonicalUrl) {
       return createErrorResponse(
         'VALIDATION_ERROR',
-        'canonicalUrl or url required',
+        'canonicalUrl, url, or accountId required',
         {},
         400,
         requestId
       );
     }
-    
-    const client = assertSanityConfigured(env);
-    
-    // Generate accountKey if not provided
+
     let finalAccountKey = accountKey;
     if (!finalAccountKey) {
       const { generateAccountKey } = await import('../services/sanity-account.js');
@@ -62,20 +177,47 @@ export async function handleQueueEnrichment(
     }
     
     // Queue enrichment
-    const result = await queueEnrichmentJob(
-      groqQuery,
-      upsertDocument,
-      client,
-      canonicalUrl,
-      finalAccountKey,
-      body.options || {}
-    );
+    const queueOptions = buildEnrichmentQueueOptions(body);
+    let result
+    try {
+      result = await queueEnrichmentJob(
+        groqQuery,
+        upsertDocument,
+        client,
+        canonicalUrl,
+        finalAccountKey,
+        queueOptions
+      );
+    } catch (queueError) {
+      if (/attribute\/datatype count|validationError/i.test(String(queueError?.message || ''))) {
+        result = {
+          success: true,
+          jobId: `virtual.${finalAccountKey}`,
+          status: 'pending',
+          message: 'Queued with virtual job fallback',
+        };
+      } else {
+        throw queueError;
+      }
+    }
+
+    const automaticResolution = body.selfHeal === false
+      ? { selfHealingScheduled: false, repairActions: [] }
+      : await scheduleAutomaticResolution(executionContext, {
+          env,
+          requestId,
+          accountKey: finalAccountKey,
+          canonicalUrl,
+        });
     
     return createSuccessResponse({
       queued: result.success,
       jobId: result.jobId,
       status: result.status,
       message: result.message,
+      mode: body.mode || 'standard',
+      selfHealingScheduled: automaticResolution.selfHealingScheduled,
+      repairActions: automaticResolution.repairActions,
     }, requestId);
     
   } catch (error) {
@@ -98,7 +240,7 @@ export async function handleGetEnrichmentStatus(
   requestId,
   env,
   groqQuery,
-  assertSanityConfigured
+  assertSanityConfigured,
 ) {
   try {
     const url = new URL(request.url);
@@ -115,8 +257,7 @@ export async function handleGetEnrichmentStatus(
     }
     
     const client = assertSanityConfigured(env);
-    
-    const status = await getEnrichmentStatus(groqQuery, client, accountKey);
+    const status = await getEnrichmentStatus(groqQuery, client, accountKey, env);
     
     return createSuccessResponse({
       status: status,
@@ -126,6 +267,160 @@ export async function handleGetEnrichmentStatus(
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get enrichment status',
+      { error: error.message },
+      500,
+      requestId
+    );
+  }
+}
+
+/**
+ * Advance enrichment by one explicit step
+ * POST /enrich/advance
+ */
+export async function handleAdvanceEnrichment(
+  request,
+  requestId,
+  env,
+  groqQuery,
+  upsertDocument,
+  patchDocument,
+  assertSanityConfigured,
+  handlers,
+  executionContext = null
+) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const accountKey = body?.accountKey;
+
+    if (!accountKey) {
+      return createErrorResponse(
+        'VALIDATION_ERROR',
+        'accountKey required',
+        {},
+        400,
+        requestId
+      );
+    }
+
+    const client = assertSanityConfigured(env);
+    let status = await getEnrichmentStatus(groqQuery, client, accountKey, env);
+    let executionResult = null;
+
+    if (status?.status === 'in_progress' && status?.jobId && patchDocument && handlers) {
+      try {
+        if (String(status.jobId).startsWith('virtual.')) {
+          executionResult = await executeVirtualEnrichmentStage(
+            groqQuery,
+            upsertDocument,
+            patchDocument,
+            client,
+            accountKey,
+            {
+              ...handlers,
+              requestId: `${requestId}-advance`,
+              env,
+            }
+          );
+        } else {
+          executionResult = await executeEnrichmentStage(
+            groqQuery,
+            upsertDocument,
+            patchDocument,
+            client,
+            status.jobId,
+            {
+              ...handlers,
+              requestId: `${requestId}-advance`,
+              env,
+            }
+          );
+        }
+      } catch (advanceError) {
+        const automaticResolution = await scheduleAutomaticResolution(executionContext, {
+          env,
+          requestId: `${requestId}-repair`,
+          accountKey,
+          canonicalUrl: executionResult?.job?.canonicalUrl || null,
+        });
+        status = {
+          ...status,
+          advanceError: advanceError.message,
+          selfHealingScheduled: automaticResolution.selfHealingScheduled,
+          repairActions: automaticResolution.repairActions,
+        };
+      }
+    } else if (status?.status === 'not_started' && patchDocument && handlers) {
+      try {
+        executionResult = await executeVirtualEnrichmentStage(
+          groqQuery,
+          upsertDocument,
+          patchDocument,
+          client,
+          accountKey,
+          {
+            ...handlers,
+            requestId: `${requestId}-advance`,
+            env,
+          }
+        );
+      } catch (advanceError) {
+        const automaticResolution = await scheduleAutomaticResolution(executionContext, {
+          env,
+          requestId: `${requestId}-repair`,
+          accountKey,
+          canonicalUrl: null,
+        });
+        status = {
+          ...status,
+          advanceError: advanceError.message,
+          selfHealingScheduled: automaticResolution.selfHealingScheduled,
+          repairActions: automaticResolution.repairActions,
+        };
+      }
+    } else if (status?.status === 'failed') {
+      const automaticResolution = await scheduleAutomaticResolution(executionContext, {
+        env,
+        requestId: `${requestId}-repair`,
+        accountKey,
+        canonicalUrl: null,
+      });
+      status = {
+        ...status,
+        selfHealingScheduled: automaticResolution.selfHealingScheduled,
+        repairActions: automaticResolution.repairActions,
+      };
+    }
+
+    if (executionResult?.job) {
+      const progress = getPipelineProgress(executionResult.job);
+      status = executionResult.completed
+        ? {
+            status: 'complete',
+            jobId: executionResult.job.jobId || executionResult.job._id,
+            progress: 100,
+            completedAt: executionResult.job.updatedAt,
+            hasResearchSet: true,
+          }
+        : {
+            status: executionResult.job.status || 'in_progress',
+            jobId: executionResult.job.jobId || executionResult.job._id,
+            progress: progress.progress,
+            currentStage: progress.currentStage,
+            estimatedTimeRemaining: progress.estimatedTimeRemaining,
+            hasResearchSet: false,
+          };
+    } else if (!status?.advanceError && !status?.selfHealingScheduled) {
+      status = await getEnrichmentStatus(groqQuery, client, accountKey, env);
+    }
+
+    return createSuccessResponse({
+      status,
+    }, requestId);
+  } catch (error) {
+    return createErrorResponse(
+      'INTERNAL_ERROR',
+      'Failed to advance enrichment',
       { error: error.message },
       500,
       requestId

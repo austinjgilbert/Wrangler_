@@ -32,7 +32,7 @@ Then:
 4. **Run locally:** `npm run dev` → http://localhost:8787
 5. **Deploy:** `npm run deploy` — set production secrets with `wrangler secret put SANITY_PROJECT_ID --env=production` (and `SANITY_TOKEN`, etc.) before or after first deploy.
 
-Optional: [Chrome extension](CHROME-EXTENSION-SETUP.md), [Telegram bot](TELEGRAM-BOT-SETUP.md), [Custom GPT](UPDATE-INSTRUCTIONS.md). Full details: [SETUP.md](SETUP.md).
+Optional: [Chrome extension](CHROME-EXTENSION-SETUP.md), [Telegram bot](TELEGRAM-BOT-SETUP.md), [Custom GPT](CUSTOM-GPT-UPDATE.md). Full details: [SETUP.md](SETUP.md).
 
 ### Run the full stack (worker + dashboard)
 
@@ -102,7 +102,7 @@ A comprehensive website scanning and research API built on Cloudflare Workers. P
 
 ## Quick Start
 
-**→ Full setup and update steps:** [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md) — first-time setup, local dev, deploy, and updating the Custom GPT after changes.
+**→ Full setup and update steps:** [SETUP.md](SETUP.md) and [CUSTOM-GPT-UPDATE.md](CUSTOM-GPT-UPDATE.md) — first-time setup, local dev, deploy, and updating the Custom GPT after changes.
 
 ### Prerequisites
 
@@ -320,7 +320,7 @@ curl "https://website-scanner.austin-gilbert.workers.dev/osint/report?accountKey
 
 ## Integration with ChatGPT
 
-This Worker is designed to work with ChatGPT Custom GPT Actions. See [gpt-instructions.md](gpt-instructions.md) for GPT behavior and [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md) for how to update the Custom GPT after API or code changes.
+This Worker is designed to work with ChatGPT Custom GPT Actions. See [gpt-instructions.md](gpt-instructions.md) for GPT behavior and [CUSTOM-GPT-UPDATE.md](CUSTOM-GPT-UPDATE.md) for how to update the Custom GPT after API or code changes.
 
 ### OpenAPI Schema
 
@@ -600,7 +600,8 @@ Free agentic control layer via Telegram:
 
 ## Documentation
 
-- [**UPDATE-INSTRUCTIONS.md**](UPDATE-INSTRUCTIONS.md) - Get everything working: setup, deploy, update Custom GPT
+- [**CUSTOM-GPT-UPDATE.md**](CUSTOM-GPT-UPDATE.md) - Update Custom GPT schema and instructions
+- [**SETUP.md**](SETUP.md) - Get everything working: setup, deploy
 - [**PROJECT-STATUS.md**](PROJECT-STATUS.md) - What’s connected (GitHub, worker, Sanity, CI)
 - [**GITHUB-PUSH.md**](GITHUB-PUSH.md) - Push to GitHub (PAT, workflow scope)
 - [API Reference](docs/api/)

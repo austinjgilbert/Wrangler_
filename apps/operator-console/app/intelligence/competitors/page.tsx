@@ -14,8 +14,8 @@ export default function CompetitorResearchPage() {
     return (
       <AppPageFrame
         breadcrumbs={[
-          { label: 'Intelligence', href: '/intelligence' },
-          { label: 'Competitor Research' },
+          { label: 'Intel', href: '/intelligence' },
+          { label: 'Competitors' },
         ]}
       >
         <Alert variant="destructive">
@@ -30,8 +30,8 @@ export default function CompetitorResearchPage() {
     return (
       <AppPageFrame
         breadcrumbs={[
-          { label: 'Intelligence', href: '/intelligence' },
-          { label: 'Competitor Research' },
+          { label: 'Intel', href: '/intelligence' },
+          { label: 'Competitors' },
         ]}
       >
         <div className="flex flex-1 items-center justify-center">
@@ -47,14 +47,14 @@ export default function CompetitorResearchPage() {
   return (
     <AppPageFrame
       breadcrumbs={[
-        { label: 'Intelligence', href: '/intelligence' },
-        { label: 'Competitor Research' },
+        { label: 'Intel', href: '/intelligence' },
+        { label: 'Competitors' },
       ]}
     >
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Competitor Research</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Competitors</h1>
         <p className="text-muted-foreground">
-          Live competitive context derived from shared technologies, market patterns, and opportunity clustering in your current dataset.
+          Competitive context from shared tech and patterns.
         </p>
       </div>
 

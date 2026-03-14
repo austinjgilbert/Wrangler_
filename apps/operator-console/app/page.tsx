@@ -7,7 +7,7 @@ import { AccountsTable } from '@/components/dashboard/accounts-table'
 import { TechStackChart } from '@/components/dashboard/tech-stack-chart'
 import { EnrichmentStatus } from '@/components/dashboard/enrichment-status'
 import { QuickActions } from '@/components/dashboard/quick-actions'
-import { useDashboardStats, useAccounts, useEnrichments } from '@/lib/hooks/use-api'
+import { useDashboardStats, useAccounts, useEnrichments, useSnapshot } from '@/lib/hooks/use-api'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -15,8 +15,10 @@ export default function DashboardPage() {
   const { data: statsData, error: statsError } = useDashboardStats()
   const { data: accountsData, error: accountsError } = useAccounts()
   const { data: enrichmentsData, error: enrichmentsError } = useEnrichments()
+  const { data: snapshot } = useSnapshot()
 
   const error = statsError || accountsError || enrichmentsError
+  const serviceHealth = snapshot?.serviceHealth
 
   if (error) {
     return (
@@ -49,6 +51,15 @@ export default function DashboardPage() {
         { label: 'Dashboard' },
       ]}
     >
+          {serviceHealth?.status === 'degraded' ? (
+            <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-100">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {serviceHealth.message} {serviceHealth.action}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           <QuickActions />
 
           <MetricsCards metrics={statsData} />

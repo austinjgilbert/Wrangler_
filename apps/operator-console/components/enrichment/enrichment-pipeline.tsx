@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Loader2,
@@ -20,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -28,16 +28,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertTriangle } from 'lucide-react'
 import type { EnrichmentJob, Account } from '@/lib/types'
+import { useQueueEnrichment, useSnapshot } from '@/lib/hooks/use-api'
 const enrichmentStages = [
-  'Account Validation',
-  'Domain Resolution',
-  'Page Crawling',
-  'Technology Detection',
-  'Source Selection',
-  'Signal Extraction',
-  'Knowledge Graph Update',
+  'Validate',
+  'Resolve',
+  'Crawl',
+  'Detect tech',
+  'Sources',
+  'Signals',
+  'Update',
 ];
 
 interface EnrichmentPipelineProps {
@@ -71,25 +73,47 @@ const statusColors = {
 
 export function EnrichmentPipeline({ jobs, accounts }: EnrichmentPipelineProps) {
   const [selectedAccount, setSelectedAccount] = useState('')
+  const { trigger: queueEnrichment, isMutating: isQueueing } = useQueueEnrichment()
+  const { data: snapshot } = useSnapshot()
+  const queuedCount = snapshot?.jobs?.queued ?? 0
+
+  const handleStartEnrichment = () => {
+    if (!selectedAccount) return
+    const account = accounts.find((a) => a.accountKey === selectedAccount)
+    queueEnrichment({
+      accountKey: selectedAccount,
+      accountId: account?._id,
+      canonicalUrl: account?.canonicalUrl,
+    })
+  }
 
   return (
     <div className="space-y-6">
-      {/* Start New Enrichment */}
+      {queuedCount > 0 && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>{queuedCount} job{queuedCount !== 1 ? 's' : ''} in queue.</strong>{' '}
+            <Link href="/accounts" className="underline font-medium">Accounts</Link> → open one to run research.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            Start New Enrichment
+            Start research
           </CardTitle>
           <CardDescription>
-            Queue an account for multi-stage enrichment analysis
+            Pick an account to queue. Open an account for modules and live progress.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
               <SelectTrigger className="flex-1 bg-background">
-                <SelectValue placeholder="Select an account..." />
+                <SelectValue placeholder="Select account..." />
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
@@ -99,20 +123,33 @@ export function EnrichmentPipeline({ jobs, accounts }: EnrichmentPipelineProps) 
                 ))}
               </SelectContent>
             </Select>
-            <Button disabled={!selectedAccount}>
-              <Play className="mr-2 size-4" />
-              Start Enrichment
+            <Button
+              disabled={!selectedAccount || isQueueing}
+              onClick={handleStartEnrichment}
+            >
+              {isQueueing ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 size-4" />
+              )}
+              Start
             </Button>
+            {selectedAccount && (
+              <Button variant="outline" asChild>
+                <Link href={`/accounts/${accounts.find((a) => a.accountKey === selectedAccount)?._id ?? selectedAccount}`}>
+                  Open account
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Pipeline Stages Visualization */}
       <Card>
         <CardHeader>
-          <CardTitle>Pipeline Stages</CardTitle>
+          <CardTitle>Stages</CardTitle>
           <CardDescription>
-            The 7-stage enrichment process for comprehensive account intelligence
+            Scan → discovery → crawl → evidence → LinkedIn → brief → verification
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -139,21 +176,18 @@ export function EnrichmentPipeline({ jobs, accounts }: EnrichmentPipelineProps) 
         </CardContent>
       </Card>
 
-      {/* Active Jobs */}
       <Card>
         <CardHeader>
-          <CardTitle>Active Enrichment Jobs</CardTitle>
-          <CardDescription>Currently running and queued enrichment processes</CardDescription>
+          <CardTitle>Jobs</CardTitle>
+          <CardDescription>Running and queued</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             {jobs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <CheckCircle2 className="size-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">No active enrichment jobs</p>
-                <p className="text-sm text-muted-foreground">
-                  Select an account above to start enrichment
-                </p>
+                <p className="text-muted-foreground">No jobs</p>
+                <p className="text-sm text-muted-foreground">Select an account above to start</p>
               </div>
             ) : (
               jobs.map((job) => {

@@ -68,3 +68,5 @@ The GPT should call your live worker and return results.
 - ✅ Instructions: Up to date (~5.4k chars)
 
 **Next:** Copy `openapi-gpt.yaml` and `gpt-instructions.md` into your Custom GPT.
+
+For enrichment pipeline details (queue POST, status, advance) and SDK app env, see **docs/GPT-AND-YAML-UPDATE.md**.

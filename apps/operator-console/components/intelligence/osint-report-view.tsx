@@ -248,7 +248,7 @@ export function OSINTReportView({ report }: OSINTReportViewProps) {
                 <div>
                   <CardTitle className="text-xl">{report.companyName}</CardTitle>
                   <CardDescription className="flex items-center gap-2">
-                    <span>OSINT Report</span>
+                    <span>Report</span>
                     <Badge variant="outline" className={confidenceColors[report.confidence]}>
                       {report.confidence} confidence
                     </Badge>

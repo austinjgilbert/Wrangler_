@@ -101,14 +101,14 @@ export default function ScanPage() {
   return (
     <AppPageFrame
       breadcrumbs={[
-        { label: 'Research', href: '/research' },
-        { label: 'Website Scan' },
+        { label: 'Scan', href: '/research' },
+        { label: 'Scan' },
       ]}
     >
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Website Scanner</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Scan</h1>
             <p className="text-muted-foreground">
-              Analyze any website to detect tech stack, business intelligence, and AI readiness signals.
+              Enter a URL to detect tech stack and signals.
             </p>
           </div>
 

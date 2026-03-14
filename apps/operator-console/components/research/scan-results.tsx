@@ -355,7 +355,7 @@ export function ScanResults({ result }: ScanResultsProps) {
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => router.push('/intelligence/osint')}>
               <FileText className="mr-2 size-4" />
-              View OSINT Reports
+              Reports
             </Button>
             <Button onClick={() => router.push('/enrichment')}>
               <Sparkles className="mr-2 size-4" />

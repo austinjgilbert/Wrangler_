@@ -62,6 +62,8 @@ import autonomyPolicy from './autonomyPolicy';
 import runtimeIncident from './runtimeIncident';
 import bestKnownPath from './bestKnownPath';
 import scenarioConfidenceSnapshot from './scenarioConfidenceSnapshot';
+import storageDashboard from './storageDashboard';
+import accountTreeExplorer from './accountTreeExplorer';
 
 export const schemaTypes = [
   moltbotConfig,
@@ -123,6 +125,8 @@ export const schemaTypes = [
   runtimeIncident,
   bestKnownPath,
   scenarioConfidenceSnapshot,
+  storageDashboard,
+  accountTreeExplorer,
 ];
 
 export default schemaTypes;

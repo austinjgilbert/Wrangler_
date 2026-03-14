@@ -39,7 +39,7 @@ export function EnrichmentStatus({ jobs }: EnrichmentStatusProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Enrichment Pipeline</CardTitle>
+        <CardTitle>Research</CardTitle>
         <CardDescription>Active enrichment jobs and their progress</CardDescription>
       </CardHeader>
       <CardContent>

@@ -21,11 +21,275 @@ import { runNightlyIntelligencePipeline } from '../lib/nightlyIntelligence.ts';
 import { runScenarioFixture, runScenarioRegressionSuite } from '../lib/scenarioRegressionService.ts';
 import { scenarioFixtures } from '../lib/scenarioFixtures.ts';
 import { getAutopilotOverview, runAutopilotCycle } from '../lib/autopilotService.ts';
+import { assertSanityConfigured, getSanityServiceError, groqQuery, isSanityQuotaError } from '../sanity-client.js';
+
+function buildQuotaServiceHealth(error: any) {
+  const serviceError = getSanityServiceError(error);
+  return {
+    status: 'degraded',
+    code: serviceError.code,
+    title: 'Sanity quota reached',
+    message: serviceError.message,
+    action: serviceError.details?.action || 'Upgrade the Sanity plan or wait for quota reset.',
+    manageUrl: serviceError.details?.manageUrl || 'https://sanity.io/manage',
+    providerMessage: serviceError.details?.providerMessage || null,
+  };
+}
+
+function buildQuotaLimitedSnapshot(error: any) {
+  return {
+    generatedAt: new Date().toISOString(),
+    serviceHealth: buildQuotaServiceHealth(error),
+    overview: {
+      intelligenceStatus: {
+        accountsIndexed: 0,
+        peopleIndexed: 0,
+        signalsToday: 0,
+        activeOpportunities: 0,
+        systemCompletion: 0,
+        driftRisk: 'unknown',
+      },
+      opportunityRadar: [],
+      topActionsToday: {
+        actions: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+        totalPages: 0,
+      },
+      completionRows: [],
+      signalTimeline: [],
+    },
+    entities: {
+      accounts: [],
+      people: [],
+    },
+    signals: {
+      recent: [],
+    },
+    patterns: {
+      active: [],
+    },
+    actions: {
+      queue: {
+        actions: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+        totalPages: 0,
+      },
+      raw: [],
+    },
+    research: {
+      briefs: [],
+      drafts: [],
+    },
+    jobs: {
+      running: 0,
+      queued: 0,
+      enrichQueued: 0,
+      recent: [],
+    },
+    metrics: {
+      drift: [],
+    },
+    systemLab: {
+      engineStatus: {
+        signalsProcessedToday: 0,
+        activeOpportunities: 0,
+      },
+      capabilities: [],
+      learningMode: {
+        operatorFeedbackCaptured: 0,
+        patternsStrengthened: 0,
+        patternsWeakened: 0,
+        signalWeightsUpdated: 0,
+      },
+      policyManagement: {},
+    },
+  };
+}
+
+function buildQuotaLimitedAccountState(accountId: string, error: any) {
+  return {
+    serviceHealth: buildQuotaServiceHealth(error),
+    account: {
+      id: accountId,
+      name: 'Account data temporarily unavailable',
+      domain: null,
+      completion: 0,
+      opportunityScore: 0,
+      technologies: [],
+      missing: [],
+      nextStages: [],
+      description: '',
+      classification: null,
+      profileCompleteness: null,
+    },
+    signalsTimeline: [],
+    people: [],
+    patterns: [],
+    actions: [],
+    research: {
+      evidence: [],
+      briefs: [],
+    },
+    controls: [],
+  };
+}
+
+async function buildSdkSnapshot(env: any, limit: number) {
+  const client = assertSanityConfigured(env);
+  const [accounts, people, signals, activeOpportunityCount, moltJobs, enrichJobs] = await Promise.all([
+    groqQuery(client, `*[_type == "account"] | order(coalesce(updatedAt, _updatedAt) desc)[0...100]{
+      _id,
+      accountKey,
+      name,
+      companyName,
+      domain,
+      rootDomain,
+      canonicalUrl,
+      opportunityScore,
+      profileCompleteness
+    }`),
+    groqQuery(client, `*[_type == "person"] | order(coalesce(updatedAt, _updatedAt) desc)[0...50]{
+      _id,
+      name,
+      title,
+      currentTitle,
+      currentCompany,
+      companyRef,
+      seniorityLevel
+    }`),
+    groqQuery(client, `*[_type == "signal"] | order(coalesce(timestamp, _updatedAt) desc)[0...25]{
+      _id,
+      signalType,
+      source,
+      strength,
+      timestamp,
+      uncertaintyState,
+      account
+    }`),
+    groqQuery(client, `count(*[_type == "actionCandidate" && (!defined(lifecycleStatus) || lifecycleStatus != "completed")])`),
+    groqQuery(client, `*[_type == "molt.job"] | order(coalesce(updatedAt, _updatedAt) desc)[0...40]{
+      _id,
+      _type,
+      jobType,
+      targetEntity,
+      status,
+      priority,
+      attempts,
+      nextAttemptAt,
+      updatedAt,
+      _updatedAt,
+      error,
+      currentStage
+    }`),
+    groqQuery(client, `*[_type in ["enrichmentJob", "enrich.job"]] | order(coalesce(updatedAt, _updatedAt) desc)[0...40]{
+      _id,
+      _type,
+      jobType,
+      accountKey,
+      entityId,
+      status,
+      priority,
+      attempts,
+      nextAttemptAt,
+      updatedAt,
+      _updatedAt,
+      error,
+      currentStage,
+      failedStages
+    }`),
+  ]);
+
+  const accountList = Array.isArray(accounts) ? accounts : [];
+  const peopleList = Array.isArray(people) ? people : [];
+  const signalList = Array.isArray(signals) ? signals : [];
+  const moltJobList = Array.isArray(moltJobs) ? moltJobs : [];
+  const enrichJobList = Array.isArray(enrichJobs) ? enrichJobs : [];
+  const accountMap = new Map(accountList.map((account: any) => [account._id, account]));
+
+  const runningJobs = [
+    ...moltJobList.filter((job: any) => job.status === 'running'),
+    ...enrichJobList.filter((job: any) => job.status === 'in_progress'),
+  ];
+  const queuedJobs = [
+    ...moltJobList.filter((job: any) => job.status === 'queued'),
+    ...enrichJobList.filter((job: any) => job.status === 'pending' || job.status === 'queued'),
+  ];
+
+  const recentSignals = signalList.map((signal: any) => ({
+    id: signal._id,
+    signalType: signal.signalType,
+    accountName: accountMap.get(signal.account?._ref)?.companyName || accountMap.get(signal.account?._ref)?.name || 'Unknown',
+    timestamp: signal.timestamp,
+    source: signal.source,
+    uncertaintyState: signal.uncertaintyState || 'likely',
+  }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    overview: {
+      intelligenceStatus: {
+        accountsIndexed: accountList.length,
+        peopleIndexed: peopleList.length,
+        signalsToday: signalList.length,
+        activeOpportunities: Number(activeOpportunityCount || 0),
+        systemCompletion: average(accountList.map((account: any) => Number(account.profileCompleteness?.score || 0))),
+      },
+    },
+    entities: {
+      accounts: accountList.slice(0, Math.max(limit, 30)).map((account: any) => ({
+        id: account._id,
+        accountKey: account.accountKey || account._id,
+        name: account.companyName || account.name || account.domain || account._id,
+        domain: account.domain || account.rootDomain || null,
+        canonicalUrl: account.canonicalUrl || (account.domain ? `https://${account.domain}` : null) || (account.rootDomain ? `https://${account.rootDomain}` : null),
+        completion: Number(account.profileCompleteness?.score || 0),
+        opportunityScore: round(account.opportunityScore || 0),
+        missing: account.profileCompleteness?.gaps || [],
+        nextStages: account.profileCompleteness?.nextStages || [],
+        technologies: [],
+      })),
+      people: peopleList.slice(0, Math.max(limit, 30)).map((person: any) => ({
+        id: person._id,
+        name: person.name || 'Unknown',
+        title: person.currentTitle || person.title || null,
+        accountName: accountMap.get(person.companyRef?._ref || person.currentCompany)?.companyName || null,
+      })),
+    },
+    signals: {
+      recent: recentSignals,
+    },
+    jobs: {
+      running: runningJobs.length,
+      queued: queuedJobs.length,
+      recent: [...moltJobList, ...enrichJobList]
+        .sort((a: any, b: any) => new Date(b.updatedAt || b._updatedAt || 0).getTime() - new Date(a.updatedAt || a._updatedAt || 0).getTime())
+        .slice(0, 30)
+        .map((job: any) => ({
+          id: job._id,
+          jobType: job.jobType || (job._type === 'enrichmentJob' || job._type === 'enrich.job' ? 'Account Enrichment' : job._type) || 'unknown',
+          targetEntity: job.targetEntity || job.accountKey || job.entityId || null,
+          status: job.status,
+          updatedAt: job.updatedAt || job._updatedAt,
+          currentStage: job.currentStage || null,
+          error: job.error || (Array.isArray(job.failedStages) ? job.failedStages.join(', ') : null),
+        })),
+    },
+  };
+}
 
 export async function handleOperatorConsoleSnapshot(request: Request, requestId: string, env: any) {
   try {
     const url = new URL(request.url);
     const limit = clampInt(url.searchParams.get('limit'), 12, 1, 50);
+    const surface = url.searchParams.get('surface') || 'operator';
+    if (surface === 'sdk') {
+      const snapshot = await buildSdkSnapshot(env, limit);
+      return createSuccessResponse(snapshot, requestId);
+    }
     const [
       accounts,
       people,
@@ -54,7 +318,10 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
       fetchSignals(env),
       fetchActionCandidates(env),
       fetchDocumentsByType(env, 'molt.job', 120),
-      fetchDocumentsByType(env, 'enrichmentJob', 120).catch(() => []),
+      Promise.all([
+        fetchDocumentsByType(env, 'enrichmentJob', 120).catch(() => []),
+        fetchDocumentsByType(env, 'enrich.job', 120).catch(() => []),
+      ]).then(([legacyJobs, compactJobs]) => [...legacyJobs, ...compactJobs]).catch(() => []),
       fetchDocumentsByType(env, 'molt.pattern', 80).catch(() => []),
       fetchDocumentsByType(env, 'gmailDraft', 120).catch(() => []),
       fetchLatestDocumentByType(env, 'operatorDailyBriefing').catch(() => null),
@@ -163,8 +430,10 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
       entities: {
         accounts: accounts.slice(0, 50).map((account: any) => ({
           id: account._id,
+          accountKey: account.accountKey || account._id,
           name: account.companyName || account.name || account.domain || account._id,
           domain: account.domain || account.rootDomain || null,
+          canonicalUrl: account.canonicalUrl || (account.domain ? `https://${account.domain}` : null) || (account.rootDomain ? `https://${account.rootDomain}` : null),
           completion: Number(account.profileCompleteness?.score || 0),
           opportunityScore: round(account.opportunityScore || 0),
           missing: account.profileCompleteness?.gaps || [],
@@ -234,7 +503,7 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
         enrichQueued: enrichJobs.filter((job: any) => job.status === 'queued' || job.status === 'pending').length,
         recent: allRecentJobs.map((job: any) => ({
           id: job._id,
-          jobType: job.jobType || (job._type === 'enrichmentJob' ? 'Account Enrichment' : job._type) || 'unknown',
+          jobType: job.jobType || (job._type === 'enrichmentJob' || job._type === 'enrich.job' ? 'Account Enrichment' : job._type) || 'unknown',
           targetEntity: job.targetEntity || job.accountKey || job.entityId || null,
           status: job.status,
           priority: job.priority || 'normal',
@@ -389,6 +658,9 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
 
     return createSuccessResponse(snapshot, requestId);
   } catch (error: any) {
+    if (isSanityQuotaError(error)) {
+      return createSuccessResponse(buildQuotaLimitedSnapshot(error), requestId);
+    }
     return createErrorResponse('OPERATOR_CONSOLE_SNAPSHOT_ERROR', error.message, {}, 500, requestId);
   }
 }
@@ -429,8 +701,10 @@ export async function handleOperatorConsoleAccount(request: Request, requestId: 
     return createSuccessResponse({
       account: {
         id: account._id,
+        accountKey: account.accountKey || account._id,
         name: account.companyName || account.name || account.domain || account._id,
         domain: account.domain || account.rootDomain || null,
+        canonicalUrl: account.canonicalUrl || (account.domain ? `https://${account.domain}` : null) || (account.rootDomain ? `https://${account.rootDomain}` : null),
         completion: Number(account.profileCompleteness?.score || 0),
         opportunityScore: round(account.opportunityScore || 0),
         technologies: flattenTech(account),
@@ -482,6 +756,9 @@ export async function handleOperatorConsoleAccount(request: Request, requestId: 
       ],
     }, requestId);
   } catch (error: any) {
+    if (isSanityQuotaError(error)) {
+      return createSuccessResponse(buildQuotaLimitedAccountState(accountId, error), requestId);
+    }
     return createErrorResponse('OPERATOR_CONSOLE_ACCOUNT_ERROR', error.message, {}, 500, requestId);
   }
 }

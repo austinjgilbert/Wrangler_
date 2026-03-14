@@ -85,7 +85,7 @@ Your worker URL will be like: `https://website-scanner.<your-subdomain>.workers.
 
 - **Chrome extension (Wrangler)** — [CHROME-EXTENSION-SETUP.md](CHROME-EXTENSION-SETUP.md) — capture pages from the browser and send to the worker
 - **Telegram bot** — [TELEGRAM-BOT-SETUP.md](TELEGRAM-BOT-SETUP.md) — control enrichment and queries via Telegram
-- **Custom GPT** — [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md) — connect ChatGPT to your worker
+- **Custom GPT** — [CUSTOM-GPT-UPDATE.md](CUSTOM-GPT-UPDATE.md) — connect ChatGPT to your worker
 - **Sanity Studio** — `cd sanity && npm run dev` — edit content and schemas locally
 
 ## Troubleshooting

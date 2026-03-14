@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Wrangler | Sales Intelligence Platform',
-  description: 'Enterprise-grade sales intelligence and research automation platform. Website scanning, OSINT intelligence, account enrichment, and competitive analysis.',
+  title: 'Intelligence',
+  description: 'Research, accounts, and intelligence.',
   generator: 'Wrangler',
   icons: {
     icon: [

@@ -52,7 +52,7 @@ export function QuickActions() {
           </Button>
           <Button variant="outline" size="sm" className="justify-start" onClick={() => router.push('/intelligence/osint')}>
             <FileText className="mr-2 size-4" />
-            OSINT Report
+            Report
           </Button>
           <Button variant="outline" size="sm" className="justify-start" onClick={() => router.push('/enrichment')}>
             <Sparkles className="mr-2 size-4" />

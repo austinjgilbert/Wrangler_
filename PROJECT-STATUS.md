@@ -32,7 +32,7 @@ Short overview of where the project lives and how the pieces connect. Use this a
 3. `wrangler login`
 4. `npm run dev` → worker at http://localhost:8787; optionally `cd sanity && npm run dev` for Studio
 
-Full steps: [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md).
+Full steps: [SETUP.md](SETUP.md) and [CUSTOM-GPT-UPDATE.md](CUSTOM-GPT-UPDATE.md).
 
 ---
 
@@ -43,7 +43,7 @@ Full steps: [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md).
 | **Deploy** | Push to `main` | Runs build + unit tests, then `wrangler deploy --env=production` |
 | **Health check** | Every 30 min + manual | Calls worker `/health`; fails if not OK |
 
-To enable deploy from GitHub: add repo secrets **CLOUDFLARE_API_TOKEN** and **CLOUDFLARE_ACCOUNT_ID** (see README or UPDATE-INSTRUCTIONS).
+To enable deploy from GitHub: add repo secrets **CLOUDFLARE_API_TOKEN** and **CLOUDFLARE_ACCOUNT_ID** (see README or SETUP.md).
 
 ---
 
@@ -61,7 +61,7 @@ Constants are centralized in **src/config/constants.js**; the worker entry **src
 
 ## Key docs
 
-- [UPDATE-INSTRUCTIONS.md](UPDATE-INSTRUCTIONS.md) — setup, deploy, Custom GPT updates
+- [SETUP.md](SETUP.md) — setup, deploy; [CUSTOM-GPT-UPDATE.md](CUSTOM-GPT-UPDATE.md) — Custom GPT updates
 - [README.md](README.md) — overview, API, usage
 - [GITHUB-PUSH.md](GITHUB-PUSH.md) — push to GitHub (PAT, workflow scope)
 - [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) — production checklist

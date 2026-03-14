@@ -4,37 +4,20 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { FileText, Building2, BrainCircuit, ArrowRight } from 'lucide-react'
 
 const intelligenceTools = [
-  {
-    title: 'OSINT Reports',
-    description: 'Generate year-ahead intelligence reports with initiatives, risks, and recommendations.',
-    href: '/intelligence/osint',
-    icon: FileText,
-  },
-  {
-    title: 'Competitor Research',
-    description: 'Automated competitor discovery and comparative analysis.',
-    href: '/intelligence/competitors',
-    icon: Building2,
-  },
-  {
-    title: 'Learnings',
-    description: 'AI-derived insights and context from previous interactions.',
-    href: '/intelligence/learnings',
-    icon: BrainCircuit,
-  },
+  { title: 'Reports', description: 'Reports, initiatives, risks.', href: '/intelligence/osint', icon: FileText },
+  { title: 'Competitors', description: 'Competitor discovery and comparison.', href: '/intelligence/competitors', icon: Building2 },
+  { title: 'Learnings', description: 'Insights from past interactions.', href: '/intelligence/learnings', icon: BrainCircuit },
 ]
 
 export default function IntelligencePage() {
   return (
     <AppPageFrame
-      breadcrumbs={[
-        { label: 'Intelligence' },
-      ]}
+      breadcrumbs={[{ label: 'Intel' }]}
     >
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Intelligence Hub</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Intel</h1>
             <p className="text-muted-foreground">
-              AI-powered intelligence gathering, analysis, and insights for your accounts.
+              Reports, competitors, learnings.
             </p>
           </div>
 

@@ -29,8 +29,11 @@ export default {
     { name: 'headline', title: 'LinkedIn Headline', type: 'string' },
     { name: 'linkedinUrl', title: 'LinkedIn URL', type: 'url' },
     { name: 'linkedInUrl', title: 'LinkedIn URL (alt casing)', type: 'url', hidden: true },
+    { name: 'email', title: 'Email', type: 'string' },
+    { name: 'phone', title: 'Phone', type: 'string' },
     { name: 'location', title: 'Location', type: 'string' },
     { name: 'about', title: 'About', type: 'text' },
+    { name: 'sourceSystems', title: 'Source Systems', type: 'array', of: [{ type: 'string' }] },
 
     // ── Company Link ──────────────────────────────────────────────────
     { name: 'companyRef', title: 'Primary Company', type: 'reference', to: [{ type: 'account' }] },

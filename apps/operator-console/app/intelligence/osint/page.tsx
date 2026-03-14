@@ -11,7 +11,7 @@ export default function OSINTPage() {
 
   if (!snapshot) {
     return (
-      <AppPageFrame breadcrumbs={[{ label: 'Intelligence' }, { label: 'OSINT Reports' }]}>
+      <AppPageFrame breadcrumbs={[{ label: 'Intel' }, { label: 'Reports' }]}>
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -48,14 +48,14 @@ export default function OSINTPage() {
   return (
     <AppPageFrame
       breadcrumbs={[
-        { label: 'Intelligence', href: '/intelligence' },
-        { label: 'OSINT Reports' },
+        { label: 'Intel', href: '/intelligence' },
+        { label: 'Reports' },
       ]}
     >
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">OSINT Intelligence</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
             <p className="text-muted-foreground">
-              Year-ahead company intelligence with initiative tracking, benchmarking, and actionable insights.
+              Company intelligence, initiatives, risks.
             </p>
           </div>
 
@@ -64,7 +64,7 @@ export default function OSINTPage() {
           ) : (
              <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-dashed border-muted-foreground/25">
                <Search className="size-10 text-muted-foreground/50 mb-4" />
-               <p className="text-muted-foreground">No OSINT Reports found. Run a brief first.</p>
+               <p className="text-muted-foreground">No reports yet. Run a brief first.</p>
              </div>
           )}
     </AppPageFrame>

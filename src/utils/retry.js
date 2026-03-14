@@ -115,6 +115,10 @@ export async function fetchWithRetry(resource, options = {}, retryOptions = {}) 
  */
 export async function retrySanityOperation(operation, retryOptions = {}) {
   const shouldRetry = (error, attempt) => {
+    if (error?.code === 'SANITY_QUOTA_REACHED' || error?.status === 402) {
+      return false;
+    }
+
     // Retry on network errors
     if (error instanceof TypeError) {
       return true;

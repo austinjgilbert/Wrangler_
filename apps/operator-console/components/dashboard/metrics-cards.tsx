@@ -27,12 +27,12 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
       description: 'Website scans completed',
     },
     {
-      title: 'OSINT Reports',
+      title: 'Reports',
       value: metrics.osintReportsGenerated.toLocaleString(),
       change: '+23%',
       trend: 'up' as const,
       icon: FileText,
-      description: 'Intelligence reports',
+      description: 'Reports',
     },
     {
       title: 'Enrichment Jobs',

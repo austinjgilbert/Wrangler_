@@ -89,6 +89,83 @@ function initSanityClient(env) {
   };
 }
 
+function parseSanityErrorPayload(errorText) {
+  if (!errorText) {
+    return {
+      message: 'Unknown Sanity API error',
+      raw: null,
+      sanityCode: null,
+      statusCode: null,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(errorText);
+    return {
+      message: parsed?.message || errorText,
+      raw: parsed,
+      sanityCode: parsed?.error || parsed?.code || null,
+      statusCode: parsed?.statusCode || null,
+    };
+  } catch {
+    return {
+      message: errorText,
+      raw: errorText,
+      sanityCode: null,
+      statusCode: null,
+    };
+  }
+}
+
+function buildSanityApiError(response, errorText) {
+  const parsed = parseSanityErrorPayload(errorText);
+  const error = new Error(`Sanity API error: ${response.status} - ${parsed.message}`);
+  error.name = 'SanityApiError';
+  error.status = response.status;
+  error.code = response.status === 402 && parsed.sanityCode === 'plan_limit_reached'
+    ? 'SANITY_QUOTA_REACHED'
+    : 'SANITY_API_ERROR';
+  error.details = {
+    provider: 'sanity',
+    providerMessage: parsed.message,
+    providerCode: parsed.sanityCode,
+    providerStatusCode: parsed.statusCode || response.status,
+    quotaExceeded: response.status === 402 && parsed.sanityCode === 'plan_limit_reached',
+    raw: parsed.raw,
+  };
+  return error;
+}
+
+function isSanityQuotaError(error) {
+  if (!error) return false;
+  if (error.code === 'SANITY_QUOTA_REACHED') return true;
+  if (error.status === 402 && String(error.message || '').includes('quota')) return true;
+  const providerCode = error.details?.providerCode || error.error;
+  return providerCode === 'plan_limit_reached';
+}
+
+function getSanityServiceError(error) {
+  if (isSanityQuotaError(error)) {
+    return {
+      code: 'SANITY_QUOTA_REACHED',
+      status: 503,
+      message: 'Sanity API quota reached. Live intelligence data is temporarily unavailable.',
+      details: {
+        action: 'Upgrade the Sanity plan or wait for the API quota window to reset.',
+        manageUrl: 'https://sanity.io/manage',
+        providerMessage: error.details?.providerMessage || error.message,
+      },
+    };
+  }
+
+  return {
+    code: error?.code || 'SANITY_API_ERROR',
+    status: error?.status || 500,
+    message: error?.message || 'Sanity request failed.',
+    details: error?.details || null,
+  };
+}
+
 /**
  * Assert Sanity is configured
  * @throws {Error} If Sanity is not configured
@@ -133,7 +210,7 @@ async function sanityFetch(client, path, options = {}) {
   
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Sanity API error: ${response.status} - ${errorText}`);
+    throw buildSanityApiError(response, errorText);
   }
   
   return await response.json();
@@ -491,6 +568,8 @@ export {
   normalizeCanonicalUrl,
   initSanityClient,
   assertSanityConfigured,
+  isSanityQuotaError,
+  getSanityServiceError,
   groqQuery,
   upsertDocument,
   patchDocument,

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import {
   ExternalLink,
@@ -70,7 +71,11 @@ function AccountCard({ account }: { account: Account }) {
             {account.companyName.charAt(0)}
           </div>
           <div className="flex-1 space-y-1 min-w-0">
-            <CardTitle className="text-base truncate">{account.companyName}</CardTitle>
+            <CardTitle className="text-base truncate">
+              <Link href={`/accounts/${account._id}`} className="hover:underline">
+                {account.companyName}
+              </Link>
+            </CardTitle>
             <CardDescription className="flex items-center gap-1 text-xs">
               <Globe className="size-3" />
               <a
@@ -99,14 +104,18 @@ function AccountCard({ account }: { account: Account }) {
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <FileText className="mr-2 size-4" />
-                Generate OSINT Report
+                Report
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 size-4" />
-                Run Enrichment
+              <DropdownMenuItem asChild>
+                <Link href={`/accounts/${account._id}`}>
+                  <Sparkles className="mr-2 size-4" />
+                  Research
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>View Details</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/accounts/${account._id}`}>Open</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -243,7 +252,7 @@ function AccountsTableView({ accounts }: { accounts: Account[] }) {
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <FileText className="mr-2 size-4" />
-                      Generate OSINT Report
+                      Report
                     </DropdownMenuItem>
                     <DropdownMenuItem>
                       <Sparkles className="mr-2 size-4" />

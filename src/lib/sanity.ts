@@ -13,6 +13,7 @@ import {
   patchDocument,
   getDocument,
 } from '../sanity-client.js';
+import { buildEnrichJobKey } from '../../shared/accountStoragePolicy.ts';
 
 // ---------------------------------------------------------------------------
 // Shared client helper
@@ -433,8 +434,26 @@ export async function createDqFinding(env: any, doc: any): Promise<any> {
 
 export async function createEnrichJob(env: any, doc: any): Promise<any> {
   const client = getSanityClient(env);
-  await upsertDocument(client, doc);
-  return doc;
+  const jobKey = buildEnrichJobKey({
+    entityType: doc?.entityType,
+    entityId: doc?.entityId,
+    goal: doc?.goal,
+  });
+  const existing = await getDocument(client, jobKey).catch(() => null);
+  if (existing && ['queued', 'running'].includes(existing.status)) {
+    return existing;
+  }
+
+  const normalizedDoc = {
+    ...doc,
+    _id: jobKey,
+    jobKey,
+    createdAt: existing?.createdAt || doc?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await upsertDocument(client, normalizedDoc);
+  return normalizedDoc;
 }
 
 export async function fetchQueuedEnrichJobs(env: any): Promise<any[]> {

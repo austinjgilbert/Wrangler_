@@ -26,8 +26,8 @@ function AccountDataSetIcon() {
 }
 
 export default defineConfig({
-  name: 'account-dataset',
-  title: 'Account DataSet',
+  name: 'dataview',
+  title: 'DataView',
   icon: AccountDataSetIcon,
 
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'nlqb7zmk',

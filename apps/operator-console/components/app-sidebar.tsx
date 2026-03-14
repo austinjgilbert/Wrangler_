@@ -41,46 +41,30 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 const navigationItems = [
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   {
-    title: 'Dashboard',
-    url: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Research',
+    title: 'Scan',
     url: '/research',
     icon: Search,
     items: [
-      { title: 'Website Scan', url: '/research/scan' },
-      { title: 'Batch Scan', url: '/research/batch' },
+      { title: 'Scan', url: '/research/scan' },
+      { title: 'Batch', url: '/research/batch' },
       { title: 'Search', url: '/research/search' },
     ],
   },
+  { title: 'Accounts', url: '/accounts', icon: Building2 },
   {
-    title: 'Accounts',
-    url: '/accounts',
-    icon: Building2,
-  },
-  {
-    title: 'Intelligence',
+    title: 'Intel',
     url: '/intelligence',
     icon: BrainCircuit,
     items: [
-      { title: 'OSINT Reports', url: '/intelligence/osint' },
-      { title: 'Competitor Research', url: '/intelligence/competitors' },
+      { title: 'Reports', url: '/intelligence/osint' },
+      { title: 'Competitors', url: '/intelligence/competitors' },
       { title: 'Learnings', url: '/intelligence/learnings' },
     ],
   },
-  {
-    title: 'Enrichment',
-    url: '/enrichment',
-    icon: Sparkles,
-  },
-  {
-    title: 'Analytics',
-    url: '/analytics',
-    icon: TrendingUp,
-  },
+  { title: 'Research', url: '/enrichment', icon: Sparkles },
+  { title: 'Analytics', url: '/analytics', icon: TrendingUp },
 ]
 
 const secondaryItems = [
@@ -112,7 +96,7 @@ export function AppSidebar() {
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">Wrangler</span>
                   <span className="text-xs text-muted-foreground">
-                    Sales Intelligence
+                    Intelligence
                   </span>
                 </div>
               </Link>

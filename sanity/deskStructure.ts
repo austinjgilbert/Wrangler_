@@ -55,11 +55,25 @@ import type {
   DefaultDocumentNodeContext,
 } from 'sanity/structure';
 import { AccountPage } from './components/AccountPage';
+import { AccountTreeExplorer } from './components/AccountTreeExplorer';
+import { StorageGovernanceDashboard } from './components/StorageGovernanceDashboard';
 
 export const getDefaultDocumentNode: DefaultDocumentNodeResolver = (
   S: StructureBuilder,
   options: DefaultDocumentNodeContext,
 ) => {
+  if (options.schemaType === 'accountTreeExplorer') {
+    return S.document().views([
+      S.view.component(AccountTreeExplorer).title('Explorer'),
+      S.view.form(),
+    ]);
+  }
+  if (options.schemaType === 'storageDashboard') {
+    return S.document().views([
+      S.view.component(StorageGovernanceDashboard).title('Dashboard'),
+      S.view.form(),
+    ]);
+  }
   if (options.schemaType === 'account') {
     return S.document().views([
       S.view.component(AccountPage).title('Account Page'),
@@ -73,6 +87,32 @@ export const deskStructure = (S: StructureBuilder) =>
   S.list()
     .title('Account DataSet')
     .items([
+      S.listItem()
+        .title('Account Tree')
+        .id('accountTreeExplorer')
+        .schemaType('accountTreeExplorer')
+        .child(
+          S.editor()
+            .id('accountTreeExplorer')
+            .schemaType('accountTreeExplorer')
+            .documentId('accountTreeExplorer')
+        ),
+
+      S.divider(),
+
+      S.listItem()
+        .title('Storage Governance')
+        .id('storageDashboard')
+        .schemaType('storageDashboard')
+        .child(
+          S.editor()
+            .id('storageDashboard')
+            .schemaType('storageDashboard')
+            .documentId('storageDashboard')
+        ),
+
+      S.divider(),
+
       // ═══════════════════════════════════════════════════════════
       // Sales Intelligence
       // ═══════════════════════════════════════════════════════════
@@ -145,9 +185,9 @@ export const deskStructure = (S: StructureBuilder) =>
                 ),
               S.listItem()
                 .title('Enrichment Proposals')
-                .schemaType('enrichProposal')
+                .schemaType('enrich.proposal')
                 .child(
-                  S.documentTypeList('enrichProposal')
+                  S.documentTypeList('enrich.proposal')
                     .title('Enrichment Proposals')
                 ),
               S.listItem()
@@ -246,9 +286,9 @@ export const deskStructure = (S: StructureBuilder) =>
                 ),
               S.listItem()
                 .title('Approvals')
-                .schemaType('moltApproval')
+                .schemaType('molt.approval')
                 .child(
-                  S.documentTypeList('moltApproval').title('Approvals')
+                  S.documentTypeList('molt.approval').title('Approvals')
                 ),
               S.listItem()
                 .title('Draft Actions')
@@ -258,27 +298,27 @@ export const deskStructure = (S: StructureBuilder) =>
                 ),
               S.listItem()
                 .title('Patterns')
-                .schemaType('moltPattern')
+                .schemaType('molt.pattern')
                 .child(
-                  S.documentTypeList('moltPattern').title('Patterns')
+                  S.documentTypeList('molt.pattern').title('Patterns')
                 ),
               S.listItem()
                 .title('Strategy Briefs')
-                .schemaType('moltStrategyBrief')
+                .schemaType('molt.strategyBrief')
                 .child(
-                  S.documentTypeList('moltStrategyBrief').title('Strategy Briefs')
+                  S.documentTypeList('molt.strategyBrief').title('Strategy Briefs')
                 ),
               S.listItem()
                 .title('Notifications')
-                .schemaType('moltNotification')
+                .schemaType('molt.notification')
                 .child(
-                  S.documentTypeList('moltNotification').title('Notifications')
+                  S.documentTypeList('molt.notification').title('Notifications')
                 ),
               S.listItem()
                 .title('Metric Snapshots')
-                .schemaType('moltMetricSnapshot')
+                .schemaType('molt.metricSnapshot')
                 .child(
-                  S.documentTypeList('moltMetricSnapshot').title('Metric Snapshots')
+                  S.documentTypeList('molt.metricSnapshot').title('Metric Snapshots')
                 ),
             ])
         ),
@@ -296,35 +336,35 @@ export const deskStructure = (S: StructureBuilder) =>
             .items([
               S.listItem()
                 .title('Call Sessions')
-                .schemaType('callSession')
+                .schemaType('call.session')
                 .child(
-                  S.documentTypeList('callSession')
+                  S.documentTypeList('call.session')
                     .title('Call Sessions')
                     .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
                 ),
               S.listItem()
                 .title('Call Insights')
-                .schemaType('callInsight')
+                .schemaType('call.insight')
                 .child(
-                  S.documentTypeList('callInsight').title('Call Insights')
+                  S.documentTypeList('call.insight').title('Call Insights')
                 ),
               S.listItem()
                 .title('Call Tasks')
-                .schemaType('callTask')
+                .schemaType('call.task')
                 .child(
-                  S.documentTypeList('callTask').title('Call Tasks')
+                  S.documentTypeList('call.task').title('Call Tasks')
                 ),
               S.listItem()
                 .title('Call Coaching')
-                .schemaType('callCoaching')
+                .schemaType('call.coaching')
                 .child(
-                  S.documentTypeList('callCoaching').title('Call Coaching')
+                  S.documentTypeList('call.coaching').title('Call Coaching')
                 ),
               S.listItem()
                 .title('Follow-up Drafts')
-                .schemaType('callFollowupDraft')
+                .schemaType('call.followupDraft')
                 .child(
-                  S.documentTypeList('callFollowupDraft').title('Follow-up Drafts')
+                  S.documentTypeList('call.followupDraft').title('Follow-up Drafts')
                 ),
             ])
         ),
