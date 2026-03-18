@@ -124,22 +124,24 @@ export async function retrySanityOperation(operation, retryOptions = {}) {
       return true;
     }
     
-    // Retry on 5xx errors
-    if (error.message && error.message.includes('5')) {
-      return true;
+    // Use numeric status code when available
+    const status = error?.status;
+    if (typeof status === 'number') {
+      if (status >= 500 && status < 600) return true;
+      if (status === 429) return attempt < 2;
+      if (status >= 400 && status < 500) return false;
     }
-    
-    // Retry on rate limit errors
-    if (error.message && error.message.includes('429')) {
-      return attempt < 2;
+
+    // Fallback: parse status from Sanity error message format "Sanity API error: NNN - ..."
+    const statusMatch = String(error?.message || '').match(/\b([45]\d{2})\b/);
+    if (statusMatch) {
+      const parsed = parseInt(statusMatch[1], 10);
+      if (parsed >= 500) return true;
+      if (parsed === 429) return attempt < 2;
+      if (parsed >= 400) return false;
     }
-    
-    // Don't retry 4xx errors (except 429)
-    if (error.message && error.message.includes('4')) {
-      return false;
-    }
-    
-    return true; // Retry other errors
+
+    return true; // Retry unknown errors
   };
 
   return retryWithBackoff(operation, {
