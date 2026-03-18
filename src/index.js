@@ -759,7 +759,7 @@ let _reqEnv = null;
 
 const _ALLOWED_ORIGINS = new Set([
   'https://website-scanner.austin-gilbert.workers.dev',
-  // TODO(@austin): Add Chrome extension ID: 'chrome-extension://<ID>'
+  'chrome-extension://golckjfiiopfdidkohfmfdpeengneaip',
   // TODO(@austin): Add Sanity Studio origin
   // TODO(@austin): Add operator console origin if deployed separately
 ]);
@@ -767,8 +767,7 @@ const _ALLOWED_ORIGINS = new Set([
 function _isAllowedOrigin(origin, env) {
   if (!origin) return false;
   if (_ALLOWED_ORIGINS.has(origin)) return true;
-  // ⚠️ TEMPORARY — wildcard for all Chrome extensions. Replace with specific ID.
-  if (origin.startsWith('chrome-extension://')) return true;
+
   if (env?.ENVIRONMENT !== 'production' && origin.startsWith('http://localhost:')) return true;
   return false;
 }

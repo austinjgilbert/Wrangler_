@@ -16,25 +16,17 @@ export function generateRequestId() {
 
 const ALLOWED_ORIGINS = new Set([
   'https://website-scanner.austin-gilbert.workers.dev',
-  // TODO(@austin): Add Chrome extension ID: 'chrome-extension://<ID>'
+  'chrome-extension://golckjfiiopfdidkohfmfdpeengneaip',
   // TODO(@austin): Add Sanity Studio origin: 'https://<project>.sanity.studio'
   // TODO(@austin): Add operator console origin if deployed separately
 ]);
 
 /**
  * Check if an origin is allowed for CORS.
- *
- * ⚠️ TEMPORARY: chrome-extension:// wildcard allows ALL Chrome extensions.
- * This MUST be replaced with the specific extension ID before production.
- * A malicious extension could access the API with this wildcard.
- * TODO(@austin): Get extension ID from chrome://extensions, add to ALLOWED_ORIGINS,
- * then remove the protocol wildcard below.
  */
 function isAllowedOrigin(origin, env) {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
-  // ⚠️ TEMPORARY — see warning above
-  if (origin.startsWith('chrome-extension://')) return true;
   // Localhost only in non-production
   if (env?.ENVIRONMENT !== 'production' && origin.startsWith('http://localhost:')) return true;
   return false;
