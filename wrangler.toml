@@ -37,24 +37,25 @@ MOLTBOOK_BASE_URL = "http://localhost:8787"
 WRANGLER_API_URL = ""
 # CORS_ORIGINS: optional comma-separated allowed origins; "*" or unset = allow all
 
-# NOTE: Queues require Workers Paid plan. If on free plan, OSINT will use sync endpoint instead.
-# Queue producer binding for OSINT jobs (uncomment when on paid plan)
-# [[queues.producers]]
-# queue = "osint-queue"
-# binding = "OSINT_QUEUE"
+# OSINT Queue (Workers Paid plan — enabled)
+[[queues.producers]]
+queue = "osint-queue"
+binding = "OSINT_QUEUE"
 
-# Queue consumer for OSINT jobs (uncomment when on paid plan)
-# [[queues.consumers]]
-# queue = "osint-queue"
-# max_batch_size = 1
-# max_batch_timeout = 30
+[[queues.consumers]]
+queue = "osint-queue"
+max_batch_size = 1
+max_batch_timeout = 30
 
-# Durable Object for OSINT job state tracking
-# NOTE: Durable Objects also require Workers Paid plan. If on free plan, job state uses D1 or in-memory.
-# [[durable_objects.bindings]]
-# name = "OSINT_JOBS_DO"
-# class_name = "OsintJobState"
-# script_name = "website-scanner"
+# Durable Object for OSINT job state tracking (Workers Paid plan — enabled)
+[[durable_objects.bindings]]
+name = "OSINT_JOBS_DO"
+class_name = "OsintJobState"
+
+# DO migration — required on first deployment of a new Durable Object class
+[[migrations]]
+tag = "v1"
+new_classes = ["OsintJobState"]
 
 # Secrets: set for the env you deploy to. This repo deploys with --env=production, so use:
 #   npx wrangler secret put GMAIL_REFRESH_TOKEN --env=production
@@ -112,18 +113,16 @@ MOLTBOOK_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 WRANGLER_API_URL = ""
 
 # Production environment inherits top-level config
-# Uncomment these when on Workers Paid plan:
-# [[env.production.queues.producers]]
-# queue = "osint-queue"
-# binding = "OSINT_QUEUE"
-#
-# [[env.production.queues.consumers]]
-# queue = "osint-queue"
-# max_batch_size = 1
-# max_batch_timeout = 30
-#
-# [[env.production.durable_objects.bindings]]
-# name = "OSINT_JOBS_DO"
-# class_name = "OsintJobState"
-# script_name = "website-scanner"
+[[env.production.queues.producers]]
+queue = "osint-queue"
+binding = "OSINT_QUEUE"
+
+[[env.production.queues.consumers]]
+queue = "osint-queue"
+max_batch_size = 1
+max_batch_timeout = 30
+
+[[env.production.durable_objects.bindings]]
+name = "OSINT_JOBS_DO"
+class_name = "OsintJobState"
 
