@@ -1,6 +1,7 @@
-export type View = 'dashboard' | 'accounts' | 'enrichment' | 'activity' | 'people' | 'technologies'
+export type View = 'dashboard' | 'accounts' | 'enrichment' | 'activity' | 'people' | 'technologies' | 'command-center'
 
 export const NAV: { id: View; label: string }[] = [
+  { id: 'command-center', label: 'Command Center' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'enrichment', label: 'Research' },

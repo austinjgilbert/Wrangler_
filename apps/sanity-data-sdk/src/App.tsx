@@ -7,6 +7,7 @@ import { EnrichmentView } from './components/EnrichmentView';
 import { ActivityView } from './components/ActivityView';
 import { PeopleListView } from './components/PeopleListView';
 import { TechnologiesListView } from './components/TechnologiesListView';
+import { CommandCenter } from './components/command-center';
 import { SANITY_DATASET, SANITY_PROJECT_ID } from './lib/app-env';
 import { NAV, readViewFromSearch, type View } from './lib/view-state';
 import './App.css';
@@ -78,6 +79,7 @@ export default function App() {
           fallback={<div className="loading-state">Connecting to Sanity…</div>}
         >
           <Suspense fallback={<div className="loading-state panel">Loading…</div>}>
+            {view === 'command-center' && <CommandCenter />}
             {view === 'dashboard' && <DashboardView />}
             {view === 'accounts' && <AccountExplorer />}
             {view === 'enrichment' && <EnrichmentView />}
