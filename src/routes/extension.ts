@@ -21,6 +21,7 @@ import { buildEventDoc } from '../lib/events.ts';
 import { createMoltEvent } from '../lib/sanity.ts';
 import { buildDeterministicSnapshotId, buildExtensionCaptureBucketId } from '../../shared/accountStoragePolicy.ts';
 import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
+import { categorizeTechnology } from '../utils/tech-categories.js';
 
 interface CapturedPerson {
   name?: string;
@@ -331,12 +332,15 @@ export async function handleExtensionCapture(request: Request, requestId: string
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const techId = `technology-${slug}`;
 
+        const category = categorizeTechnology(name);
         await upsertDocument(client, {
           _type: 'technology',
           _id: techId,
           name,
           slug,
-          category: 'detected',
+          category,
+          isLegacy: category === 'legacy',
+          isMigrationTarget: category === 'migration-target',
           lastEnrichedAt: new Date().toISOString(),
         });
 
@@ -544,7 +548,7 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
       return createErrorResponse('VALIDATION_ERROR', 'prompt is required', {}, 400, requestId);
     }
 
-    const { initSanityClient } = await import('../sanity-client.js');
+    const { initSanityClient, groqQuery, upsertDocument, patchDocument } = await import('../sanity-client.js');
     const client = initSanityClient(env);
     if (!client) {
       return createErrorResponse('SANITY_ERROR', 'Sanity not configured', {}, 500, requestId);
@@ -568,6 +572,32 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
       : 'No stored account context found for this page yet.';
 
     const answer = buildRabbitAnswer(prompt, intel, contextSummary);
+
+    // ── P0-6: Store the Q&A exchange as an interaction ──────────────────
+    // Fire-and-forget: don't block the response on storage success.
+    // If storage fails, the user still gets their answer.
+    const { storeInteraction } = await import('../services/interaction-storage.js');
+    storeInteraction(
+      groqQuery,
+      upsertDocument,
+      patchDocument,
+      client,
+      {
+        sessionId: body?.sessionId || null,
+        userPrompt: prompt,
+        gptResponse: answer,
+        domain: intel?.primaryAccount?.domain || '',
+        accountKey: intel?.primaryAccount?.accountKey || '',
+        referencedAccounts: intel?.primaryAccount?._id
+          ? [{ _type: 'reference', _ref: intel.primaryAccount._id }]
+          : [],
+        contextTags: ['extension-ask', 'rabbit'],
+        requestId,
+      },
+    ).catch((err: any) => {
+      console.error('Extension ask: interaction storage failed (non-blocking):', err?.message);
+    });
+
     return createSuccessResponse({
       answer,
       nextActions: intel?.nextActions || [],
