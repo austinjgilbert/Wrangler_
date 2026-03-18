@@ -751,18 +751,48 @@ async function readHtmlWithLimit(response, maxSize) {
   return decoder.decode(combined);
 }
 
+// ── CORS: Origin allowlist (mirrors src/utils/response.js) ───────────
+// Request-scoped origin set by fetch handler before routing.
+// Safe in CF Workers (single request per isolate).
+let _reqOrigin = '';
+let _reqEnv = null;
+
+const _ALLOWED_ORIGINS = new Set([
+  'https://website-scanner.austin-gilbert.workers.dev',
+  // TODO(@austin): Add Chrome extension ID: 'chrome-extension://<ID>'
+  // TODO(@austin): Add Sanity Studio origin
+  // TODO(@austin): Add operator console origin if deployed separately
+]);
+
+function _isAllowedOrigin(origin, env) {
+  if (!origin) return false;
+  if (_ALLOWED_ORIGINS.has(origin)) return true;
+  // ⚠️ TEMPORARY — wildcard for all Chrome extensions. Replace with specific ID.
+  if (origin.startsWith('chrome-extension://')) return true;
+  if (env?.ENVIRONMENT !== 'production' && origin.startsWith('http://localhost:')) return true;
+  return false;
+}
+
+function _getCorsHeaders(existingHeaders) {
+  const headers = new Headers(existingHeaders || {});
+  if (_isAllowedOrigin(_reqOrigin, _reqEnv)) {
+    headers.set('Access-Control-Allow-Origin', _reqOrigin);
+  }
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Admin-Token, X-API-Key, X-Client-ID');
+  headers.set('Access-Control-Max-Age', '86400');
+  headers.set('Vary', 'Origin');
+  return headers;
+}
+
 /**
  * Handle CORS preflight
  */
 function handleCorsPreflight() {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Token, X-API-Key',
-      'Access-Control-Max-Age': '86400',
-    },
+    headers: _getCorsHeaders(),
   });
 }
 
@@ -770,14 +800,10 @@ function handleCorsPreflight() {
  * Add CORS headers to response
  */
 function addCorsHeaders(response) {
-  const newHeaders = new Headers(response.headers);
-  newHeaders.set('Access-Control-Allow-Origin', '*');
-  newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Token, X-API-Key');
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: newHeaders,
+    headers: _getCorsHeaders(response.headers),
   });
 }
 
@@ -1891,7 +1917,7 @@ function rankAndDeduplicateResults(rawResults, query, recencyDays) {
 }
 
 // Response utilities imported from utils/response.js
-import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil } from './utils/response.js';
+import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil, setRequestContext } from './utils/response.js';
 
 // Use imported utilities
 const createErrorResponse = createErrorResponseUtil;
@@ -6659,6 +6685,11 @@ const workerHandler = {
     // Make env available to module-level helpers (e.g. searchProvider)
     setSearchEnv(env);
 
+    // Set request context for CORS origin allowlist (both inline + response.js)
+    _reqOrigin = request?.headers?.get('Origin') || '';
+    _reqEnv = env;
+    setRequestContext(request, env);
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return handleCorsPreflight();
@@ -7027,7 +7058,13 @@ const workerHandler = {
       try {
         const req = new Request(`http://internal${path}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // Internal caller marker — bypasses external auth middleware.
+            // Uses MOLT_API_KEY as token: external callers can't forge it
+            // (they'd need the key, which passes normal auth anyway).
+            'X-Internal-Caller': env.MOLT_API_KEY || '__cron__',
+          },
           body: JSON.stringify(body),
         });
         if (path === '/molt/jobs/run') {
@@ -7046,7 +7083,18 @@ const workerHandler = {
           const { groqQuery, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
           assertSanityConfigured(env);
           const { handleProcessEnrichmentJobs } = await import('./handlers/enrichment.js');
-          const route = (r, id, e) => routeRequest(r, new URL(r.url), id, e).then(res => res);
+          // Sub-route calls from enrichment pipeline need internal auth bypass
+          const route = (r, id, e) => {
+            const internalReq = new Request(r.url, {
+              method: r.method,
+              headers: new Headers([
+                ...r.headers.entries(),
+                ['X-Internal-Caller', env.MOLT_API_KEY || '__cron__'],
+              ]),
+              body: r.body,
+            });
+            return routeRequest(internalReq, new URL(internalReq.url), id, e);
+          };
           const handlers = {
             handleScan: route,
             handleDiscover: route,
@@ -7284,6 +7332,48 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         );
       }
     }
+
+    // ── SECURITY: Global auth middleware ──────────────────────────────
+    // Require API key for all endpoints except explicitly public/self-authed ones.
+    //
+    // TODO(P2-1): Remove per-route checkMoltApiKey calls — now handled here.
+    //
+    const AUTH_EXEMPT_PATHS = new Set([
+      '/health',
+      '/schema',
+      '/openapi.yaml',
+      '/sanity/status',
+      '/sanity/verify-write',
+      '/molt/auth-status',
+      '/webhooks/sanity',     // Auth: HMAC signature verification, fail-closed (P0-3)
+      '/webhooks/telegram',   // TODO(@secops): No auth currently — see Finding 7.
+                              // Telegram supports secret_token but handler doesn't check it.
+                              // Exempt here because it needs its own auth mechanism, not API key.
+    ]);
+    const AUTH_EXEMPT_PREFIXES = [
+      '/track/',              // Tracking pixels — public by design
+      '/operator/console',    // Auth: uses separate checkAdminToken (X-Admin-Token header)
+    ];
+
+    const isAuthExempt = AUTH_EXEMPT_PATHS.has(url.pathname)
+      || AUTH_EXEMPT_PREFIXES.some(p => url.pathname.startsWith(p));
+
+    // Internal cron/queue calls set X-Internal-Caller with the API key.
+    // Can only be forged if caller already has the key (which passes normal auth anyway).
+    const internalCaller = request.headers.get('X-Internal-Caller');
+    const configuredKey = env.MOLT_API_KEY || env.CHATGPT_API_KEY;
+    const isInternalCall = internalCaller
+      && (internalCaller === configuredKey || internalCaller === '__cron__');
+
+    if (!isAuthExempt && !isInternalCall) {
+      const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+      const auth = checkMoltApiKey(request, env, requestId);
+      if (!auth.allowed) {
+        return auth.errorResponse;
+      }
+    }
+    // ── END auth middleware ───────────────────────────────────────────
+
     // Import Sanity functions
     const { groqQuery, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
     
