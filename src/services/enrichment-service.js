@@ -73,33 +73,6 @@ async function clearVirtualEnrichmentState(env, accountKey) {
 function mapStageToPayloadField(stage) {
   switch (stage) {
     case PIPELINE_STAGES.INITIAL_SCAN:
-      return {
-        input: result.input || null,
-        finalUrl: result.finalUrl || null,
-        status: result.status ?? null,
-        title: result.title || null,
-        note: result.note || null,
-        sizeLimitExceeded: result.sizeLimitExceeded === true,
-        businessUnits: result.businessUnits
-          ? {
-              companyName: result.businessUnits.companyName || null,
-              description: result.businessUnits.description || null,
-              industry: result.businessUnits.industry || null,
-            }
-          : null,
-        technologyStack: result.technologyStack || null,
-        aiReadiness: result.aiReadiness || null,
-        businessScale: result.businessScale || null,
-        contentSignals: Array.isArray(result.contentSignals)
-          ? result.contentSignals.slice(0, 10).map((signal) => ({
-              type: signal?.type || null,
-              label: signal?.label || null,
-              value: signal?.value || null,
-            }))
-          : [],
-      };
-
-    case PIPELINE_STAGES.INITIAL_SCAN:
       return 'scan';
     case PIPELINE_STAGES.DISCOVERY:
       return 'discovery';
@@ -670,13 +643,13 @@ export async function queueEnrichmentJob(
  */
 export async function getActiveEnrichmentJob(groqQuery, client, accountKey, goalKey = null, env = null) {
   try {
-    let query = `*[_type == "enrich.job" && accountKey == $accountKey && status in ["pending", "in_progress"]]`;
+    let conditions = `_type == "enrich.job" && accountKey == $accountKey && status in ["pending", "in_progress"]`;
     const params = { accountKey };
     if (goalKey) {
-      query += ` && goalKey == $goalKey`;
+      conditions += ` && goalKey == $goalKey`;
       params.goalKey = goalKey;
     }
-    query += ` | order(updatedAt desc)[0]`;
+    const query = `*[${conditions}] | order(updatedAt desc)[0]`;
     const raw = await groqQuery(client, query, params);
     const job = Array.isArray(raw) && raw.length > 0 ? raw[0] : (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null);
     if (job) {

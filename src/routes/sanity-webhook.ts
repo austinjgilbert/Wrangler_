@@ -213,12 +213,20 @@ export async function handleSanityWebhook(request: Request, requestId: string, e
     const rawBody = await request.text();
 
     const secret = env.SANITY_WEBHOOK_SECRET;
-    if (secret) {
-      const signature = request.headers.get('sanity-webhook-signature');
-      const valid = await verifySignature(rawBody, signature, secret);
-      if (!valid) {
-        return createErrorResponse('AUTH_ERROR', 'Invalid webhook signature', {}, 401, requestId);
-      }
+    if (!secret) {
+      return createErrorResponse(
+        'CONFIG_ERROR',
+        'SANITY_WEBHOOK_SECRET not configured — webhook endpoint disabled for security',
+        {},
+        503,
+        requestId,
+      );
+    }
+
+    const signature = request.headers.get('sanity-webhook-signature');
+    const valid = await verifySignature(rawBody, signature, secret);
+    if (!valid) {
+      return createErrorResponse('AUTH_ERROR', 'Invalid webhook signature', {}, 401, requestId);
     }
 
     let payload: SanityWebhookPayload;
