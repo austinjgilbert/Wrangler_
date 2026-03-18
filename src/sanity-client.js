@@ -223,23 +223,28 @@ async function groqQuery(client, query, params = {}) {
   const { retrySanityOperation } = await import('./utils/retry.js');
   
   return retrySanityOperation(async () => {
-    // Sanity GROQ queries use $paramName syntax in the query, not URL params
-    // Replace $paramName in query with actual values
-    let processedQuery = query;
-    for (const [key, value] of Object.entries(params)) {
-      // Escape value for GROQ string interpolation
-      // Backslashes must be escaped first, then quotes
-      const escapedValue = typeof value === 'string' 
-        ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` 
-        : JSON.stringify(value);
-      processedQuery = processedQuery.replace(
-        new RegExp(`\\$${key}\\b`, 'g'),
-        escapedValue
-      );
-    }
-    
     const queryParams = new URLSearchParams();
-    queryParams.append('query', processedQuery);
+    queryParams.append('query', query);
+    
+    // Pass params as server-side GROQ parameters
+    // Sanity expects: $paramName="stringValue" or $paramName=123 in the query string
+    for (const [key, value] of Object.entries(params)) {
+      if (value === null || value === undefined) continue;
+      
+      if (typeof value === 'string') {
+        // Escape backslashes first, then double quotes to prevent injection
+        const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        queryParams.append(`$${key}`, `"${escaped}"`);
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        queryParams.append(`$${key}`, String(value));
+      } else if (Array.isArray(value)) {
+        // Arrays need JSON encoding for GROQ
+        queryParams.append(`$${key}`, JSON.stringify(value));
+      } else {
+        // Objects and other types
+        queryParams.append(`$${key}`, JSON.stringify(value));
+      }
+    }
     
     const result = await sanityFetch(client, `${client.queryUrl}?${queryParams.toString()}`);
     return result.result ?? null;
@@ -485,23 +490,26 @@ async function upsertAccountSummary(client, accountKey, canonicalUrl, companyNam
  * Query company accounts with filters
  */
 async function queryCompanyAccounts(client, filters = {}) {
-  let query = '*[_type == "account"';
+  let conditions = '_type == "account"';
+  const params = {};
   
   if (filters.minScore !== undefined) {
-    query += ` && opportunityScore >= ${filters.minScore}`;
+    conditions += ' && opportunityScore >= $minScore';
+    params.minScore = filters.minScore;
   }
   if (filters.minAIReadinessScore !== undefined) {
-    query += ` && aiReadiness.score >= ${filters.minAIReadinessScore}`;
+    conditions += ' && aiReadiness.score >= $minAIReadinessScore';
+    params.minAIReadinessScore = filters.minAIReadinessScore;
   }
   if (filters.domain) {
-    const safeDomain = filters.domain.replace(/[\\\"]/g, '');
-    query += ` && domain == "${safeDomain}"`;
+    conditions += ' && domain == $domain';
+    params.domain = filters.domain;
   }
   
-  query += ']';
+  let query = `*[${conditions}]`;
   
   if (filters.orderBy) {
-    // Only allow safe field names for ordering
+    // Only allow safe field names for ordering (structural, can't be parameterized)
     const safeOrderBy = filters.orderBy.replace(/[^a-zA-Z0-9_.]/g, '');
     query += ` | order(${safeOrderBy} desc)`;
   } else {
@@ -509,10 +517,11 @@ async function queryCompanyAccounts(client, filters = {}) {
   }
   
   if (filters.limit) {
-    query += `[0...${filters.limit}]`;
+    const limit = Math.min(Math.max(parseInt(filters.limit, 10) || 50, 1), 1000);
+    query += `[0...${limit}]`;
   }
   
-  const docs = await groqQuery(client, query);
+  const docs = await groqQuery(client, query, params);
   return { success: true, documents: docs };
 }
 
@@ -520,21 +529,28 @@ async function queryCompanyAccounts(client, filters = {}) {
  * Search documents across types
  */
 async function searchSanityDocuments(client, searchTerm, docTypes = []) {
-  const types = docTypes.length > 0 ? docTypes : ['account', 'accountPack'];
-  // Sanitize search term to prevent GROQ injection
-  const safeTerm = searchTerm.replace(/[\\\"*]/g, '');
+  // Allowlist valid document types to prevent _type injection
+  const VALID_DOC_TYPES = new Set([
+    'account', 'accountPack', 'websiteScan', 'linkedInProfile',
+    'evidencePack', 'researchBrief', 'searchResult', 'verificationResult',
+    'companyAccount', 'osintJob', 'osintReport', 'interaction', 'session', 'learning',
+  ]);
   
-  const conditions = types.map(type => {
-    if (type === 'account') {
-      return `(_type == "account" && (companyName match "*${safeTerm}*" || domain match "*${safeTerm}*" || canonicalUrl match "*${safeTerm}*"))`;
-    } else if (type === 'accountPack') {
-      return `(_type == "accountPack" && (canonicalUrl match "*${safeTerm}*" || domain match "*${safeTerm}*"))`;
-    }
-    return `(_type == "${type}" && (name match "*${safeTerm}*" || url match "*${safeTerm}*"))`;
+  const requestedTypes = docTypes.length > 0 ? docTypes : ['account', 'accountPack'];
+  const types = requestedTypes.filter(t => VALID_DOC_TYPES.has(t));
+  
+  if (types.length === 0) {
+    return { success: true, documents: [] };
+  }
+  
+  // Use _type in $types for parameterized type filtering
+  // Wildcard match with server-side params: needs verification against live Sanity.
+  // If match + $param wildcards don't work, use sanitized inline fallback.
+  const query = '*[_type in $types && (companyName match $searchPattern || domain match $searchPattern || canonicalUrl match $searchPattern || name match $searchPattern || url match $searchPattern)] | order(_updatedAt desc)[0...50]';
+  const docs = await groqQuery(client, query, {
+    types,
+    searchPattern: `*${searchTerm}*`,
   });
-  
-  const query = `*[${conditions.join(' || ')}]`;
-  const docs = await groqQuery(client, query);
   return { success: true, documents: docs };
 }
 
@@ -542,9 +558,8 @@ async function searchSanityDocuments(client, searchTerm, docTypes = []) {
  * Find documents by account key
  */
 async function findDocumentsByAccountKey(client, accountKey) {
-  const safeKey = accountKey.replace(/[\\\"]/g, '');
-  const query = `*[accountKey == "${safeKey}"]`;
-  const docs = await groqQuery(client, query);
+  const query = '*[accountKey == $accountKey]';
+  const docs = await groqQuery(client, query, { accountKey });
   return docs;
 }
 

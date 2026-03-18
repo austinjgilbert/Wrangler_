@@ -101,8 +101,8 @@ export async function handleGetOsintStatus(
       // Query for jobs matching the accountKey and mode, sorted by date
       const jobs = await groqQuery(
         client,
-        `*[_type == "osintJob" && accountKey == "${accountKey}" && mode == "${mode}"] | order(_createdAt desc)[0]`,
-        {}
+        '*[_type == "osintJob" && accountKey == $accountKey && mode == $mode] | order(_createdAt desc)[0]',
+        { accountKey, mode }
       );
       
       if (jobs) {
@@ -209,8 +209,8 @@ export async function handleGetOsintReport(
     // Query for reports matching the accountKey and mode, sorted by date
     const reports = await groqQuery(
       client,
-      `*[_type == "osintReport" && accountKey == "${accountKey}" && mode == "${mode}"] | order(_createdAt desc)[0]`,
-      {}
+      '*[_type == "osintReport" && accountKey == $accountKey && mode == $mode] | order(_createdAt desc)[0]',
+      { accountKey, mode }
     );
     
     if (!reports) {
