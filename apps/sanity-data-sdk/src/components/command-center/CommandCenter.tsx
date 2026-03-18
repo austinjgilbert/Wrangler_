@@ -199,22 +199,27 @@ export function CommandCenter() {
         return;
       }
 
-      // Real action endpoints — uses CANONICAL module keys
+      // Real action endpoints — uses CANONICAL module keys.
+      // Endpoint contracts verified against handler source (L4 smoke test):
+      //   /research/complete: `input` auto-detects accountKey (16 hex chars)
+      //   /enrich/advance: needs `accountKey` only
+      //   /competitors/research: needs `accountKey` + `canonicalUrl`
+      //   /person/brief: needs `accountKey` + `canonicalUrl`
       const actionMap: Record<string, { endpoint: string; body: object }> = {
         research: {
           endpoint: '/research/complete',
           body: {
-            accountKey: selectedAccount.accountKey,
+            input: selectedAccount.accountKey,
+            inputType: 'accountKey',
             mode: 'deep',
-            selfHeal: true,
+            includeCompetitors: true,
+            autoEnrich: true,
           },
         },
         profile: {
           endpoint: '/enrich/advance',
           body: {
             accountKey: selectedAccount.accountKey,
-            mode: 'standard',
-            selfHeal: true,
           },
         },
         competitors: {
@@ -224,7 +229,7 @@ export function CommandCenter() {
             canonicalUrl: selectedAccount.canonicalUrl,
           },
         },
-        people: {                                    // FIX #1: was 'linkedin'
+        people: {
           endpoint: '/person/brief',
           body: {
             accountKey: selectedAccount.accountKey,

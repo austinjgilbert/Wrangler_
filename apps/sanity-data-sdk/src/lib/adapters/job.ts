@@ -21,24 +21,44 @@ function getStageLabel(stageNumber: number): string {
 
 /**
  * Normalize backend job status to UI status.
- * /enrich/jobs returns Sanity docs with 'queued'/'running'/'complete'/'failed'.
- * /enrich/status returns 'in_progress'/'not_started'/'complete'.
- * This map handles both.
+ * Live API returns: done, in_progress, pending (confirmed by L4 smoke test).
+ * Some paths also return: queued, running, complete, failed, not_started.
+ * This map normalizes ALL known values to UI enum.
  */
 type UIJobStatus = Job['status'];
 const JOB_STATUS_MAP: Record<string, UIJobStatus> = {
+  // Live API values (confirmed by smoke test)
+  done:         'complete',
+  in_progress:  'running',
+  pending:      'queued',
+  failed:       'failed',
+  // Legacy/alternate values (defensive)
   queued:       'queued',
   running:      'running',
   complete:     'complete',
-  failed:       'failed',
-  in_progress:  'running',
+  completed:    'complete',
   not_started:  'queued',
-  completed:    'complete',   // defensive — some paths use past tense
 };
 
 function normalizeJobStatus(raw: string | undefined): UIJobStatus {
   if (!raw) return 'queued';
   return JOB_STATUS_MAP[raw] ?? 'queued';
+}
+
+/**
+ * Derive progress from status when the API doesn't return a numeric progress.
+ * /enrich/jobs returns no progress field — only /enrich/status does.
+ * Phase 2: merge /enrich/status per active job for real-time progress.
+ */
+function deriveProgress(status: UIJobStatus, rawProgress: number | undefined): number {
+  if (rawProgress != null) return rawProgress;
+  switch (status) {
+    case 'complete': return 100;
+    case 'running':  return 50;
+    case 'failed':   return 100;
+    case 'queued':   return 0;
+    default:         return 0;
+  }
 }
 
 /**
@@ -67,13 +87,17 @@ function deriveModuleKey(job: BackendJob): string {
 export interface BackendJob {
   _id: string;
   accountKey?: string;
+  entityId?: string;            // Some jobs use entityId instead of accountKey
   stage?: number;
-  progress?: number;
+  progress?: number;            // Only present from /enrich/status, not /enrich/jobs
   status?: string;              // Raw status — normalized by JOB_STATUS_MAP
   startedAt?: string;
+  _createdAt?: string;          // Sanity system field — fallback for startedAt
   estimatedSeconds?: number;
   mode?: string;
   jobType?: string;
+  goal?: string;                // Job goal — can derive module from this
+  scope?: string;               // Job scope
   advanceError?: string;        // Error message when enrichment is stuck
 }
 
@@ -82,19 +106,20 @@ export function transformJob(backendJob: BackendJob, accountName: string): Job {
     throw new Error('transformJob: missing _id');
   }
 
+  const status = normalizeJobStatus(backendJob.status);
   const stageNumber = backendJob.stage ?? 0;
 
   return {
     id: backendJob._id,
-    accountKey: backendJob.accountKey || '',
+    accountKey: backendJob.accountKey || backendJob.entityId || '',
     accountName,
     label: `🔬 ${accountName}`,
     moduleKey: deriveModuleKey(backendJob),
-    progress: backendJob.progress ?? 0,
-    status: normalizeJobStatus(backendJob.status),
+    progress: deriveProgress(status, backendJob.progress),
+    status,
     stageNumber,
     stageLabel: getStageLabel(stageNumber),
-    startedAt: backendJob.startedAt || new Date().toISOString(),
+    startedAt: backendJob.startedAt || backendJob._createdAt || new Date().toISOString(),
     estimatedSeconds: backendJob.estimatedSeconds,
     advanceError: backendJob.advanceError,
   };
@@ -107,7 +132,8 @@ export function transformJobs(
   const jobs: Job[] = [];
   for (const job of backendJobs) {
     try {
-      const name = resolveAccountName(job.accountKey || '');
+      const key = job.accountKey || job.entityId || '';
+      const name = resolveAccountName(key);
       jobs.push(transformJob(job, name));
     } catch (err) {
       console.warn('[adapters/job]', (err as Error).message);
