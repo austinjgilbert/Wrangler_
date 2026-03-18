@@ -22,7 +22,7 @@ import { workerGet } from '../../lib/adapters';
 
 // ─── Interval Calculation ───────────────────────────────────────────────
 
-function calculateInterval(activeCount: number, oldestStartedAt: string | null): number {
+export function calculateInterval(activeCount: number, oldestStartedAt: string | null): number {
   // Duration-based escalation takes priority
   if (oldestStartedAt) {
     const elapsed = Date.now() - new Date(oldestStartedAt).getTime();
