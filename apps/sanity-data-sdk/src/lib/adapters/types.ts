@@ -54,6 +54,7 @@ export interface Job {
   stageLabel: string;
   startedAt: string;
   estimatedSeconds?: number;
+  advanceError?: string;        // Error message when enrichment is stuck
 }
 
 // ─── Morning Briefing ───────────────────────────────────────────────────
@@ -72,25 +73,36 @@ export interface TopAccount {
 }
 
 export interface EmailItem {
+  person: string;               // Contact name
   account: string;              // Company name string — match with case-insensitive trim
-  subject: string;
-  to: string;
-  priority: number;
+  accountKey: string;
+  reason: string;               // Why this email is queued
+  intent: string;               // Email intent/angle
+  cta: string;                  // Call to action
+  email: string | null;         // Email address if known
 }
 
 export interface LinkedInItem {
+  person: string;               // Contact name
   account: string;              // Company name string — match with case-insensitive trim
-  contact: string;
-  message: string;
-  priority: number;
+  accountKey: string;
+  state: string;                // LinkedIn connection state (e.g., 'not_connected')
+  action: string;               // Recommended action (e.g., 'connect', 'message')
+  personalization: string;      // Personalized message/note
+  linkedInUrl: string | null;   // Profile URL
 }
 
 export interface CallItem {
-  account: string;
-  contact: string;
-  phone?: string;
-  talkingPoints: string[];
-  score: number;
+  person: string;               // Contact name or title
+  account: string;              // Company name
+  accountKey: string;
+  score: number;                // Priority score
+  whyNow: string;               // Timing reasoning
+  talkTrack: string;            // Suggested talk track
+  objectionGuess: string;       // Anticipated objection
+  cta: string;                  // Call to action
+  phone: string | null;         // Phone number if known
+  linkedIn: string | null;      // LinkedIn URL fallback
 }
 
 export interface BriefingAccount extends TopAccount {
@@ -111,12 +123,30 @@ export interface TransformedBriefing {
   assumptionRefresh?: string | null;
 }
 
+export interface Schedule {
+  block1_calls: string | null;
+  block2_calls: string | null;
+  linkedin_block: string | null;
+  admin_block: string | null;
+  email_block: string | null;
+}
+
 export interface RawGoodMorningResponse {
+  date?: string;                // ISO date string e.g. "2026-03-18"
+  winCondition?: string;        // API-generated win condition
   top10Accounts?: TopAccount[];
   emailQueue?: EmailItem[];
   linkedInQueue?: LinkedInItem[];
   callList?: CallItem[];
+  schedule?: Schedule;
   assumptionRefresh?: string | null;
+  stats?: {                     // API stats — different shape from TransformedBriefing.stats
+    totalAccounts: number;
+    qualifiedAccounts: number;
+    callsQueued: number;
+    linkedInQueued: number;
+    emailsQueued: number;
+  };
 }
 
 // ─── Module Glance ──────────────────────────────────────────────────────

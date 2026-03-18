@@ -40,9 +40,12 @@ export function transformBriefingResponse(raw: {
     : 0;
   const hotAccounts = enrichedAccounts.filter(a => a.urgency === 'urgent').length;
 
-  let winCondition = 'Build pipeline momentum';
-  if (hotAccounts >= 3) winCondition = `${hotAccounts} hot accounts — prioritize outreach`;
-  else if (avgScore >= 70) winCondition = 'Strong pipeline — close the gaps';
+  // Prefer API-generated winCondition (more contextual), fall back to computed
+  let winCondition = data.winCondition || 'Build pipeline momentum';
+  if (!data.winCondition) {
+    if (hotAccounts >= 3) winCondition = `${hotAccounts} hot accounts — prioritize outreach`;
+    else if (avgScore >= 70) winCondition = 'Strong pipeline — close the gaps';
+  }
 
   return {
     enrichedAccounts,

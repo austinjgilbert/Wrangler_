@@ -20,6 +20,28 @@ function getStageLabel(stageNumber: number): string {
 }
 
 /**
+ * Normalize backend job status to UI status.
+ * /enrich/jobs returns Sanity docs with 'queued'/'running'/'complete'/'failed'.
+ * /enrich/status returns 'in_progress'/'not_started'/'complete'.
+ * This map handles both.
+ */
+type UIJobStatus = Job['status'];
+const JOB_STATUS_MAP: Record<string, UIJobStatus> = {
+  queued:       'queued',
+  running:      'running',
+  complete:     'complete',
+  failed:       'failed',
+  in_progress:  'running',
+  not_started:  'queued',
+  completed:    'complete',   // defensive — some paths use past tense
+};
+
+function normalizeJobStatus(raw: string | undefined): UIJobStatus {
+  if (!raw) return 'queued';
+  return JOB_STATUS_MAP[raw] ?? 'queued';
+}
+
+/**
  * Derive which UI module a job belongs to based on its type/mode.
  * Uses CANONICAL module keys (post-rename).
  */
@@ -47,11 +69,12 @@ export interface BackendJob {
   accountKey?: string;
   stage?: number;
   progress?: number;
-  status?: 'queued' | 'running' | 'complete' | 'failed';
+  status?: string;              // Raw status — normalized by JOB_STATUS_MAP
   startedAt?: string;
   estimatedSeconds?: number;
   mode?: string;
   jobType?: string;
+  advanceError?: string;        // Error message when enrichment is stuck
 }
 
 export function transformJob(backendJob: BackendJob, accountName: string): Job {
@@ -68,11 +91,12 @@ export function transformJob(backendJob: BackendJob, accountName: string): Job {
     label: `🔬 ${accountName}`,
     moduleKey: deriveModuleKey(backendJob),
     progress: backendJob.progress ?? 0,
-    status: backendJob.status || 'queued',
+    status: normalizeJobStatus(backendJob.status),
     stageNumber,
     stageLabel: getStageLabel(stageNumber),
     startedAt: backendJob.startedAt || new Date().toISOString(),
     estimatedSeconds: backendJob.estimatedSeconds,
+    advanceError: backendJob.advanceError,
   };
 }
 
