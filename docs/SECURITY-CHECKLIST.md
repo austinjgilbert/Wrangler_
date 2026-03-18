@@ -7,7 +7,7 @@ Use this to verify secrets and sensitive config are handled safely.
 - [ ] **`.dev.vars`** is in `.gitignore` and never committed (contains `MOLT_API_KEY`, `SANITY_TOKEN`, etc.).
 - [ ] **`.env`** and **`.env.local`** are in `.gitignore`.
 - [ ] **`wrangler.toml`** has no secret values; only `wrangler secret put` is used for production.
-- [ ] **`.env.example`** has empty placeholders only (no real keys).
+- [ ] **`.env.example`** and **`.dev.vars.example`** have empty values only (no real keys); copy to `.dev.vars` for local worker dev.
 
 ## 2. Production secrets
 

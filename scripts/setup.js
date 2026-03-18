@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * One-command setup for website-scanner-worker.
- * Installs dependencies, creates .dev.vars from .env.example if missing,
+ * Installs dependencies, creates .dev.vars from .dev.vars.example (or .env.example) if missing,
  * and runs dependency check. Safe to run multiple times.
  */
 
@@ -35,16 +35,22 @@ if (fs.existsSync(sanityDir) && fs.existsSync(path.join(sanityDir, 'package.json
   run('npm install', { cwd: sanityDir });
 }
 
-// 3. .dev.vars from .env.example if missing
+// 3. .dev.vars from .dev.vars.example (or .env.example) if missing
 const devVars = path.join(rootDir, '.dev.vars');
+const devVarsExample = path.join(rootDir, '.dev.vars.example');
 const envExample = path.join(rootDir, '.env.example');
-if (!fs.existsSync(devVars) && fs.existsSync(envExample)) {
-  fs.copyFileSync(envExample, devVars);
-  console.log('\x1b[32m✓\x1b[0m Created .dev.vars from .env.example — add your SANITY_PROJECT_ID and SANITY_TOKEN for local dev.');
-} else if (fs.existsSync(devVars)) {
-  console.log('\x1b[32m✓\x1b[0m .dev.vars already exists.');
+if (!fs.existsSync(devVars)) {
+  if (fs.existsSync(devVarsExample)) {
+    fs.copyFileSync(devVarsExample, devVars);
+    console.log('\x1b[32m✓\x1b[0m Created .dev.vars from .dev.vars.example — set SANITY_PROJECT_ID and SANITY_TOKEN for local dev.');
+  } else if (fs.existsSync(envExample)) {
+    fs.copyFileSync(envExample, devVars);
+    console.log('\x1b[32m✓\x1b[0m Created .dev.vars from .env.example — set SANITY_PROJECT_ID and SANITY_TOKEN for local dev.');
+  } else {
+    console.log('\x1b[33m⚠\x1b[0m No .dev.vars.example or .env.example found; create .dev.vars manually with required vars.');
+  }
 } else {
-  console.log('\x1b[33m⚠\x1b[0m No .env.example found; create .dev.vars manually with required vars.');
+  console.log('\x1b[32m✓\x1b[0m .dev.vars already exists.');
 }
 
 // 4. Sanity .env from example if missing

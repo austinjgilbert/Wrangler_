@@ -80,6 +80,55 @@
   function txts(sel) { return Array.from(document.querySelectorAll(sel)).map(e => e.innerText.trim()).filter(Boolean); }
   function attr(sel, a) { const el = document.querySelector(sel); return el ? (el.getAttribute(a) || '').trim() : ''; }
   function getMeta(name) { const el = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`); return el ? (el.getAttribute('content') || '').trim() : ''; }
+  function capturePageContext() {
+    return {
+      source: 'chrome_extension',
+      domain: window.location.hostname || '',
+      url: window.location.href || '',
+      title: document.title || '',
+      timestamp: new Date().toISOString(),
+    };
+  }
+  function inferCompanyNameFromDomain(domain) {
+    const base = String(domain || '').replace(/^www\./i, '').split('.')[0] || '';
+    if (!base) return '';
+    return base.charAt(0).toUpperCase() + base.slice(1);
+  }
+  function inferCompanyName(pageContext = capturePageContext()) {
+    const metaSiteName = getMeta('og:site_name') || getMeta('application-name');
+    if (metaSiteName) return metaSiteName;
+
+    const titleRoot = String(document.title || '')
+      .split(/\s+[\|\-–—]\s+/)
+      .map(part => part.trim())
+      .find(Boolean);
+    if (titleRoot) return titleRoot;
+
+    return inferCompanyNameFromDomain(pageContext.domain);
+  }
+  function buildInteractionPayload(extracted) {
+    const pageContext = capturePageContext();
+    const accountName = (extracted?.accounts || []).find(account => account?.name)?.name
+      || (extracted?.people || []).find(person => person?.currentCompany)?.currentCompany
+      || inferCompanyName(pageContext);
+    const payload = {
+      _type: 'interaction',
+      source: 'chrome_extension',
+      domain: pageContext.domain,
+      url: pageContext.url,
+      title: pageContext.title,
+      companyName: accountName || inferCompanyNameFromDomain(pageContext.domain),
+      timestamp: pageContext.timestamp,
+    };
+
+    if (!payload.domain) {
+      console.warn('[Rabbit] Interaction skipped: missing domain');
+      return null;
+    }
+
+    console.log('[Rabbit] Chrome Extension Interaction:', payload);
+    return payload;
+  }
   function fieldValueByLabels(fields, labels) {
     for (const label of labels) {
       if (fields[label]) return fields[label];
@@ -372,9 +421,12 @@
     const data = { people: [], accounts: [], technologies: [], signals: [] };
     const name = txt('[data-testid="prospect-name"]') || txt('h1');
     const company = txt('[data-testid="prospect-company"]') || '';
+    const titleVal = txt('[data-testid="prospect-title"]') || '';
     if (name) data.people.push({
       name,
-      headline: txt('[data-testid="prospect-title"]') || '',
+      headline: titleVal,
+      title: titleVal,
+      currentTitle: titleVal,
       currentCompany: company,
       email: txt('[data-testid="prospect-email"]') || '',
       phone: txt('[data-testid="prospect-phone"]') || '',
@@ -489,6 +541,8 @@
 
   function buildPageContext() {
     const extracted = extract();
+    const interaction = buildInteractionPayload(extracted);
+    if (!interaction) return null;
     const visibleText = extracted.rawText || '';
     const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
       .map(el => el.textContent?.trim())
@@ -501,11 +555,19 @@
 
     const payload = {
       ...extracted,
+      url: interaction.url,
+      title: interaction.title,
+      domain: interaction.domain,
+      companyName: interaction.companyName,
+      capturedAt: interaction.timestamp,
+      captureSource: interaction.source,
+      pageSource: extracted.source,
+      interaction,
       headings,
       links,
       emails: extractEmails(visibleText),
       phones: extractPhones(visibleText),
-      observedAt: new Date().toISOString(),
+      observedAt: interaction.timestamp,
     };
     payload.fingerprint = simpleHash([
       payload.url,
@@ -526,6 +588,24 @@
   let rabbitAskState = { loading: false, answer: '' };
   let rabbitIntel = null;
   let rabbitLearnIntel = null;
+  const RABBIT_PANEL_ENABLED_KEY = 'grabbit.panel.enabled';
+  let rabbitPanelEnabled = readRabbitPanelEnabled();
+
+  function readRabbitPanelEnabled() {
+    try {
+      const value = window.localStorage.getItem(RABBIT_PANEL_ENABLED_KEY);
+      return value == null ? true : value !== 'false';
+    } catch {
+      return true;
+    }
+  }
+
+  function writeRabbitPanelEnabled(value) {
+    rabbitPanelEnabled = !!value;
+    try {
+      window.localStorage.setItem(RABBIT_PANEL_ENABLED_KEY, rabbitPanelEnabled ? 'true' : 'false');
+    } catch {}
+  }
 
   function ensureRabbitOverlay() {
     if (rabbitRoot && rabbitShadow) return rabbitShadow;
@@ -560,9 +640,13 @@
         .rabbit-pill { display:flex; align-items:center; gap:8px; background:#111827; border:1px solid #374151; border-radius:999px; padding:8px 12px; box-shadow:0 10px 30px rgba(0,0,0,.35); cursor:pointer; }
         .rabbit-pill strong { color:#fff; font-size:12px; }
         .rabbit-pill span { color:#fbbf24; font-size:11px; }
-        .rabbit-pill button { margin-left:auto; background:transparent; color:#93c5fd; border:none; cursor:pointer; font-size:11px; }
-        .rabbit-panel { margin-top:8px; width:340px; max-height:70vh; overflow:auto; background:#0b1220; border:1px solid #334155; border-radius:16px; box-shadow:0 16px 50px rgba(0,0,0,.45); padding:14px; display:${rabbitOpen ? 'block' : 'none'}; }
+        .rabbit-pill-actions { margin-left:auto; display:flex; align-items:center; gap:6px; }
+        .rabbit-pill button { background:transparent; color:#93c5fd; border:none; cursor:pointer; font-size:11px; }
+        .rabbit-toggle-btn { border:1px solid #475569 !important; border-radius:999px; padding:4px 8px; color:${rabbitPanelEnabled ? '#86efac' : '#fca5a5'} !important; }
+        .rabbit-panel { margin-top:8px; width:340px; max-height:70vh; overflow:auto; background:#0b1220; border:1px solid #334155; border-radius:16px; box-shadow:0 16px 50px rgba(0,0,0,.45); padding:14px; display:${rabbitOpen && rabbitPanelEnabled ? 'block' : 'none'}; }
+        .rabbit-panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
         .rabbit-title { font-size:13px; font-weight:700; color:#fff; margin-bottom:6px; }
+        .rabbit-panel-close { background:transparent; color:#94a3b8; border:1px solid #334155; border-radius:999px; padding:4px 8px; cursor:pointer; font-size:11px; }
         .rabbit-summary { font-size:12px; line-height:1.45; color:#cbd5e1; margin-bottom:10px; }
         .rabbit-section { margin-top:10px; }
         .rabbit-section h4 { margin:0 0 6px; font-size:11px; color:#93c5fd; text-transform:uppercase; letter-spacing:.05em; }
@@ -592,10 +676,16 @@
         <div class="rabbit-pill" id="rabbit-pill">
           <strong>Rabbit</strong>
           <span>${opportunities.length > 0 ? `${opportunities.length} opportunity${opportunities.length === 1 ? '' : 'ies'}` : 'watching'}</span>
-          <button id="rabbit-expand-btn" title="Open Rabbit Workspace">Open</button>
+          <div class="rabbit-pill-actions">
+            <button id="rabbit-toggle-btn" class="rabbit-toggle-btn" title="Toggle Grabbit hover bubble">${rabbitPanelEnabled ? 'Bubble On' : 'Bubble Off'}</button>
+            <button id="rabbit-expand-btn" title="Open Rabbit Workspace">Open</button>
+          </div>
         </div>
         <div class="rabbit-panel">
-          <div class="rabbit-title">On this page, I noticed:</div>
+          <div class="rabbit-panel-header">
+            <div class="rabbit-title">On this page, I noticed:</div>
+            <button id="rabbit-panel-close" class="rabbit-panel-close" title="Hide bubble">Hide</button>
+          </div>
           <div class="rabbit-summary">${escapeHtml(summary)}</div>
 
           <div class="rabbit-section">
@@ -691,13 +781,28 @@
     `;
 
     shadow.getElementById('rabbit-pill')?.addEventListener('click', () => {
+      if (!rabbitPanelEnabled) return;
       rabbitOpen = !rabbitOpen;
+      renderRabbitOverlay();
+    });
+    shadow.getElementById('rabbit-toggle-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      writeRabbitPanelEnabled(!rabbitPanelEnabled);
+      if (!rabbitPanelEnabled) {
+        rabbitOpen = false;
+      }
       renderRabbitOverlay();
     });
     shadow.getElementById('rabbit-expand-btn')?.addEventListener('click', (event) => {
       event.stopPropagation();
       rabbitLightboxOpen = true;
-      rabbitOpen = true;
+      rabbitOpen = rabbitPanelEnabled;
+      renderRabbitOverlay();
+    });
+    shadow.getElementById('rabbit-panel-close')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      writeRabbitPanelEnabled(false);
+      rabbitOpen = false;
       renderRabbitOverlay();
     });
     shadow.getElementById('rabbit-lightbox-close')?.addEventListener('click', () => {
@@ -740,6 +845,7 @@
 
   function publishPageContext() {
     const payload = buildPageContext();
+    if (!payload) return;
     chrome.runtime.sendMessage({ type: 'rabbit:pageContext', payload }).catch(() => {});
   }
 
@@ -782,7 +888,7 @@
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === 'rabbit:intel') {
       rabbitIntel = message.intel || null;
-      if (rabbitIntel) {
+      if (rabbitIntel && rabbitPanelEnabled) {
         rabbitOpen = rabbitOpen || (rabbitIntel.opportunities || []).length > 0;
       }
       renderRabbitOverlay();

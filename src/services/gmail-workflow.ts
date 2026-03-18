@@ -212,7 +212,10 @@ export async function gmailRead(env: any, input: { query?: string; maxResults?: 
 
 export async function createGmailApiDraft(env: any, input: DraftInput) {
   const accessToken = await getGmailAccessToken(env);
-  const raw = encodeBase64Url(buildMimeMessage(input));
+  const signature = (env.GMAIL_SIGNATURE ?? '').trim();
+  const fromName = (env.GMAIL_FROM_NAME ?? '').trim();
+  const fromEmail = (env.GMAIL_FROM_EMAIL ?? '').trim();
+  const raw = encodeBase64Url(buildMimeMessage(input, { signature, fromName, fromEmail }));
   const res = await gmailFetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', accessToken, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -227,7 +230,30 @@ export async function createGmailApiDraft(env: any, input: DraftInput) {
 
 export async function sendGmailMessage(env: any, input: DraftInput) {
   const accessToken = await getGmailAccessToken(env);
-  const raw = encodeBase64Url(buildMimeMessage(input));
+  const signature = (env.GMAIL_SIGNATURE ?? '').trim();
+  const fromName = (env.GMAIL_FROM_NAME ?? '').trim();
+  const fromEmail = (env.GMAIL_FROM_EMAIL ?? '').trim();
+  const trackingId = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `t${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const baseUrl = String(env.BASE_URL || '').replace(/\/$/, '');
+  let trackingPixelUrl = '';
+  if (baseUrl) {
+    trackingPixelUrl = `${baseUrl}/track/pixel?id=${encodeURIComponent(trackingId)}&to=${encodeURIComponent((input.to || []).join(','))}&subject=${encodeURIComponent(input.subject || '')}`;
+    const kv = env.MOLTBOOK_ACTIVITY_KV;
+    if (kv) {
+      try {
+        await kv.put(`email_track:${trackingId}`, JSON.stringify({
+          to: input.to || [],
+          subject: input.subject || '',
+          sentAt: new Date().toISOString(),
+        }));
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+  const raw = encodeBase64Url(buildMimeMessage(input, { signature, fromName, fromEmail, trackingPixelUrl }));
   const res = await gmailFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', accessToken, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -237,6 +263,7 @@ export async function sendGmailMessage(env: any, input: DraftInput) {
   return {
     gmailMessageId: data.id || null,
     threadId: data.threadId || null,
+    trackingId: baseUrl ? trackingId : undefined,
   };
 }
 
@@ -276,24 +303,67 @@ async function gmailFetch(url: string, accessToken: string, init: RequestInit = 
   return res;
 }
 
-function buildMimeMessage(input: DraftInput) {
-  const from = String(input.recipientCompany ? '' : '').trim();
-  const lines = [
+function buildMimeMessage(input: DraftInput, opts?: { signature?: string; fromName?: string; fromEmail?: string; trackingPixelUrl?: string }) {
+  let body = String(input.body ?? '').replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+  const sig = (opts?.signature ?? '').trim().replace(/\\n/g, '\n');
+  if (sig) {
+    const sigCrlf = sig.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+    body = body ? body + '\r\n\r\n' + sigCrlf : sigCrlf;
+  }
+  const fromLine = formatFromHeader(opts?.fromName, opts?.fromEmail);
+  const hasPixel = !!(opts?.trackingPixelUrl && opts.trackingPixelUrl.trim());
+  if (!hasPixel) {
+    const headerLines: string[] = [
+      `To: ${(input.to || []).join(', ')}`,
+      input.cc?.length ? `Cc: ${input.cc.join(', ')}` : '',
+      input.bcc?.length ? `Bcc: ${input.bcc.join(', ')}` : '',
+      `Subject: ${sanitizeHeader(input.subject || '')}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+    ].filter(Boolean);
+    if (fromLine) headerLines.unshift(fromLine);
+    return headerLines.join('\r\n') + '\r\n\r\n' + body + '\r\n';
+  }
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const htmlBody = escapeHtml(body).replace(/\n/g, '<br>\n') + `<br><img src="${opts!.trackingPixelUrl!.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;" />`;
+  const headerLines: string[] = [
     `To: ${(input.to || []).join(', ')}`,
     input.cc?.length ? `Cc: ${input.cc.join(', ')}` : '',
     input.bcc?.length ? `Bcc: ${input.bcc.join(', ')}` : '',
     `Subject: ${sanitizeHeader(input.subject || '')}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    '',
-    input.body || '',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ].filter(Boolean);
-  if (from) lines.unshift(`From: ${sanitizeHeader(from)}`);
-  return lines.join('\r\n');
+  if (fromLine) headerLines.unshift(fromLine);
+  const parts = [
+    `--${boundary}\r\nContent-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${body}\r\n`,
+    `--${boundary}\r\nContent-Type: text/html; charset="UTF-8"\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${htmlBody}\r\n`,
+    `--${boundary}--\r\n`,
+  ];
+  return headerLines.join('\r\n') + '\r\n\r\n' + parts.join('');
+}
+
+function escapeHtml(s: string) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function sanitizeHeader(value: string) {
   return String(value || '').replace(/[\r\n]+/g, ' ').trim();
+}
+
+/** Format From header: "Display Name" <email> when both set; otherwise From: email or empty. */
+function formatFromHeader(name: string | undefined, email: string | undefined) {
+  const n = (name ?? '').trim();
+  const e = (email ?? '').trim();
+  if (!e) return '';
+  if (!n) return `From: ${e}`;
+  const quoted = `"${n.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  return `From: ${quoted} <${e}>`;
 }
 
 function encodeBase64Url(value: string) {

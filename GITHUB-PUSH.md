@@ -84,4 +84,4 @@ This creates a private repo named `website-scanner-worker` and pushes your code 
 - **`sanity/node_modules/`**, **`sanity/dist/`** – Sanity build (ignored)
 - **`test-results/`**, **`playwright-report/`** – test artifacts (ignored)
 
-After cloning elsewhere, run `npm install` in the project root and in `sanity/`, and add your own `.dev.vars` from `.env.example`.
+After cloning elsewhere, run `npm install` in the project root and in `sanity/`, and add your own `.dev.vars` from `.dev.vars.example`.

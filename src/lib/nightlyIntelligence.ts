@@ -304,8 +304,8 @@ export async function backfillMissingEntityFields(env: any, input: {
       leaseExpiresAt: null,
       createdAt: input.now,
     };
-    await createEnrichJob(env, job);
-    jobsQueued.push(job._id);
+    const storedJob = await createEnrichJob(env, job);
+    jobsQueued.push(storedJob._id);
   }
 
   for (const person of input.people) {
@@ -335,8 +335,8 @@ export async function backfillMissingEntityFields(env: any, input: {
       leaseExpiresAt: null,
       createdAt: input.now,
     };
-    await createEnrichJob(env, job);
-    jobsQueued.push(job._id);
+    const storedJob = await createEnrichJob(env, job);
+    jobsQueued.push(storedJob._id);
   }
 
   return { jobsQueued };

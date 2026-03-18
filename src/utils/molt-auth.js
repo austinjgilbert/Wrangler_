@@ -37,18 +37,20 @@ export function checkMoltApiKey(request, env, requestId = null) {
     return { allowed: true };
   }
 
+  const url = new URL(request.url);
   const bearer = request.headers.get('Authorization');
   const apiKeyHeader = request.headers.get('X-API-Key');
+  const apiKeyQuery = url.searchParams.get('apiKey') || url.searchParams.get('key');
   const provided = (bearer && bearer.startsWith('Bearer '))
     ? bearer.slice(7).trim()
-    : (apiKeyHeader && apiKeyHeader.trim()) || null;
+    : (apiKeyHeader && apiKeyHeader.trim()) || (apiKeyQuery && apiKeyQuery.trim()) || null;
 
   if (!provided) {
     return {
       allowed: false,
       errorResponse: createErrorResponse(
         'UNAUTHORIZED',
-        'Molt/ChatGPT API requires authentication. Send Authorization: Bearer <key> or X-API-Key: <key>. Set MOLT_API_KEY (or CHATGPT_API_KEY) in the worker and use that value.',
+        'Molt/ChatGPT API requires authentication. Send Authorization: Bearer <key>, X-API-Key: <key>, or apiKey query param. Set MOLT_API_KEY (or CHATGPT_API_KEY) in the worker and use that value.',
         { hint: 'wrangler secret put MOLT_API_KEY' },
         401,
         requestId

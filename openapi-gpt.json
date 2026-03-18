@@ -1,0 +1,1275 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Website Scanner API (GPT)",
+    "version": "1.2.0",
+    "description": "Website scanner and strategic intelligence platform API (30 ops)."
+  },
+  "servers": [
+    {
+      "url": "https://website-scanner.austin-gilbert.workers.dev"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "MoltApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Bearer token. In Custom GPT use Authentication, API Key, Bearer with MOLT_API_KEY."
+      }
+    },
+    "schemas": {
+      "GenericResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "paths": {
+    "/query": {
+      "post": {
+        "operationId": "queryData",
+        "summary": "Query memory and data from Sanity",
+        "description": "Execute raw GROQ queries. Pass JSON body with query (string) and optional params (object).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrangler/ingest": {
+      "post": {
+        "operationId": "wranglerIngest",
+        "summary": "Store Wrangler interaction (CALL AFTER RESPONSE)",
+        "description": "Store a Wrangler Q&A exchange and auto-trigger background gap-fill jobs.",
+        "security": [
+          {
+            "MoltApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userPrompt",
+                  "gptResponse"
+                ],
+                "properties": {
+                  "userPrompt": {
+                    "type": "string"
+                  },
+                  "gptResponse": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "referencedAccounts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "referencedPeople": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "contextTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored Wrangler interaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operator/console/snapshot": {
+      "get": {
+        "operationId": "operatorConsoleSnapshot",
+        "summary": "Get live Intelligence Platform state",
+        "description": "Returns the full state of the Operator Console including Emerging Patterns, Strategic Map clusters, Outcomes, running jobs, radar, and drift metrics.",
+        "responses": {
+          "200": {
+            "description": "Console snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operator/console/command": {
+      "post": {
+        "operationId": "operatorConsoleCommand",
+        "summary": "Execute system command",
+        "description": "Run system-wide commands like refresh stale entities, run autopilot, queue research for a domain.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "command"
+                ],
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command execution result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sdr/good-morning": {
+      "get": {
+        "operationId": "sdrGoodMorning",
+        "summary": "Generate SDR Morning Briefing",
+        "description": "Assembles a daily briefing of top accounts, recent signals, and actions.",
+        "responses": {
+          "200": {
+            "description": "Morning briefing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/dashboard": {
+      "get": {
+        "operationId": "analyticsDashboard",
+        "summary": "System intelligence dashboard",
+        "description": "Returns aggregate intelligence stats (coverage, scores, missing data).",
+        "responses": {
+          "200": {
+            "description": "Analytics dashboard data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scan": {
+      "post": {
+        "operationId": "scanHomepage",
+        "summary": "Scan a website homepage",
+        "description": "Deep scan for full tech stack, AI readiness, and performance. Auto-saves to Sanity.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scan result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scan/batch": {
+      "post": {
+        "operationId": "scanBatchAccounts",
+        "summary": "Batch scan multiple URLs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "urls"
+                ],
+                "properties": {
+                  "urls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/linkedin/profile": {
+      "post": {
+        "operationId": "scanLinkedInProfile",
+        "summary": "Scan LinkedIn profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profileUrl"
+                ],
+                "properties": {
+                  "profileUrl": {
+                    "type": "string"
+                  },
+                  "accountKey": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile analysis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/linkedin/search": {
+      "post": {
+        "operationId": "linkedinSearch",
+        "summary": "Search for people on LinkedIn",
+        "description": "Find employees at a company.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "companyName"
+                ],
+                "properties": {
+                  "companyName": {
+                    "type": "string"
+                  },
+                  "titlePatterns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "LinkedIn search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extract": {
+      "post": {
+        "operationId": "extractEvidence",
+        "summary": "Extract evidence pack from URL(s)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url",
+                  "type"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "pricing",
+                      "documentation",
+                      "careers",
+                      "contact",
+                      "about",
+                      "case_study"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evidence pack",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "operationId": "searchWeb",
+        "summary": "Web search",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 10
+                  },
+                  "recencyDays": {
+                    "type": "integer",
+                    "default": 30
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crawl/smart": {
+      "post": {
+        "operationId": "smartCrawl",
+        "summary": "Smart crawl from seed URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "budget": {
+                    "type": "integer",
+                    "default": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Crawl results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/brief": {
+      "post": {
+        "operationId": "generateBrief",
+        "summary": "Generate decision-ready brief",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "companyOrSite"
+                ],
+                "properties": {
+                  "companyOrSite": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Brief",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/complete": {
+      "post": {
+        "operationId": "researchComplete",
+        "summary": "One-click complete research",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Research result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/intelligence": {
+      "post": {
+        "operationId": "researchIntelligence",
+        "summary": "Strategic account intelligence",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Intelligence payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orchestrate": {
+      "post": {
+        "operationId": "orchestrateAccount",
+        "summary": "Run full orchestration pipeline",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Orchestration queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/person/brief": {
+      "post": {
+        "operationId": "generatePersonBrief",
+        "summary": "Generate person intelligence brief",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "companyName",
+                  "personName",
+                  "roleOrTitle"
+                ],
+                "properties": {
+                  "companyName": {
+                    "type": "string"
+                  },
+                  "personName": {
+                    "type": "string"
+                  },
+                  "roleOrTitle": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Person brief",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verify": {
+      "post": {
+        "operationId": "verifyClaims",
+        "summary": "Verify claims against sources",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "claims"
+                ],
+                "properties": {
+                  "claims": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/store": {
+      "post": {
+        "operationId": "storeData",
+        "summary": "Store data directly in Sanity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "data"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "company",
+                      "person",
+                      "accountPack",
+                      "learning",
+                      "intent",
+                      "interaction",
+                      "opportunity"
+                    ]
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true
+                  },
+                  "accountKey": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/osint/queue": {
+      "post": {
+        "operationId": "queueOsintJob",
+        "summary": "Queue OSINT year-ahead intelligence job",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "companyName"
+                ],
+                "properties": {
+                  "companyName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Job queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitors/research": {
+      "post": {
+        "operationId": "competitorsResearch",
+        "summary": "Identify competitors",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "company",
+                  "description"
+                ],
+                "properties": {
+                  "company": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Competitor research",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitors/opportunities": {
+      "get": {
+        "operationId": "competitorOpportunities",
+        "summary": "Get displacement opportunities",
+        "parameters": [
+          {
+            "name": "accountKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opportunities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enrich/run": {
+      "post": {
+        "operationId": "enrichRun",
+        "summary": "Trigger enrichment for an account (unified runner)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "input"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enrichment triggered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enrich/queue": {
+      "post": {
+        "operationId": "enrichQueue",
+        "summary": "Queue enrichment for an account",
+        "description": "Queue a research/enrichment job. Use accountKey + canonicalUrl (or accountId). mode=standard|restart|deep. Self-heal runs in background unless selfHeal=false.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "accountKey": {
+                    "type": "string"
+                  },
+                  "canonicalUrl": {
+                    "type": "string"
+                  },
+                  "accountId": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "restart",
+                      "deep"
+                    ]
+                  },
+                  "stages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfHeal": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queued (jobId, status, selfHealingScheduled)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enrich/status": {
+      "get": {
+        "operationId": "enrichStatus",
+        "summary": "Get enrichment status for an account",
+        "description": "Returns jobId, status, currentStage, progress, advanceError. Use to diagnose stuck jobs.",
+        "parameters": [
+          {
+            "name": "accountKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status (status, progress, currentStage, jobId, advanceError)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enrich/advance": {
+      "post": {
+        "operationId": "enrichAdvance",
+        "summary": "Advance enrichment by one pipeline step",
+        "description": "Run one step for the account. Call when status is in_progress or not_started to unblock. Body accountKey required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "accountKey"
+                ],
+                "properties": {
+                  "accountKey": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated status after one step",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/molt/run": {
+      "post": {
+        "operationId": "moltRun",
+        "summary": "Run MoltBot orchestration",
+        "security": [
+          {
+            "MoltApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "instruction"
+                ],
+                "properties": {
+                  "instruction": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MoltBot result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/molt/approve": {
+      "post": {
+        "operationId": "moltApprove",
+        "summary": "Approve pending Molt action",
+        "security": [
+          {
+            "MoltApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "approvalId",
+                  "approved"
+                ],
+                "properties": {
+                  "approvalId": {
+                    "type": "string"
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "feedback": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approval processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/gmail": {
+      "post": {
+        "operationId": "gmailTool",
+        "summary": "Gmail draft (preview) or send",
+        "description": "ALWAYS use action draft first to show the final email. Only use action send after the user explicitly approves.",
+        "security": [
+          {
+            "MoltApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "traceId",
+                  "tool",
+                  "action",
+                  "input"
+                ],
+                "properties": {
+                  "traceId": {
+                    "type": "string"
+                  },
+                  "tool": {
+                    "type": "string",
+                    "enum": [
+                      "gmail"
+                    ]
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "send",
+                      "read",
+                      "composeLink"
+                    ]
+                  },
+                  "input": {
+                    "type": "object",
+                    "properties": {
+                      "to": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "subject": {
+                        "type": "string"
+                      },
+                      "body": {
+                        "type": "string"
+                      },
+                      "draftId": {
+                        "type": "string"
+                      },
+                      "cc": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "bcc": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft preview or send result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

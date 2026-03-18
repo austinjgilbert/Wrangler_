@@ -2,6 +2,8 @@
 
 This guide gets the website-scanner-worker running with minimal steps, so anyone can try the system.
 
+**Full checklist (YAML, GPT instructions, .dev.vars, API keys, Gmail, extension):** [docs/USER-SETUP-CHECKLIST.md](docs/USER-SETUP-CHECKLIST.md)
+
 ## What you need
 
 - **Node.js 18+** — [Download](https://nodejs.org) or `nvm install 18`
@@ -19,7 +21,7 @@ npm run setup
 `npm run setup` will:
 
 - Install root and Sanity dependencies
-- Create `.dev.vars` from `.env.example` if it doesn’t exist
+- Create `.dev.vars` from `.dev.vars.example` if it doesn’t exist
 - Run a dependency check (Node, npm, wrangler)
 
 If the dependency check fails, it will print what’s missing and how to fix it.
@@ -39,7 +41,7 @@ Edit **`.dev.vars`** in the project root. At minimum for local dev:
 - `SANITY_PROJECT_ID` — your Sanity project ID
 - `SANITY_TOKEN` — Sanity API token (with read/write)
 
-See [.env.example](.env.example) for all optional vars (e.g. `ADMIN_TOKEN`, `MOLT_API_KEY`, `BRAVE_SEARCH_API_KEY`, `TELEGRAM_BOT_TOKEN`).
+See [.env.example](.env.example) for the full list; [.dev.vars.example](.dev.vars.example) is the template copied to `.dev.vars`.
 
 ## 4. Log in to Cloudflare
 
@@ -94,7 +96,7 @@ Your worker URL will be like: `https://website-scanner.<your-subdomain>.workers.
 |-------|-----|
 | `wrangler not found` | Run `npm run setup` again; wrangler is a devDependency. Or use `npx wrangler`. |
 | Node version too old | Install Node 18+ from nodejs.org or `nvm install 18`. |
-| `.dev.vars` missing | Run `cp .env.example .dev.vars` and add your Sanity credentials. |
+| `.dev.vars` missing | Run `cp .dev.vars.example .dev.vars` and set SANITY_PROJECT_ID, SANITY_TOKEN. |
 | 401 / Unauthorized from worker | Set `MOLT_API_KEY` in `.dev.vars` (or the header your client sends) if you use protected routes. |
 | Deploy fails in CI | Add GitHub repo secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. See [README](README.md#repository-and-ci). |
 
@@ -102,7 +104,7 @@ Your worker URL will be like: `https://website-scanner.<your-subdomain>.workers.
 
 | Command | Description |
 |---------|-------------|
-| `npm run setup` | Install deps, create `.dev.vars` from example, run check-deps |
+| `npm run setup` | Install deps, create `.dev.vars` from `.dev.vars.example`, run check-deps |
 | `npm run check-deps` | Verify Node, npm, wrangler, and optional Sanity / .dev.vars |
 | `npm run dev` | Start local worker (Wrangler dev) |
 | `npm run deploy` | Deploy to Cloudflare production |

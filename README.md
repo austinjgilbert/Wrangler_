@@ -27,7 +27,7 @@ npm run setup
 Then:
 
 1. **Check dependencies:** `npm run check-deps` — fixes any missing tools.
-2. **Configure:** Edit `.dev.vars` (add `SANITY_PROJECT_ID`, `SANITY_TOKEN`). See [.env.example](.env.example).
+2. **Configure:** Copy `.dev.vars.example` to `.dev.vars` and set `SANITY_PROJECT_ID`, `SANITY_TOKEN`. Full list: [.env.example](.env.example).
 3. **Cloudflare login:** `npx wrangler login`
 4. **Run locally:** `npm run dev` → http://localhost:8787
 5. **Deploy:** `npm run deploy` — set production secrets with `wrangler secret put SANITY_PROJECT_ID --env=production` (and `SANITY_TOKEN`, etc.) before or after first deploy.
@@ -121,8 +121,8 @@ npm run setup
 # Verify environment (optional)
 npm run check-deps
 
-# Copy env template and add secrets to .dev.vars (see .env.example)
-# Setup already creates .dev.vars from .env.example if missing.
+# Copy .dev.vars.example to .dev.vars and set SANITY_PROJECT_ID, SANITY_TOKEN (see .env.example for full list)
+# Setup creates .dev.vars from .dev.vars.example if missing.
 
 # Authenticate with Cloudflare
 npx wrangler login

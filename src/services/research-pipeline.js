@@ -126,7 +126,8 @@ function buildGoalKey(options = {}) {
 function buildStablePipelineJobId(accountKey, goalKey) {
   const safeAccountKey = (accountKey || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '-');
   const safeGoalKey = (goalKey || 'full_pipeline').replace(/[^a-zA-Z0-9_-]/g, '-');
-  return `pipeline.${safeAccountKey}.${safeGoalKey}`;
+  const uniqueSuffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `pipeline.${safeAccountKey}.${safeGoalKey}.${uniqueSuffix}`;
 }
 
 /**
@@ -325,6 +326,7 @@ export async function executePipelineStage(job, stage, context = {}) {
           body: JSON.stringify({
             companyOrSite: job.canonicalUrl,
             seedUrl: job.canonicalUrl,
+            disableAutoSave: true,
           }),
         });
         const briefResponse = await handleBrief(briefRequest, requestId, env);
@@ -483,6 +485,9 @@ export async function executeNextPipelineStage(job, context) {
   return {
     job,
     completed: ['complete', 'partial'].includes(job.status),
+    lastStage: stage,
+    lastStageResult: stageResult.success ? stageResult.result : null,
+    lastStageSucceeded: stageResult.success,
   };
 }
 

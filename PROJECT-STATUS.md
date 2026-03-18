@@ -28,7 +28,7 @@ Short overview of where the project lives and how the pieces connect. Use this a
 ## Local setup (after clone)
 
 1. `npm install` (root), `cd sanity && npm install`
-2. Copy `.env.example` → `.dev.vars` and fill (at least `SANITY_PROJECT_ID`, `SANITY_TOKEN`)
+2. Copy `.dev.vars.example` → `.dev.vars` and set `SANITY_PROJECT_ID`, `SANITY_TOKEN`
 3. `wrangler login`
 4. `npm run dev` → worker at http://localhost:8787; optionally `cd sanity && npm run dev` for Studio
 

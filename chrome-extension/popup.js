@@ -55,6 +55,7 @@ const tabButtons = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
 let currentTabId = null;
+let emailOpensPollTimer = null;
 
 // ─── Tab switching ───────────────────────────────────────────────────────
 tabButtons.forEach(btn => {
@@ -66,6 +67,14 @@ tabButtons.forEach(btn => {
 
     // Load bulk tabs when switching to bulk tab
     if (btn.dataset.tab === 'bulk') loadBulkTabs();
+    // Start/stop email opens polling
+    if (btn.dataset.tab === 'email') {
+      fetchEmailOpens();
+      emailOpensPollTimer = setInterval(fetchEmailOpens, 5000);
+    } else {
+      if (emailOpensPollTimer) clearInterval(emailOpensPollTimer);
+      emailOpensPollTimer = null;
+    }
   });
 });
 
@@ -119,6 +128,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     await refreshRabbitIntel(tab.id);
   }
 });
+
+// ─── Email opens (tracking pixel) ────────────────────────────────────────
+async function fetchEmailOpens() {
+  const listEl = document.getElementById('email-opens-list');
+  if (!listEl) return;
+  const { workerUrl } = await chrome.storage.local.get('workerUrl');
+  const base = (workerUrl || DEFAULT_WORKER_URL).replace(/\/+$/, '');
+  try {
+    const res = await fetch(`${base}/track/opens?limit=20`);
+    const data = await res.json();
+    if (!data.ok || !Array.isArray(data.opens)) {
+      listEl.innerHTML = '<div class="empty-preview">No opens yet.</div>';
+      return;
+    }
+    if (data.opens.length === 0) {
+      listEl.innerHTML = '<div class="empty-preview">No opens yet. Send an email via the worker to see when it’s read.</div>';
+      return;
+    }
+    listEl.innerHTML = data.opens.map((o) => {
+      const time = o.openedAt ? new Date(o.openedAt).toLocaleString() : '';
+      const to = (o.to || '').slice(0, 40) + ((o.to || '').length > 40 ? '…' : '');
+      const subj = (o.subject || '').slice(0, 50) + ((o.subject || '').length > 50 ? '…' : '');
+      const loc = [o.city, o.regionCode || o.region, o.country].filter(Boolean).join(', ') || '—';
+      const device = o.isMobile === 'true' ? 'Mobile' : (o.isMobile === 'false' ? 'Desktop' : '—');
+      const ua = (o.userAgent || '').slice(0, 60) + ((o.userAgent || '').length > 60 ? '…' : '');
+      const readReceipt = o.readReceipt !== false ? '✓ Read receipt' : '';
+      return `<div class="entity-item" style="padding:10px;margin-bottom:8px;background:#18181b;border-radius:6px;border-left:3px solid #22c55e;">
+        <div style="font-size:11px;color:#22c55e;">Opened ${time}${readReceipt ? ' · ' + readReceipt : ''}</div>
+        <div style="font-size:12px;color:#e5e5e5;margin-top:4px;">To: ${escapeHtml(to)}</div>
+        <div style="font-size:11px;color:#a1a1aa;">${escapeHtml(subj)}</div>
+        <div style="font-size:10px;color:#71717a;margin-top:6px;">📍 ${escapeHtml(loc)}${o.timezone ? ' · ' + escapeHtml(o.timezone) : ''}</div>
+        <div style="font-size:10px;color:#71717a;">${device !== '—' ? '📱 ' + device + ' · ' : ''}${ua ? escapeHtml(ua) : ''}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty-preview">Could not load opens. Check Worker URL in Settings.</div>`;
+  }
+}
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+const emailOpensRefresh = document.getElementById('email-opens-refresh');
+if (emailOpensRefresh) emailOpensRefresh.addEventListener('click', () => fetchEmailOpens());
 
 // ─── Settings ────────────────────────────────────────────────────────────
 settingsToggle.addEventListener('click', () => {
@@ -479,7 +533,11 @@ async function extractFromTab(tabId) {
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => window.__moltExtract ? window.__moltExtract() : null,
+      func: () => {
+        if (window.__rabbitBuildPageContext) return window.__rabbitBuildPageContext();
+        if (window.__moltExtract) return window.__moltExtract();
+        return null;
+      },
     });
 
     if (result?.result) return result.result;
@@ -497,10 +555,82 @@ async function extractFromTab(tabId) {
   }
 }
 
+function extractDomainFromUrl(url) {
+  try {
+    return new URL(url).hostname || '';
+  } catch {
+    return '';
+  }
+}
+
+function inferCompanyNameFromCapture(payload, domain) {
+  const accountName = (payload?.accounts || []).find(account => account?.name)?.name;
+  if (accountName) return accountName;
+
+  const metaSiteName = payload?.metadata?.['og:site_name'] || payload?.metadata?.['application-name'];
+  if (metaSiteName) return String(metaSiteName).trim();
+
+  const titleRoot = String(payload?.title || '')
+    .split(/\s+[\|\-–—]\s+/)
+    .map(part => part.trim())
+    .find(Boolean);
+  if (titleRoot) return titleRoot;
+
+  const base = String(domain || '').replace(/^www\./i, '').split('.')[0] || '';
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
+}
+
+function enrichCapturePayload(payload) {
+  if (!payload) return null;
+
+  const url = payload.interaction?.url || payload.url || payload.contextUrl || '';
+  const domain = String(payload.domain || payload.interaction?.domain || extractDomainFromUrl(url)).trim();
+  if (!domain) {
+    console.warn('[Rabbit] Interaction skipped: missing domain');
+    return null;
+  }
+
+  const timestamp = payload.interaction?.timestamp || payload.capturedAt || new Date().toISOString();
+  const title = payload.interaction?.title || payload.title || '';
+  const companyName = String(
+    payload.companyName
+      || payload.interaction?.companyName
+      || inferCompanyNameFromCapture(payload, domain),
+  ).trim();
+  const interaction = {
+    _type: 'interaction',
+    source: 'chrome_extension',
+    domain,
+    url,
+    title,
+    companyName,
+    timestamp,
+  };
+
+  console.log('[Rabbit] Chrome Extension Interaction:', interaction);
+
+  return {
+    ...payload,
+    url,
+    title,
+    domain,
+    companyName,
+    capturedAt: timestamp,
+    captureSource: 'chrome_extension',
+    pageSource: payload.pageSource || payload.source || 'website',
+    interaction,
+  };
+}
+
 async function sendToWorker(payload) {
   const stored = await chrome.storage.local.get(['workerUrl', 'apiKey']);
   const workerUrl = (stored.workerUrl || DEFAULT_WORKER_URL).replace(/\/+$/, '');
   const apiKey = stored.apiKey;
+  const enrichedPayload = enrichCapturePayload(payload);
+
+  if (!enrichedPayload) {
+    return { ok: false, error: { message: 'Missing required domain' } };
+  }
 
   const resp = await fetch(`${workerUrl}/extension/capture`, {
     method: 'POST',
@@ -508,7 +638,7 @@ async function sendToWorker(payload) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(enrichedPayload),
   });
 
   const data = await resp.json().catch(() => ({ ok: false, error: { message: 'Invalid response from worker' } }));
@@ -787,16 +917,33 @@ function fallbackExtract() {
     if (k) metas[k] = m.getAttribute('content');
   });
 
+  const timestamp = new Date().toISOString();
+  const companyName = (metas['og:site_name'] || metas['application-name'] || document.title.split(/\s+[\|\-–—]\s+/)[0] || h.replace(/^www\./i, '').split('.')[0] || '').trim();
+  const interaction = {
+    _type: 'interaction',
+    source: 'chrome_extension',
+    domain: h,
+    url,
+    title: document.title,
+    companyName,
+    timestamp,
+  };
+
   return {
     url,
     title: document.title,
     source,
-    capturedAt: new Date().toISOString(),
+    capturedAt: timestamp,
+    domain: h,
+    companyName,
+    captureSource: 'chrome_extension',
+    pageSource: source,
     accounts: [{ domain: h, url: location.origin, source: 'website' }],
     people: [],
     technologies: [],
     signals: [],
     metadata: metas,
     rawText: (document.body?.innerText || '').substring(0, 15000),
+    interaction,
   };
 }

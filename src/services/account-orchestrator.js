@@ -315,7 +315,7 @@ async function createAccountFromUrl(url, context) {
     
     // Store scan in accountPack (upsert to handle first-time creation)
     try {
-      const packId = `accountPack.${accountResult.accountKey}`;
+      const packId = `accountPack-${accountResult.accountKey}`;
       await upsertDocument(client, {
         _type: 'accountPack',
         _id: packId,

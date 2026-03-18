@@ -3,6 +3,7 @@
 name = "website-scanner"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
+observability = { enabled = false }
 
 # Rate limiting (KV — top-level so all envs inherit)
 # Moltbook activity: GET/POST /moltbook/api/activity (preview namespace created; for production run: npx wrangler kv namespace create MOLTBOOK_ACTIVITY and set id)
@@ -57,6 +58,10 @@ WRANGLER_API_URL = ""
 # class_name = "OsintJobState"
 # script_name = "website-scanner"
 
+# Secrets: set for the env you deploy to. This repo deploys with --env=production, so use:
+#   npx wrangler secret put GMAIL_REFRESH_TOKEN --env=production
+#   npx wrangler secret put SANITY_TOKEN --env=production
+# For local dev, secrets come from .dev.vars (no wrangler secret put needed).
 # Sanity CMS configuration (set via environment variables or secrets)
 # wrangler secret put SANITY_PROJECT_ID
 # wrangler secret put SANITY_TOKEN

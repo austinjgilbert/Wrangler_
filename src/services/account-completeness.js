@@ -71,7 +71,7 @@ export function analyseCompleteness(account, accountPack, enrichmentJob) {
 
   const filled = {
     // Pipeline stages
-    scan:           !!payload.scan,
+    scan:           !!payload.scan || !!payload.researchSet?.scan,
     discovery:      !!payload.discovery || !!payload.researchSet?.discovery,
     crawl:          !!payload.crawl || !!payload.researchSet?.crawl,
     extraction:     !!payload.evidence || !!payload.researchSet?.evidence,

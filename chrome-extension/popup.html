@@ -431,6 +431,7 @@
     <button class="tab active" data-tab="capture">Capture</button>
     <button class="tab" data-tab="bulk">Bulk</button>
     <button class="tab" data-tab="text">Paste Text</button>
+    <button class="tab" data-tab="email">Email</button>
   </div>
 
   <!-- ═══ Rabbit tab ═══ -->
@@ -543,6 +544,18 @@
     <div id="text-status" class="status-msg"></div>
 
     <button id="text-capture-btn" class="capture-button" disabled>Extract &amp; Send to Sanity</button>
+  </div>
+
+  <!-- ═══ Email opens (tracking pixel) ═══ -->
+  <div id="tab-email" class="tab-content">
+    <div class="preview">
+      <h3>Email opens (live)</h3>
+      <p class="url-display .url" style="font-size:11px;color:#71717a;margin-bottom:8px;">When recipients open emails you sent via the worker, they appear here.</p>
+      <div id="email-opens-list" class="entities">
+        <div class="empty-preview">No opens yet. Send an email via the worker to see when it’s read.</div>
+      </div>
+    </div>
+    <button id="email-opens-refresh" class="secondary-button">Refresh</button>
   </div>
 
   <!-- ═══ Footer (shared) ═══ -->

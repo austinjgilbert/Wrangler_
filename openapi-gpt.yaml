@@ -3,7 +3,7 @@ openapi: 3.1.0
 info:
   title: Website Scanner API (GPT)
   version: 1.2.0
-  description: Website scanner and strategic intelligence platform API — 30 ops.
+  description: Website scanner and strategic intelligence platform API (30 ops).
 
 servers:
   - url: https://website-scanner.austin-gilbert.workers.dev
@@ -14,7 +14,7 @@ components:
       type: apiKey
       in: header
       name: Authorization
-      description: "Bearer token. In Custom GPT use Authentication > API Key > Bearer with MOLT_API_KEY."
+      description: "Bearer token. In Custom GPT use Authentication, API Key, Bearer with MOLT_API_KEY."
   
   schemas:
     GenericResponse:
@@ -24,6 +24,8 @@ components:
           type: boolean
         data:
           type: object
+          properties: {}
+          additionalProperties: true
         error:
           type: string
       additionalProperties: true
@@ -33,7 +35,7 @@ paths:
     post:
       operationId: queryData
       summary: Query memory and data from Sanity
-      description: Execute raw GROQ queries. Example body `{"query": "*[_type == 'account']"}`.
+      description: Execute raw GROQ queries. Pass JSON body with query (string) and optional params (object).
       requestBody:
         required: true
         content:
@@ -41,8 +43,11 @@ paths:
             schema:
               type: object
               properties:
-                query: { type: string }
-                params: { type: object }
+                query:
+                  type: string
+                params:
+                  type: object
+                  properties: {}
       responses:
         "200":
           description: Query results
@@ -55,7 +60,8 @@ paths:
       operationId: wranglerIngest
       summary: Store Wrangler interaction (CALL AFTER RESPONSE)
       description: Store a Wrangler Q&A exchange and auto-trigger background gap-fill jobs.
-      security: [{ MoltApiKey: [] }]
+      security:
+        - MoltApiKey: []
       requestBody:
         required: true
         content:
@@ -66,7 +72,7 @@ paths:
               properties:
                 userPrompt: { type: string }
                 gptResponse: { type: string }
-                sessionId: { type: string, nullable: true }
+                sessionId: { type: [string, "null"] }
                 referencedAccounts: { type: array, items: { type: string } }
                 referencedPeople: { type: array, items: { type: string } }
                 contextTags: { type: array, items: { type: string } }
@@ -93,7 +99,7 @@ paths:
     post:
       operationId: operatorConsoleCommand
       summary: Execute system command
-      description: Run system-wide commands like "refresh stale entities", "run autopilot", "queue research <domain>", etc.
+      description: Run system-wide commands like refresh stale entities, run autopilot, queue research for a domain.
       requestBody:
         required: true
         content:
@@ -106,18 +112,6 @@ paths:
       responses:
         "200":
           description: Command execution result
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/GenericResponse' }
-
-  /user-patterns/query:
-    get:
-      operationId: userPatternsQuery
-      summary: Get successful workflow patterns
-      description: Retrieve what other reps are doing successfully in the system. Good for pattern discovery.
-      responses:
-        "200":
-          description: Top patterns
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GenericResponse' }
@@ -200,7 +194,7 @@ paths:
               required: [profileUrl]
               properties:
                 profileUrl: { type: string }
-                accountKey: { type: string, nullable: true }
+                accountKey: { type: [string, "null"] }
       responses:
         "200":
           description: Profile analysis
@@ -264,9 +258,14 @@ paths:
               type: object
               required: [query]
               properties:
-                query: { type: string, description: "Search query text" }
-                limit: { type: integer, default: 10 }
-                recencyDays: { type: integer, default: 30 }
+                query:
+                  type: string
+                limit:
+                  type: integer
+                  default: 10
+                recencyDays:
+                  type: integer
+                  default: 30
       responses:
         "200":
           description: Search results
@@ -430,8 +429,11 @@ paths:
               required: [type, data]
               properties:
                 type: { type: string, enum: [company, person, accountPack, learning, intent, interaction, opportunity] }
-                data: { type: object }
-                accountKey: { type: string, nullable: true }
+                data:
+                  type: object
+                  properties: {}
+                  additionalProperties: true
+                accountKey: { type: [string, "null"] }
       responses:
         "200":
           description: Stored
@@ -499,7 +501,7 @@ paths:
   /enrich/run:
     post:
       operationId: enrichRun
-      summary: Trigger enrichment for an account
+      summary: Trigger enrichment for an account (unified runner)
       requestBody:
         required: true
         content:
@@ -517,12 +519,64 @@ paths:
               schema: { $ref: '#/components/schemas/GenericResponse' }
 
   /enrich/queue:
-    get:
+    post:
       operationId: enrichQueue
-      summary: View active enrichment queue
+      summary: Queue enrichment for an account
+      description: Queue a research/enrichment job. Use accountKey + canonicalUrl (or accountId). mode=standard|restart|deep. Self-heal runs in background unless selfHeal=false.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountKey: { type: string }
+                canonicalUrl: { type: string }
+                accountId: { type: string }
+                mode: { type: string, enum: [standard, restart, deep] }
+                stages: { type: array, items: { type: string } }
+                selfHeal: { type: boolean }
       responses:
         "200":
-          description: Queued
+          description: Queued (jobId, status, selfHealingScheduled)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /enrich/status:
+    get:
+      operationId: enrichStatus
+      summary: Get enrichment status for an account
+      description: Returns jobId, status, currentStage, progress, advanceError. Use to diagnose stuck jobs.
+      parameters:
+        - name: accountKey
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Status (status, progress, currentStage, jobId, advanceError)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericResponse' }
+
+  /enrich/advance:
+    post:
+      operationId: enrichAdvance
+      summary: Advance enrichment by one pipeline step
+      description: Run one step for the account. Call when status is in_progress or not_started to unblock. Body accountKey required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountKey]
+              properties:
+                accountKey: { type: string }
+      responses:
+        "200":
+          description: Updated status after one step
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GenericResponse' }
@@ -531,7 +585,8 @@ paths:
     post:
       operationId: moltRun
       summary: Run MoltBot orchestration
-      security: [{ MoltApiKey: [] }]
+      security:
+        - MoltApiKey: []
       requestBody:
         required: true
         content:
@@ -552,7 +607,8 @@ paths:
     post:
       operationId: moltApprove
       summary: Approve pending Molt action
-      security: [{ MoltApiKey: [] }]
+      security:
+        - MoltApiKey: []
       requestBody:
         required: true
         content:
@@ -563,7 +619,7 @@ paths:
               properties:
                 approvalId: { type: string }
                 approved: { type: boolean }
-                feedback: { type: string, nullable: true }
+                feedback: { type: [string, "null"] }
       responses:
         "200":
           description: Approval processed
@@ -571,25 +627,53 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/GenericResponse' }
 
-  /molt/jobs/run:
+  /tools/gmail:
     post:
-      operationId: moltJobsRun
-      summary: Force execute pending autonomous jobs
-      security: [{ MoltApiKey: [] }]
+      operationId: gmailTool
+      summary: Gmail draft (preview) or send
+      description: ALWAYS use action draft first to show the final email. Only use action send after the user explicitly approves.
+      security:
+        - MoltApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [traceId, tool, action, input]
+              properties:
+                traceId:
+                  type: string
+                tool:
+                  type: string
+                  enum: [gmail]
+                action:
+                  type: string
+                  enum: [draft, send, read, composeLink]
+                input:
+                  type: object
+                  properties:
+                    to:
+                      type: array
+                      items:
+                        type: string
+                    subject:
+                      type: string
+                    body:
+                      type: string
+                    draftId:
+                      type: string
+                    cc:
+                      type: array
+                      items:
+                        type: string
+                    bcc:
+                      type: array
+                      items:
+                        type: string
       responses:
         "200":
-          description: Jobs processed
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/GenericResponse' }
-
-  /health:
-    get:
-      operationId: healthCheck
-      summary: System health check
-      responses:
-        "200":
-          description: OK
+          description: Draft preview or send result
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GenericResponse' }

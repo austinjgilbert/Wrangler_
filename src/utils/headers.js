@@ -32,7 +32,7 @@ export function getBrowserHeaders(referer = null) {
   return {
     ...getBaseHeaders(referer),
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'identity',
     'DNT': '1',
   };
 }
@@ -90,7 +90,7 @@ export function getLinkedInHeaders(referer = null) {
   const headers = {
     ...getBaseHeaders(referer || 'https://www.google.com/search?q=linkedin'),
     'User-Agent': userAgent,
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Encoding': 'identity',
     'Origin': 'https://www.linkedin.com',
     'Viewport-Width': viewportWidth.toString(),
     'Width': viewportWidth.toString(),

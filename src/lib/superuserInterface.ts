@@ -238,8 +238,8 @@ export async function triggerReanalysis(env: any, input: {
       leaseExpiresAt: null,
       createdAt: now,
     };
-    await createEnrichJob(env, job);
-    jobsQueued.push(job._id);
+    const storedJob = await createEnrichJob(env, job);
+    jobsQueued.push(storedJob._id);
   }
 
   await auditSuperuserEvent(env, 'superuser.trigger_reanalysis', {

@@ -52,14 +52,16 @@ export function normalizeSignal(input: NormalizeSignalInput): SignalEvent {
     timestamp,
     metadata: input.metadata || {},
   });
+  const observedAt = timestamp;
   const strength = calculateDecayedSignalStrength({
     baseStrength,
     signalType,
     timestamp,
-    now: new Date().toISOString(),
+    // Keep ingest-time strength anchored to when the event was observed so
+    // replayed/backfilled signals do not decay immediately on arrival.
+    now: observedAt,
   });
   const id = input.id || buildSignalId(dedupeKey);
-  const observedAt = timestamp;
   const staleAfter = resolveSignalStaleAfter(signalType, observedAt);
 
   return {

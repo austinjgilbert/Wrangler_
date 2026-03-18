@@ -2,6 +2,8 @@
 
 Your worker is live at **https://website-scanner.austin-gilbert.workers.dev** and fully operational.
 
+**Complete list of everything to configure (YAML, instructions, .dev.vars, API keys, Gmail, extension):** [docs/USER-SETUP-CHECKLIST.md](docs/USER-SETUP-CHECKLIST.md)
+
 Follow these steps to update your Custom GPT:
 
 ---
@@ -10,7 +12,7 @@ Follow these steps to update your Custom GPT:
 
 1. Go to your Custom GPT → **Configure** → **Actions**
 2. Delete the old schema
-3. Copy the **entire contents** of `openapi-gpt.yaml` from this repo
+3. Copy the **entire contents** of `openapi-gpt.yaml` from this repo (or use `openapi-gpt.json` if the UI says "Could not parse valid OpenAPI spec")
 4. Paste into the schema field
 5. The server URL is already set to: `https://website-scanner.austin-gilbert.workers.dev`
 
@@ -68,5 +70,7 @@ The GPT should call your live worker and return results.
 - ✅ Instructions: Up to date (~5.4k chars)
 
 **Next:** Copy `openapi-gpt.yaml` and `gpt-instructions.md` into your Custom GPT.
+
+**Gmail:** The GPT can send email via **gmailTool**. Instructions require the GPT to always call **draft** first, show you the full email (To, Subject, Body), and only call **send** after you reply e.g. "send" or "looks good". Ensure Gmail is configured (see docs/setup/GMAIL-API-SETUP.md) and the worker has GMAIL_* vars or secrets.
 
 For enrichment pipeline details (queue POST, status, advance) and SDK app env, see **docs/GPT-AND-YAML-UPDATE.md**.

@@ -106,7 +106,7 @@ const devVars = path.join(rootDir, '.dev.vars');
 if (!fs.existsSync(devVars)) {
   warn(
     '.dev.vars not found (needed for local dev)',
-    'Run: cp .env.example .dev.vars and add SANITY_PROJECT_ID, SANITY_TOKEN'
+    'Run: cp .dev.vars.example .dev.vars and set SANITY_PROJECT_ID, SANITY_TOKEN'
   );
 } else {
   ok('.dev.vars exists');

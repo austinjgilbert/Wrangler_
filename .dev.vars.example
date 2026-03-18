@@ -1,36 +1,27 @@
-# Worker local dev: copy to .dev.vars (see .dev.vars.example) and set values.
-# Production: use `wrangler secret put VAR_NAME` (never commit .dev.vars or .env).
+# Copy to .dev.vars and set values. .dev.vars is gitignored.
+# Required for local worker dev: SANITY_PROJECT_ID, SANITY_TOKEN
 
 # --- Sanity ---
 SANITY_PROJECT_ID=
 SANITY_TOKEN=
+# SANITY_API_TOKEN=   # alias for SANITY_TOKEN
 SANITY_DATASET=production
 SANITY_API_VERSION=2023-10-01
 SANITY_WEBHOOK_SECRET=
 
-# --- Worker URLs (local dev; production set in wrangler [vars]) ---
+# --- Worker URLs (wrangler [vars] override for local) ---
 BASE_URL=http://localhost:8787
 MOLT_TOOL_BASE_URL=
-# MOLTBOOK_BASE_URL=
-# MOLTBOOK_NETWORK_URLS=
+MOLTBOOK_BASE_URL=
+# MOLTBOOK_NETWORK_URLS=    
 
 # --- Wrangler bridge ---
 WRANGLER_API_URL=
 WRANGLER_API_KEY=
 
-# --- Molt / research ---
+# --- Molt / API auth ---
 MOLT_API_KEY=
 # CHATGPT_API_KEY=
-# MOLT_RESEARCH_TOOL_URL=
-# MOLT_GMAIL_TOOL_URL=
-# MOLT_CALENDAR_TOOL_URL=
-# MOLT_SLACK_TOOL_URL=
-# MOLT_WEB_SEARCH_TOOL_URL=
-# MOLT_SUMMARIZE_TOOL_URL=
-# MOLT_MEMORY_SEARCH_TOOL_URL=
-# MOLT_WHISPER_TOOL_URL=
-# MOLT_GITHUB_TOOL_URL=
-# MOLT_WRANGLER_TOOL_URL=
 
 # --- Slack ---
 SLACK_SIGNING_SECRET=
@@ -44,8 +35,13 @@ TELEGRAM_BOT_TOKEN=
 GMAIL_CLIENT_ID=
 GMAIL_CLIENT_SECRET=
 GMAIL_REFRESH_TOKEN=
+# Optional: appended to every sent/draft (use \n for newlines)
+# GMAIL_SIGNATURE=
+# Optional: From display name and address (recipients see "Austin @ Sanity" instead of raw email)
+GMAIL_FROM_NAME=Austin @ Sanity
+GMAIL_FROM_EMAIL=
 
-# --- Admin / API protection ---
+# --- Admin ---
 ADMIN_TOKEN=
 ADMIN_API_KEY=
 
@@ -60,7 +56,7 @@ ADMIN_API_KEY=
 # ANTHROPIC_API_KEY=
 # OPENAI_API_KEY=
 
-# --- Search ---
+# --- Search (optional) ---
 # BRAVE_SEARCH_API_KEY=
 # GOOGLE_SEARCH_API_KEY=
 # GOOGLE_SEARCH_ENGINE_ID=
@@ -70,8 +66,9 @@ ADMIN_API_KEY=
 # OSINT_DEFAULT_RECENCY_DAYS=
 # OSINT_MAX_SOURCES=
 # OSINT_MAX_EXTRACT=
+# OSINT_YEAR=
 
-# --- Moltbook ---
+# --- Moltbook POST protection ---
 # MOLTBOOK_API_KEY=
 
 # --- Metrics ---

@@ -103,7 +103,7 @@ export async function handleAccountPage(
             groqQuery(client, `*[_type == "accountPack" && accountKey == $key][0]{ accountKey, payload }`, {
               key: accountKey,
             }) as Promise<any>,
-            groqQuery(client, `*[_type == "enrichmentJob" && accountKey == $key] | order(updatedAt desc)[0]{ _id, status, currentStage, completedStages, failedStages, startedAt, updatedAt }`, {
+            groqQuery(client, `*[_type in ["enrich.job", "enrichmentJob"] && accountKey == $key] | order(updatedAt desc)[0]{ _id, jobId, jobKey, status, currentStage, completedStages, failedStages, startedAt, createdAt, updatedAt }`, {
               key: accountKey,
             }) as Promise<any>,
           ])
@@ -486,7 +486,11 @@ export async function handleAccountPage(
 
     function poll() {
       if (!accountKey) return;
-      fetch(window.location.origin + '/enrich/status?accountKey=' + encodeURIComponent(accountKey))
+      fetch(window.location.origin + '/enrich/advance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountKey: accountKey })
+      })
         .then(function(r) { return r.json(); })
         .then(function(res) {
           var data = (res && res.data && res.data.status && typeof res.data.status === 'object') ? res.data.status : (res.data || res);

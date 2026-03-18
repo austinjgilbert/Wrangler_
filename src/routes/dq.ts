@@ -17,6 +17,7 @@ import { derivePatternInsights } from '../lib/patterns.ts';
 import { buildEventDoc } from '../lib/events.ts';
 import { notify } from '../lib/notify.ts';
 import { createLogger } from '../utils/logger.js';
+import { buildDeterministicSnapshotId } from '../../shared/accountStoragePolicy.ts';
 import {
   fetchAccounts,
   fetchPeople,
@@ -80,8 +81,8 @@ export async function handleDqScan(request: Request, requestId: string, env: any
           leaseExpiresAt: null,
           createdAt: new Date().toISOString(),
         };
-        await createEnrichJob(env, job);
-        queuedJobs.push(job._id);
+        const storedJob = await createEnrichJob(env, job);
+        queuedJobs.push(storedJob._id);
       }
     }
 
@@ -123,8 +124,8 @@ export async function handleEnrichQueue(request: Request, requestId: string, env
         leaseExpiresAt: null,
         createdAt: new Date().toISOString(),
       };
-      await createEnrichJob(env, job);
-      jobs.push(job._id);
+      const storedJob = await createEnrichJob(env, job);
+      jobs.push(storedJob._id);
     }
 
     return createSuccessResponse({ queued: jobs.length, jobIds: jobs }, requestId);
@@ -136,6 +137,8 @@ export async function handleEnrichQueue(request: Request, requestId: string, env
 export async function handleEnrichRun(request: Request, requestId: string, env: any) {
   try {
     const jobs = await fetchQueuedEnrichJobs(env);
+    const accounts = await fetchAccounts(env);
+    const accountMap = new Map(accounts.map((account) => [account._id, account]));
     const applied: string[] = [];
     const pending: string[] = [];
     const logger = createLogger(requestId, 'dq.enrich.run');
@@ -149,7 +152,7 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
           leaseExpiresAt: new Date(Date.now() + (5 * 60 * 1000)).toISOString(),
         });
         const account = job.entityType === 'account'
-          ? (await fetchAccounts(env)).find((a) => a._id === job.entityId)
+          ? accountMap.get(job.entityId)
           : null;
 
         if (!account?.domain) {
@@ -167,7 +170,16 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
         for (const snap of snapshots) {
           await createCrawlSnapshot(env, {
             _type: 'crawl.snapshot',
-            _id: `crawl.snapshot.${job._id}.${Math.random().toString(36).slice(2, 6)}`,
+            _id: buildDeterministicSnapshotId({
+              namespace: 'crawl.snapshot.dq',
+              accountKey: account.accountKey || null,
+              accountId: account._id,
+              urlOrPath: snap.url,
+            }),
+            accountRef: { _type: 'reference', _ref: account._id },
+            accountKey: account.accountKey || '',
+            snapshotClass: 'dq_enrichment',
+            sourceType: 'dq',
             url: snap.url,
             status: snap.status,
             snippet: snap.snippet,
@@ -287,10 +299,14 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
       }
     }
 
+    const [people, technologies] = await Promise.all([
+      fetchPeople(env),
+      fetchTechnologies(env),
+    ]);
     const patterns = derivePatternInsights({
-      accounts: await fetchAccounts(env),
-      people: await fetchPeople(env),
-      technologies: await fetchTechnologies(env),
+      accounts,
+      people,
+      technologies,
     });
 
     return createSuccessResponse(

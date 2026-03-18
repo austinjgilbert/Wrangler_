@@ -383,15 +383,89 @@ async function extractTabPayload(tabId) {
   }
 }
 
+function extractDomainFromUrl(url) {
+  try {
+    return new URL(url).hostname || '';
+  } catch {
+    return '';
+  }
+}
+
+function inferCompanyNameFromCapture(payload, domain) {
+  const accountName = (payload?.accounts || []).find(account => account?.name)?.name;
+  if (accountName) return accountName;
+
+  const metaSiteName = payload?.metadata?.ogSiteName
+    || payload?.metadata?.['og:site_name']
+    || payload?.metadata?.['application-name'];
+  if (metaSiteName) return String(metaSiteName).trim();
+
+  const titleRoot = String(payload?.title || '')
+    .split(/\s+[\|\-–—]\s+/)
+    .map(part => part.trim())
+    .find(Boolean);
+  if (titleRoot) return titleRoot;
+
+  const base = String(domain || '').replace(/^www\./i, '').split('.')[0] || '';
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
+}
+
+function enrichCapturePayload(payload) {
+  if (!payload) return null;
+
+  const url = payload.interaction?.url || payload.url || payload.contextUrl || '';
+  const domain = String(payload.domain || payload.interaction?.domain || extractDomainFromUrl(url)).trim();
+  if (!domain) {
+    console.warn('[Rabbit] Interaction skipped: missing domain');
+    return null;
+  }
+
+  const timestamp = payload.interaction?.timestamp || payload.capturedAt || new Date().toISOString();
+  const title = payload.interaction?.title || payload.title || '';
+  const companyName = String(
+    payload.companyName
+      || payload.interaction?.companyName
+      || inferCompanyNameFromCapture(payload, domain),
+  ).trim();
+  const interaction = {
+    _type: 'interaction',
+    source: 'chrome_extension',
+    domain,
+    url,
+    title,
+    companyName,
+    timestamp,
+  };
+
+  console.log('[Rabbit] Chrome Extension Interaction:', interaction);
+
+  return {
+    ...payload,
+    url,
+    title,
+    domain,
+    companyName,
+    capturedAt: timestamp,
+    captureSource: 'chrome_extension',
+    pageSource: payload.pageSource || payload.source || 'website',
+    interaction,
+  };
+}
+
 async function capturePayload(workerUrl, apiKey, payload) {
   try {
+    const enrichedPayload = enrichCapturePayload(payload);
+    if (!enrichedPayload) {
+      return { ok: false, error: { message: 'Missing required domain' } };
+    }
+
     const resp = await fetch(`${workerUrl}/extension/capture`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(enrichedPayload),
     });
 
     const data = await resp.json().catch(() => ({}));
@@ -458,12 +532,27 @@ function fallbackExtract() {
   const text = (document.body?.innerText || '').substring(0, 15000);
   const emails = [...new Set((text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).slice(0, 25))];
   const phones = [...new Set((text.match(/(?:\+?\d[\d\s().-]{7,}\d)/g) || []).slice(0, 20))];
+  const timestamp = new Date().toISOString();
+  const companyName = (document.title.split(/\s+[\|\-–—]\s+/)[0] || h.replace(/^www\./i, '').split('.')[0] || '').trim();
+  const interaction = {
+    _type: 'interaction',
+    source: 'chrome_extension',
+    domain: h,
+    url,
+    title: document.title,
+    companyName,
+    timestamp,
+  };
 
   return {
     url,
     title: document.title,
     source,
-    capturedAt: new Date().toISOString(),
+    capturedAt: timestamp,
+    domain: h,
+    companyName,
+    captureSource: 'chrome_extension',
+    pageSource: source,
     accounts: [{ domain: h, url: location.origin, source: 'website' }],
     people: [],
     technologies: [],
@@ -473,6 +562,7 @@ function fallbackExtract() {
     phones,
     rawText: text,
     fingerprint: [url, document.title, text.slice(0, 500)].join('|'),
+    interaction,
   };
 }
 

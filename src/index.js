@@ -32,7 +32,7 @@ function getBrowserHeaders(referer = null) {
     'User-Agent': userAgent,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'identity',
     'DNT': '1',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
@@ -65,7 +65,7 @@ function getLinkedInHeaders(referer = null) {
     'User-Agent': userAgent,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Encoding': 'identity',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
@@ -779,6 +779,27 @@ function addCorsHeaders(response) {
     statusText: response.statusText,
     headers: newHeaders,
   });
+}
+
+function shouldParsePromptForRequest(request, url) {
+  if (!request || !url) return false;
+  if (!['POST', 'PUT', 'PATCH'].includes(request.method)) return false;
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return false;
+  const path = url.pathname || '';
+  return (
+    path.startsWith('/molt') ||
+    path.startsWith('/wrangler') ||
+    path.startsWith('/operator/console/copilot') ||
+    path.startsWith('/person/') ||
+    path.startsWith('/account-plan/') ||
+    path.startsWith('/research/')
+  );
+}
+
+function shouldRunAutonomousEnrichmentForRequest(request, url, env) {
+  if (env?.ENABLE_AUTONOMOUS_ENRICHMENT !== '1') return false;
+  return shouldParsePromptForRequest(request, url);
 }
 
 /**
@@ -2883,7 +2904,7 @@ async function handleBrief(request, requestId, env) {
       );
     }
     
-    const { companyOrSite, seedUrl, query } = body;
+    const { companyOrSite, seedUrl, query, disableAutoSave = false } = body;
     
     if (!companyOrSite || typeof companyOrSite !== 'string') {
       return createErrorResponse(
@@ -3085,7 +3106,7 @@ async function handleBrief(request, requestId, env) {
     
     // Auto-save to Sanity (unless explicitly disabled)
     let stored = null;
-    if (env) {
+    if (env && !disableAutoSave) {
       try {
         const { initSanityClient, generateAccountKey, storeAccountPack, upsertDocument, extractDomain } = await import('./sanity-client.js');
         const client = initSanityClient(env);
@@ -6630,6 +6651,10 @@ const workerHandler = {
     const url = new URL(request.url);
     const requestId = generateRequestId();
     const startTime = Date.now();
+    const requestLoggingEnabled = env?.ENABLE_REQUEST_LOGGING === '1';
+    const autonomousEnrichmentEnabled = shouldRunAutonomousEnrichmentForRequest(request, url, env);
+    const promptParsingEnabled = shouldParsePromptForRequest(request, url);
+    const needsRequestClone = requestLoggingEnabled || autonomousEnrichmentEnabled || promptParsingEnabled;
 
     // Make env available to module-level helpers (e.g. searchProvider)
     setSearchEnv(env);
@@ -6647,83 +6672,88 @@ const workerHandler = {
 
     let requestForLogging = request;
     let requestForEnrichment = request;
-    try {
-      requestForLogging = request.clone();
-      requestForEnrichment = request.clone();
-    } catch (error) {
-      requestForLogging = request;
-      requestForEnrichment = request;
+    if (needsRequestClone) {
+      try {
+        requestForLogging = request.clone();
+        requestForEnrichment = request.clone();
+      } catch (error) {
+        requestForLogging = request;
+        requestForEnrichment = request;
+      }
     }
 
-    let analyzePerformanceFn;
-    let verifyClaimsInternalFn;
-    let analyzeBusinessScale;
-    let detectBusinessUnits;
-    let calculateAIReadinessScore;
-    try {
-      const perfMod = await import('./services/performance-analyzer.js');
-      analyzePerformanceFn = perfMod.analyzePerformance;
-    } catch {
-      analyzePerformanceFn = () => null;
-    }
-    try {
-      const verifyMod = await import('./services/person-intelligence-service.js');
-      verifyClaimsInternalFn = verifyMod.verifyClaimsInternal;
-    } catch {
-      verifyClaimsInternalFn = async () => ({ verified: [], status: 'unavailable' });
-    }
-    try {
-      const bizMod = await import('./services/business-analyzer.js');
-      analyzeBusinessScale = typeof bizMod?.analyzeBusinessScale === 'function' ? bizMod.analyzeBusinessScale : () => ({});
-      detectBusinessUnits = typeof bizMod?.detectBusinessUnits === 'function' ? bizMod.detectBusinessUnits : () => ({});
-    } catch {
-      analyzeBusinessScale = () => ({});
-      detectBusinessUnits = () => ({});
-    }
-    if (typeof analyzeBusinessScale !== 'function') analyzeBusinessScale = () => ({});
-    if (typeof detectBusinessUnits !== 'function') detectBusinessUnits = () => ({});
-    try {
-      const aiMod = await import('./services/ai-readiness.js');
-      calculateAIReadinessScore = aiMod.calculateAIReadinessScore;
-    } catch {
-      calculateAIReadinessScore = () => ({ score: 0 });
-    }
+    let autonomousContext = null;
+    if (autonomousEnrichmentEnabled) {
+      let analyzePerformanceFn;
+      let verifyClaimsInternalFn;
+      let analyzeBusinessScale;
+      let detectBusinessUnits;
+      let calculateAIReadinessScore;
+      try {
+        const perfMod = await import('./services/performance-analyzer.js');
+        analyzePerformanceFn = perfMod.analyzePerformance;
+      } catch {
+        analyzePerformanceFn = () => null;
+      }
+      try {
+        const verifyMod = await import('./services/person-intelligence-service.js');
+        verifyClaimsInternalFn = verifyMod.verifyClaimsInternal;
+      } catch {
+        verifyClaimsInternalFn = async () => ({ verified: [], status: 'unavailable' });
+      }
+      try {
+        const bizMod = await import('./services/business-analyzer.js');
+        analyzeBusinessScale = typeof bizMod?.analyzeBusinessScale === 'function' ? bizMod.analyzeBusinessScale : () => ({});
+        detectBusinessUnits = typeof bizMod?.detectBusinessUnits === 'function' ? bizMod.detectBusinessUnits : () => ({});
+      } catch {
+        analyzeBusinessScale = () => ({});
+        detectBusinessUnits = () => ({});
+      }
+      if (typeof analyzeBusinessScale !== 'function') analyzeBusinessScale = () => ({});
+      if (typeof detectBusinessUnits !== 'function') detectBusinessUnits = () => ({});
+      try {
+        const aiMod = await import('./services/ai-readiness.js');
+        calculateAIReadinessScore = aiMod.calculateAIReadinessScore;
+      } catch {
+        calculateAIReadinessScore = () => ({ score: 0 });
+      }
 
-    const autonomousContext = {
-      handlers: {
-        handleScan,
-        handleDiscover,
-        handleCrawl,
-        handleExtract,
-        handleLinkedInProfile,
-        handleBrief,
-        handleVerify,
-        searchProvider,
-      },
-      internalFunctions: {
-        searchProvider,
-        getBrowserHeaders,
-        fetchWithTimeout,
-        readHtmlWithLimit,
-        extractTitle,
-        cleanMainText,
-        detectSignals,
-        extractExcerpts,
-        extractEntities,
-        extractClaims,
-        extractScriptSrcs,
-        extractLinkHrefs,
-        extractNavigationLinks,
-        detectTechnologyStack,
-        analyzeBusinessScale,
-        detectBusinessUnits,
-        analyzePerformance: analyzePerformanceFn,
-        calculateAIReadinessScore,
-        discoverPages,
-        crawlWithConcurrency,
-        verifyClaimsInternal: verifyClaimsInternalFn,
-      },
-    };
+      autonomousContext = {
+        handlers: {
+          handleScan,
+          handleDiscover,
+          handleCrawl,
+          handleExtract,
+          handleLinkedInProfile,
+          handleBrief,
+          handleVerify,
+          searchProvider,
+        },
+        internalFunctions: {
+          searchProvider,
+          getBrowserHeaders,
+          fetchWithTimeout,
+          readHtmlWithLimit,
+          extractTitle,
+          cleanMainText,
+          detectSignals,
+          extractExcerpts,
+          extractEntities,
+          extractClaims,
+          extractScriptSrcs,
+          extractLinkHrefs,
+          extractNavigationLinks,
+          detectTechnologyStack,
+          analyzeBusinessScale,
+          detectBusinessUnits,
+          analyzePerformance: analyzePerformanceFn,
+          calculateAIReadinessScore,
+          discoverPages,
+          crawlWithConcurrency,
+          verifyClaimsInternal: verifyClaimsInternalFn,
+        },
+      };
+    }
 
     // Request size limit (10MB for POST/PUT requests)
     const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
@@ -6740,14 +6770,19 @@ const workerHandler = {
         requestId
       );
       let responseBodyText413 = '';
-      try {
-        responseBodyText413 = await response.clone().text().catch(() => '');
-      } catch (_) {}
+      if (requestLoggingEnabled || autonomousEnrichmentEnabled) {
+        try {
+          responseBodyText413 = await response.clone().text().catch(() => '');
+        } catch (_) {}
+      }
       const logPromise = (async () => {
         try {
-          const { logUserAction } = await import('./services/action-logger.js');
-          const extraData = await logUserAction(requestForLogging, url, requestId, env, response, startTime, responseBodyText413);
-          await logUsageForRequest(request, url, requestId, env, response, startTime, extraData, responseBodyText413);
+          let extraData = null;
+          if (requestLoggingEnabled) {
+            const { logUserAction } = await import('./services/action-logger.js');
+            extraData = await logUserAction(requestForLogging, url, requestId, env, response, startTime, responseBodyText413);
+            await logUsageForRequest(request, url, requestId, env, response, startTime, extraData, responseBodyText413);
+          }
           const { logUsageEntry } = await import('./services/usage-tracker.js');
           await logUsageEntry({
             request: requestForLogging,
@@ -6756,15 +6791,17 @@ const workerHandler = {
             responseText: responseBodyText413,
             userId: requestForLogging.headers.get('X-Sanity-User-Id') || null,
           });
-          const { runAutonomousEnrichment } = await import('./services/autonomous-enrichment.js');
-          await runAutonomousEnrichment({
-            request: requestForEnrichment,
-            url,
-            env,
-            requestId,
-            handlers: autonomousContext.handlers,
-            internalFunctions: autonomousContext.internalFunctions,
-          });
+          if (autonomousEnrichmentEnabled && autonomousContext) {
+            const { runAutonomousEnrichment } = await import('./services/autonomous-enrichment.js');
+            await runAutonomousEnrichment({
+              request: requestForEnrichment,
+              url,
+              env,
+              requestId,
+              handlers: autonomousContext.handlers,
+              internalFunctions: autonomousContext.internalFunctions,
+            });
+          }
         } catch (logError) {
           console.error('Request logging failed:', logError);
         }
@@ -6784,7 +6821,9 @@ const workerHandler = {
       const { logUsageEntry, getUsageSummary, shouldRespondWithUsage } = await import('./services/usage-tracker.js');
       const { extractUserFromRequest } = await import('./services/usage-logger.js');
       const { buildPromptFromRequest } = await import('./services/usage-utils.js');
-      const promptText = await buildPromptFromRequest(requestForLogging, url);
+      const promptText = promptParsingEnabled
+        ? await buildPromptFromRequest(requestForLogging, url)
+        : '';
 
       if (shouldRespondWithUsage(promptText)) {
         const userInfo = extractUserFromRequest(requestForLogging);
@@ -6837,15 +6876,20 @@ const workerHandler = {
     }
 
     let responseBodyText = '';
-    try {
-      responseBodyText = await response.clone().text().catch(() => '');
-    } catch (_) {}
+    if (requestLoggingEnabled || autonomousEnrichmentEnabled) {
+      try {
+        responseBodyText = await response.clone().text().catch(() => '');
+      } catch (_) {}
+    }
 
     const logPromise = (async () => {
       try {
-        const { logUserAction } = await import('./services/action-logger.js');
-        const extraData = await logUserAction(requestForLogging, url, requestId, env, response, startTime, responseBodyText);
-        await logUsageForRequest(request, url, requestId, env, response, startTime, extraData, responseBodyText);
+        let extraData = null;
+        if (requestLoggingEnabled) {
+          const { logUserAction } = await import('./services/action-logger.js');
+          extraData = await logUserAction(requestForLogging, url, requestId, env, response, startTime, responseBodyText);
+          await logUsageForRequest(request, url, requestId, env, response, startTime, extraData, responseBodyText);
+        }
         const { logUsageEntry } = await import('./services/usage-tracker.js');
         await logUsageEntry({
           request: requestForLogging,
@@ -6854,16 +6898,18 @@ const workerHandler = {
           responseText: responseBodyText,
           userId: requestForLogging.headers.get('X-Sanity-User-Id') || null,
         });
-        const { runAutonomousEnrichment } = await import('./services/autonomous-enrichment.js');
-        await runAutonomousEnrichment({
-          request: requestForEnrichment,
-          url,
-          env,
-          requestId,
-          handlers: autonomousContext.handlers,
-          internalFunctions: autonomousContext.internalFunctions,
-          responseText: responseBodyText || '',
-        });
+        if (autonomousEnrichmentEnabled && autonomousContext) {
+          const { runAutonomousEnrichment } = await import('./services/autonomous-enrichment.js');
+          await runAutonomousEnrichment({
+            request: requestForEnrichment,
+            url,
+            env,
+            requestId,
+            handlers: autonomousContext.handlers,
+            internalFunctions: autonomousContext.internalFunctions,
+            responseText: responseBodyText || '',
+          });
+        }
       } catch (logError) {
         console.error('Request logging failed:', logError);
       }
@@ -7132,6 +7178,9 @@ export {
  * Log usage for a request (async, non-blocking)
  */
 async function logUsageForRequest(request, url, requestId, env, response, startTime, extraData = null, responseBodyText = null) {
+  if (env?.ENABLE_REQUEST_LOGGING !== '1') {
+    return;
+  }
   try {
     const { extractUserFromRequest, extractRequestMetadata, logUsage } = await import('./services/usage-logger.js');
     const sanityClient = await import('./sanity-client.js');
@@ -7202,7 +7251,7 @@ const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/j
 
 const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
-  '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
+  '/track', '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
   '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/', '/gmail/',
   '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/webhooks', '/orchestrate', '/person/',
   '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
@@ -7220,7 +7269,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     if (!isKnownPath(url.pathname)) {
       return createErrorResponse('NOT_FOUND', 'Endpoint not found', { path: url.pathname }, 404, requestId);
     }
-    const skipBaseEnv = ['/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write'].includes(url.pathname) || MOLT_WRANGLER_PATHS.includes(url.pathname);
+    const skipBaseEnv = ['/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write'].includes(url.pathname) || url.pathname.startsWith('/track/') || MOLT_WRANGLER_PATHS.includes(url.pathname);
     if (!skipBaseEnv) {
       const { assertBaseEnv } = await import('./lib/env.ts');
       try {
@@ -7275,6 +7324,14 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         requestId
       );
     }
+  } else if (url.pathname === '/track/pixel') {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const { handleTrackPixel } = await import('./routes/track.ts');
+    return await handleTrackPixel(request, env);
+  } else if (url.pathname === '/track/opens') {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const { handleTrackOpens } = await import('./routes/track.ts');
+    return await handleTrackOpens(request, env);
   } else if (url.pathname === '/molt/auth-status') {
     const { getMoltApiKey } = await import('./utils/molt-auth.js');
     const key = getMoltApiKey(env);
@@ -7680,11 +7737,31 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (url.pathname === '/enrich/queue') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { handleQueueEnrichment } = await import('./handlers/enrichment.js');
-          return await handleQueueEnrichment(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
+          return await handleQueueEnrichment(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured, ctx);
+        } else if (url.pathname === '/enrich/advance') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { handleAdvanceEnrichment } = await import('./handlers/enrichment.js');
+          return await handleAdvanceEnrichment(
+            request,
+            requestId,
+            env,
+            groqQuery,
+            upsertDocument,
+            patchDocument,
+            assertSanityConfigured,
+            { handleScan, handleDiscover, handleCrawl, handleExtract, handleLinkedInProfile, handleBrief, handleVerify },
+            ctx
+          );
         } else if (url.pathname === '/enrich/status') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleGetEnrichmentStatus } = await import('./handlers/enrichment.js');
-          return await handleGetEnrichmentStatus(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleGetEnrichmentStatus(
+            request,
+            requestId,
+            env,
+            groqQuery,
+            assertSanityConfigured,
+          );
         } else if (url.pathname === '/enrich/research') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleGetResearchSet } = await import('./handlers/enrichment.js');

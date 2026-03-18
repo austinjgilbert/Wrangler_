@@ -121,6 +121,9 @@ function buildPatternContext(context) {
 }
 
 export async function logUserAction(request, url, requestId, env, response, startTime, responseBodyText = null) {
+  if (env?.ENABLE_REQUEST_LOGGING !== '1') {
+    return null;
+  }
   try {
     const { initSanityClient, groqQuery, upsertDocument } = await import('../sanity-client.js');
     const client = initSanityClient(env);

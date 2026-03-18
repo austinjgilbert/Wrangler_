@@ -69,7 +69,7 @@ export async function triggerGapFill(opts) {
         `*[_type == "accountPack" && accountKey == $key][0]`,
         { key: accountKey }),
       safeQuery(groqQuery, client,
-        `*[_type == "enrichmentJob" && accountKey == $key && status in ["pending","in_progress"]] | order(updatedAt desc)[0]`,
+        `*[_type in ["enrich.job", "enrichmentJob"] && accountKey == $key && status in ["pending","in_progress"]] | order(updatedAt desc)[0]`,
         { key: accountKey }),
     ]);
 
