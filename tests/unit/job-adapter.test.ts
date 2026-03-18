@@ -129,21 +129,31 @@ describe('job adapter — module key derivation', () => {
   })
 })
 
-// ─── entityId fallback ──────────────────────────────────────────────────
+// ─── entityId fallback + prefix stripping ───────────────────────────────
 
 describe('job adapter — accountKey / entityId fallback', () => {
   it('prefers accountKey when both present', () => {
-    const job: BackendJob = { _id: 'j1', accountKey: 'ak1', entityId: 'eid1' }
+    const job: BackendJob = { _id: 'j1', accountKey: 'ak1', entityId: 'account-ak1' }
     expect(transformJob(job, 'Acme').accountKey).toBe('ak1')
   })
 
-  it('falls back to entityId when accountKey missing', () => {
+  it('strips "account-" prefix from entityId on bulk endpoint', () => {
+    const job: BackendJob = { _id: 'j1', entityId: 'account-a1b2c3d4e5f67890' }
+    expect(transformJob(job, 'Acme').accountKey).toBe('a1b2c3d4e5f67890')
+  })
+
+  it('passes through entityId without "account-" prefix unchanged', () => {
     const job: BackendJob = { _id: 'j1', entityId: 'eid1' }
     expect(transformJob(job, 'Acme').accountKey).toBe('eid1')
   })
 
   it('returns empty string when both missing', () => {
     const job: BackendJob = { _id: 'j1' }
+    expect(transformJob(job, 'Acme').accountKey).toBe('')
+  })
+
+  it('returns empty string when entityId is undefined', () => {
+    const job: BackendJob = { _id: 'j1', entityId: undefined }
     expect(transformJob(job, 'Acme').accountKey).toBe('')
   })
 })
@@ -241,15 +251,15 @@ describe('job adapter — transformJobs batch', () => {
     expect(result[1].id).toBe('j3')
   })
 
-  it('uses entityId fallback in batch transform', () => {
+  it('uses entityId fallback in batch transform (strips prefix)', () => {
     const jobs: BackendJob[] = [
-      { _id: 'j1', entityId: 'eid1', status: 'pending' },
+      { _id: 'j1', entityId: 'account-abc123', status: 'pending' },
     ]
-    const resolve = (key: string) => key === 'eid1' ? 'Entity Co' : 'Unknown'
+    const resolve = (key: string) => key === 'abc123' ? 'Entity Co' : 'Unknown'
 
     const result = transformJobs(jobs, resolve)
 
-    expect(result[0].accountKey).toBe('eid1')
+    expect(result[0].accountKey).toBe('abc123')
     expect(result[0].accountName).toBe('Entity Co')
   })
 })

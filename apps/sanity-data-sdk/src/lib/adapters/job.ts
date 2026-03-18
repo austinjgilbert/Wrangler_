@@ -83,11 +83,21 @@ function deriveModuleKey(job: BackendJob): string {
   }
 }
 
+/**
+ * Extract accountKey from entityId.
+ * Bulk /enrich/jobs returns entityId = "account-{accountKey}" — strip the prefix.
+ * Filtered /enrich/jobs?accountKey=x returns accountKey directly (no entityId).
+ */
+function extractAccountKey(entityId: string | undefined): string {
+  if (!entityId) return '';
+  return entityId.startsWith('account-') ? entityId.slice(8) : entityId;
+}
+
 /** Raw backend job document (subset of fields we use). */
 export interface BackendJob {
   _id: string;
   accountKey?: string;
-  entityId?: string;            // Some jobs use entityId instead of accountKey
+  entityId?: string;            // Bulk endpoint: "account-{accountKey}". Use extractAccountKey().
   stage?: number;
   progress?: number;            // Only present from /enrich/status, not /enrich/jobs
   status?: string;              // Raw status — normalized by JOB_STATUS_MAP
@@ -111,7 +121,7 @@ export function transformJob(backendJob: BackendJob, accountName: string): Job {
 
   return {
     id: backendJob._id,
-    accountKey: backendJob.accountKey || backendJob.entityId || '',
+    accountKey: backendJob.accountKey || extractAccountKey(backendJob.entityId),
     accountName,
     label: `🔬 ${accountName}`,
     moduleKey: deriveModuleKey(backendJob),
@@ -132,7 +142,7 @@ export function transformJobs(
   const jobs: Job[] = [];
   for (const job of backendJobs) {
     try {
-      const key = job.accountKey || job.entityId || '';
+      const key = job.accountKey || extractAccountKey(job.entityId);
       const name = resolveAccountName(key);
       jobs.push(transformJob(job, name));
     } catch (err) {
