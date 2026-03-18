@@ -21,7 +21,7 @@ export async function stage0_LoadAccount(context) {
   
   // Try to load existing account from Sanity
   const query = `*[_type == "account" && accountKey == $accountKey][0]`;
-  const existing = await groqQuery(client, query.replace('$accountKey', `"${accountKey}"`), {});
+  const existing = await groqQuery(client, query, { accountKey });
   
   if (existing) {
     return {
@@ -998,7 +998,7 @@ async function getHistoricalReport(accountKey, currentDateRange, groqQuery, clie
     
     // Query for historical report
     const query = `*[_id == $reportId][0]`;
-    const historicalReport = await groqQuery(client, query.replace('$reportId', `"${historicalReportId}"`), {});
+    const historicalReport = await groqQuery(client, query, { reportId: historicalReportId });
     
     if (historicalReport) {
       return {
@@ -1278,7 +1278,7 @@ async function getCompetitorOsintReports(accountKey, rootDomain, dateRange, groq
     // Query for all OSINT reports from the same period (excluding current account)
     const query = `*[_type == "osintReport" && accountKey != $accountKey && dateRange.start >= $startDate && dateRange.end <= $endDate] | order(updatedAt desc)[0...50]`;
     
-    const reports = await groqQuery(client, query.replace('$accountKey', `"${accountKey}"`).replace('$startDate', `"${dateRange.start}"`).replace('$endDate', `"${dateRange.end}"`), {});
+    const reports = await groqQuery(client, query, { accountKey, startDate: dateRange.start, endDate: dateRange.end });
     
     if (!reports || !Array.isArray(reports)) {
       return [];
@@ -1286,7 +1286,7 @@ async function getCompetitorOsintReports(accountKey, rootDomain, dateRange, groq
     
     // Also try to get reports from similar domains (competitors)
     const domainQuery = `*[_type == "osintReport" && rootDomain != $rootDomain && dateRange.start >= $startDate] | order(updatedAt desc)[0...30]`;
-    const domainReports = await groqQuery(client, domainQuery.replace('$rootDomain', `"${rootDomain}"`).replace('$startDate', `"${dateRange.start}"`), {});
+    const domainReports = await groqQuery(client, domainQuery, { rootDomain, startDate: dateRange.start });
     
     // Combine and deduplicate
     const allReports = [...(reports || []), ...(domainReports || [])];
