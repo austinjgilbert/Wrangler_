@@ -7133,11 +7133,11 @@ const workerHandler = {
       })());
       ctx.waitUntil(runRoute('/system/self-heal', {}));
     } else if (cron === '15 13 * * *') {
+      // Consolidated daily intelligence pipeline (was 3 separate crons: 13:15, 13:30, 13:45)
+      // Merged to stay within free-tier 3-cron limit. All tasks run concurrently via ctx.waitUntil.
       ctx.waitUntil(runRoute('/network/dailyRun', {}));
-    } else if (cron === '30 13 * * *') {
       ctx.waitUntil(runRoute('/analytics/operator-brief', {}));
       ctx.waitUntil(runRoute('/opportunities/daily', { date: now.slice(0, 10) }));
-    } else if (cron === '45 13 * * *') {
       ctx.waitUntil(runRoute('/analytics/nightly-intelligence', { date: now }));
     } else {
       ctx.waitUntil(runRoute('/molt/jobs/run', {}));

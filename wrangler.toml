@@ -3,7 +3,7 @@
 name = "website-scanner"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
-observability = { enabled = false }
+observability = { enabled = true }
 
 # Rate limiting (KV — top-level so all envs inherit)
 # Moltbook activity: GET/POST /moltbook/api/activity (preview namespace created; for production run: npx wrangler kv namespace create MOLTBOOK_ACTIVITY and set id)
@@ -19,11 +19,9 @@ port = 8787
 # Free-tier background scheduling (UTC).
 [triggers]
 crons = [
-  "*/15 * * * *",  # frequent job runner
-  "0 */6 * * *",   # DQ scan + enrich run
-  "15 13 * * *",   # network daily run
-  "30 13 * * *",   # opportunities daily
-  "45 13 * * *"    # nightly intelligence pipeline
+  "*/15 * * * *",  # frequent job runner (molt jobs + enrich process)
+  "0 */6 * * *",   # DQ scan + enrich + moltbook crawl + gap-fill + auto-learning + self-heal
+  "15 13 * * *"    # daily intelligence pipeline (network + opportunities + nightly intel)
 ]
 
 # Non-secret vars (override in env.* as needed)
