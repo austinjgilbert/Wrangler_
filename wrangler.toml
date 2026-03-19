@@ -29,10 +29,10 @@ crons = [
 # For local dev, set WORKER_API_KEY in .dev.vars
 # Legacy: MOLT_API_KEY and CHATGPT_API_KEY still work as fallbacks
 [vars]
-BASE_URL = "http://localhost:8787"
-MOLT_TOOL_BASE_URL = "http://localhost:8787"
+BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
+MOLT_TOOL_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 # Moltbook: same worker so /network and crawl use GET /moltbook/api/activity (KV). Or set to external Moltbook API base.
-MOLTBOOK_BASE_URL = "http://localhost:8787"
+MOLTBOOK_BASE_URL = "https://website-scanner.austin-gilbert.workers.dev"
 # Optional: comma-separated URLs of other AIs (activity/feed API). Crawl and /network merge these with primary.
 # MOLTBOOK_NETWORK_URLS = "https://other-ai.workers.dev,https://moltbook.example.com"
 WRANGLER_API_URL = ""
