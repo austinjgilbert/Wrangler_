@@ -759,9 +759,8 @@ let _reqEnv = null;
 
 const _ALLOWED_ORIGINS = new Set([
   'https://website-scanner.austin-gilbert.workers.dev',
+  'https://www.sanity.io',
   'chrome-extension://golckjfiiopfdidkohfmfdpeengneaip',
-  // TODO(@austin): Add Sanity Studio origin
-  // TODO(@austin): Add operator console origin if deployed separately
 ]);
 
 function _isAllowedOrigin(origin, env) {
@@ -6950,6 +6949,10 @@ const workerHandler = {
     } else {
       logPromise.catch(() => {});
     }
+
+    // ── Global CORS: ensure every response has CORS headers ──────────
+    // Individual handlers may already add them, but this catches any that don't.
+    response = addCorsHeaders(response);
 
     return response;
   },

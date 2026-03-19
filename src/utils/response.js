@@ -16,9 +16,8 @@ export function generateRequestId() {
 
 const ALLOWED_ORIGINS = new Set([
   'https://website-scanner.austin-gilbert.workers.dev',
+  'https://www.sanity.io',
   'chrome-extension://golckjfiiopfdidkohfmfdpeengneaip',
-  // TODO(@austin): Add Sanity Studio origin: 'https://<project>.sanity.studio'
-  // TODO(@austin): Add operator console origin if deployed separately
 ]);
 
 /**
