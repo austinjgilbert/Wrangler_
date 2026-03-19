@@ -19,6 +19,24 @@ export interface SanityAccountDoc {
 }
 
 /**
+ * Account shape from /operator/console/snapshot → data.entities.accounts.
+ * The snapshot handler transforms raw Sanity docs into this presentation shape.
+ * See: src/routes/operatorConsole.ts lines 431-442.
+ */
+export interface SnapshotAccount {
+  id: string;
+  accountKey: string;
+  name: string;
+  domain: string | null;
+  canonicalUrl: string | null;
+  completion: number;
+  opportunityScore: number;
+  missing: string[];
+  nextStages: string[];
+  technologies: string[];
+}
+
+/**
  * Transform a raw Sanity account document into the UI Account type.
  * Fails explicitly if required fields are missing.
  */
@@ -54,6 +72,43 @@ export function transformAccounts(docs: SanityAccountDoc[]): Account[] {
   for (const doc of docs) {
     try {
       accounts.push(transformAccount(doc));
+    } catch (err) {
+      console.warn('[adapters/account]', (err as Error).message);
+    }
+  }
+  return accounts;
+}
+
+/**
+ * Transform a snapshot account (from /operator/console/snapshot) into the UI Account type.
+ */
+export function transformSnapshotAccount(snap: SnapshotAccount): Account {
+  if (!snap.accountKey) {
+    throw new Error(`transformSnapshotAccount: missing accountKey on ${snap.id}`);
+  }
+
+  const score = snap.opportunityScore ?? 0;
+
+  return {
+    _id: snap.id,
+    accountKey: snap.accountKey,
+    companyName: snap.name || snap.domain || 'Unknown',
+    canonicalUrl: snap.canonicalUrl || '',
+    rootDomain: snap.domain || '',
+    opportunityScore: snap.opportunityScore,
+    completeness: snap.completion,
+    hot: score >= HOT_THRESHOLD,
+  };
+}
+
+/**
+ * Transform an array of snapshot accounts, filtering out invalid ones.
+ */
+export function transformSnapshotAccounts(snaps: SnapshotAccount[]): Account[] {
+  const accounts: Account[] = [];
+  for (const snap of snaps) {
+    try {
+      accounts.push(transformSnapshotAccount(snap));
     } catch (err) {
       console.warn('[adapters/account]', (err as Error).message);
     }

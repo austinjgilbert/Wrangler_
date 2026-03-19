@@ -2,8 +2,8 @@
  * AccountSelector — Searchable dropdown for switching between accounts.
  *
  * Data flow:
- * 1. Worker GET /accounts → raw Sanity docs
- * 2. transformAccounts() → Account[]
+ * 1. Worker GET /operator/console/snapshot → data.entities.accounts (SnapshotAccount[])
+ * 2. transformSnapshotAccounts() → Account[]
  * 3. sortAccountsForSelector() → sorted by completeness, then score
  * 4. User selects → onSelect(account) → CommandCenter switches context
  *
@@ -14,12 +14,12 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Account } from '../../lib/adapters';
 import {
-  transformAccounts,
+  transformSnapshotAccounts,
   sortAccountsForSelector,
   workerGet,
   getCached,
   setCache,
-  type SanityAccountDoc,
+  type SnapshotAccount,
 } from '../../lib/adapters';
 
 // ─── Props ──────────────────────────────────────────────────────────────
@@ -54,9 +54,11 @@ export function AccountSelector({ selectedAccount, onSelect, onClear }: AccountS
     setError(null);
 
     try {
-      const response = await workerGet<{ accounts: SanityAccountDoc[] }>('/accounts');
-      const raw = response.data?.accounts ?? [];
-      const transformed = transformAccounts(raw);
+      const response = await workerGet<{
+        entities: { accounts: SnapshotAccount[] };
+      }>('/operator/console/snapshot');
+      const raw = response.data?.entities?.accounts ?? [];
+      const transformed = transformSnapshotAccounts(raw);
       const sorted = sortAccountsForSelector(transformed);
       setAccounts(sorted);
       setCache('accounts', sorted);

@@ -28,8 +28,11 @@ export { URGENCY_THRESHOLDS } from './types';
 export {
   transformAccount,
   transformAccounts,
+  transformSnapshotAccount,
+  transformSnapshotAccounts,
   sortAccountsForSelector,
   type SanityAccountDoc,
+  type SnapshotAccount,
 } from './account';
 
 // Pipeline
