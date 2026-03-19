@@ -1,0 +1,122 @@
+{
+  "auditedAt": "2026-03-19T21:06:14.557Z",
+  "source": "/Users/austin.gilbert/Downloads/My Primary Named Accounts-2026-02-12-22-53-36.xlsx",
+  "totalInput": 485,
+  "totalValid": 320,
+  "totalInvalid": 165,
+  "duplicatesRemoved": 0,
+  "invalidBreakdown": {
+    "stock_ticker": {
+      "count": 81,
+      "examples": [
+        "aeo",
+        "agf",
+        "avlr",
+        "azn",
+        "biib",
+        "blk",
+        "bm",
+        "brc",
+        "byd",
+        "cf"
+      ]
+    },
+    "region_name": {
+      "count": 33,
+      "examples": [
+        "alabama",
+        "alberta",
+        "arizona",
+        "california",
+        "colorado",
+        "connecticut",
+        "florida",
+        "georgia",
+        "idaho",
+        "illinois"
+      ]
+    },
+    "generic_word": {
+      "count": 24,
+      "examples": [
+        "banks",
+        "camp",
+        "count",
+        "fresh",
+        "insurance",
+        "lab",
+        "materials",
+        "media",
+        "nile",
+        "nonprofit"
+      ]
+    },
+    "ip_address": {
+      "count": 12,
+      "examples": [
+        "0.0.0.1",
+        "0.0.0.10",
+        "0.0.0.11",
+        "0.0.0.12",
+        "0.0.0.2",
+        "0.0.0.3",
+        "0.0.0.4",
+        "0.0.0.5",
+        "0.0.0.6",
+        "0.0.0.7"
+      ]
+    },
+    "revenue_bucket": {
+      "count": 7,
+      "examples": [
+        "$100m-$250m",
+        "$10b+",
+        "$10m-$50m",
+        "$1b-$10b",
+        "$250m-$500m",
+        "$500m-$1b",
+        "$50m-$100m"
+      ]
+    },
+    "too_short": {
+      "count": 4,
+      "examples": [
+        "a10",
+        "arc",
+        "gap",
+        "gca"
+      ]
+    },
+    "bare_tld": {
+      "count": 4,
+      "examples": [
+        "au",
+        "ca",
+        "in",
+        "us"
+      ]
+    }
+  },
+  "validDomainsSample": [
+    "99designs.com",
+    "a10networks.com",
+    "acpny.com",
+    "acvauctions.com",
+    "agf.com",
+    "alexion.com",
+    "alludo",
+    "alludo.com",
+    "altec.com",
+    "aquent.com",
+    "arby's",
+    "arbys.com",
+    "arhaus",
+    "arhaus.com",
+    "arhs",
+    "articulate",
+    "articulate.com",
+    "assign.se",
+    "aten",
+    "autopoint"
+  ]
+}

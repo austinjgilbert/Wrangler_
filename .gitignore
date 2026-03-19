@@ -8,6 +8,7 @@ coverage/
 test-results/
 playwright-report/
 test-reports-*/
+qa/reports/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -46,4 +47,8 @@ sanity/dist/
 
 # Archives
 docs/archive/
+docs/history/
+
+# Generated
+openapi-gpt.json
 

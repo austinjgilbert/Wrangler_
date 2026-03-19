@@ -1,8 +1,0 @@
-{
-  "userPrompt": "Draft a follow-up to Jane about CMS modernization.",
-  "gptResponse": "Here is a concise follow-up draft...",
-  "sessionId": null,
-  "referencedAccounts": ["account.test"],
-  "referencedPeople": ["person.test"],
-  "contextTags": ["followup", "draft"]
-}
