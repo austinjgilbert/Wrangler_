@@ -153,9 +153,14 @@ export function CommandCenter() {
         trackPattern: true,
       });
 
+      // workerPost returns { ok, data: <Worker JSON>, status }
+      // Worker JSON is { ok, data: { top10Accounts, ... }, requestId }
+      // transformBriefingResponse expects { ok, data: RawGoodMorningResponse }
+      // So we need response.data.data (the inner data), not response.data
+      const workerBody = response.data as any;
       const transformed = transformBriefingResponse({
         ok: true,
-        data: response.data as any,
+        data: workerBody.data ?? workerBody,  // prefer inner .data, fallback to whole body
       });
 
       setBriefing(transformed);
