@@ -25,8 +25,9 @@ crons = [
 ]
 
 # Non-secret vars (override in env.* as needed)
-# MOLT_API_KEY is set via: wrangler secret put MOLT_API_KEY (production)
-# For local dev, set MOLT_API_KEY in .dev.vars
+# WORKER_API_KEY is set via: wrangler secret put WORKER_API_KEY (production)
+# For local dev, set WORKER_API_KEY in .dev.vars
+# Legacy: MOLT_API_KEY and CHATGPT_API_KEY still work as fallbacks
 [vars]
 BASE_URL = "http://localhost:8787"
 MOLT_TOOL_BASE_URL = "http://localhost:8787"
@@ -68,8 +69,9 @@ new_classes = ["OsintJobState"]
 # wrangler secret put SANITY_API_VERSION (optional, defaults to "2023-10-01")
 # wrangler secret put ADMIN_TOKEN (optional, for write operation protection)
 # wrangler secret put ADMIN_API_KEY (optional, for /osint/run endpoint)
-# wrangler secret put MOLT_API_KEY (optional; when set, required for /molt/* and /wrangler/ingest - use from ChatGPT/Custom GPTs via Bearer or X-API-Key)
-# wrangler secret put CHATGPT_API_KEY (alias for MOLT_API_KEY - same purpose)
+# wrangler secret put WORKER_API_KEY (required; authenticates all API requests - use from SDK app, Custom GPTs, Chrome extension via Bearer or X-API-Key)
+# wrangler secret put MOLT_API_KEY (legacy alias for WORKER_API_KEY - still works as fallback)
+# wrangler secret put CHATGPT_API_KEY (legacy alias for WORKER_API_KEY - still works as fallback)
 
 # Search provider (Brave Search API — free tier: 2000 queries/month)
 # Get a free key at: https://brave.com/search/api/

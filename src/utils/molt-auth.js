@@ -1,16 +1,16 @@
 /**
- * Molt / ChatGPT API authentication
+ * Worker API authentication
  *
  * Protects all endpoints via global auth middleware in routeRequest().
  * Use from: Custom GPTs, ChatGPT API, bridge apps, Chrome extension,
- * SDK app (via Next.js proxy), or any client that should call the worker.
+ * SDK app, or any client that should call the worker.
  *
  * Accepted credentials (checked in priority order):
  *   1. Authorization: Bearer <key>     (preferred)
  *   2. X-API-Key: <key>                (preferred)
  *   3. ?apiKey=<key> or ?key=<key>     (DEPRECATED — will be removed)
  *
- * Env: MOLT_API_KEY or CHATGPT_API_KEY (same secret; either name works).
+ * Env: WORKER_API_KEY (primary), MOLT_API_KEY or CHATGPT_API_KEY (legacy fallbacks).
  *
  * SECURITY: Fail-closed — if no key is configured, ALL requests are rejected
  * with 503. This prevents accidental open access during initial setup.
@@ -19,12 +19,12 @@
 import { createErrorResponse } from './response.js';
 
 /**
- * Get the configured API key for Molt/ChatGPT endpoints.
+ * Get the configured API key for worker endpoints.
  * @param {object} env - Worker env
  * @returns {string|null} - Configured key or null if not set
  */
 export function getMoltApiKey(env) {
-  return env.MOLT_API_KEY || env.CHATGPT_API_KEY || null;
+  return env.WORKER_API_KEY || env.MOLT_API_KEY || env.CHATGPT_API_KEY || null;
 }
 
 /**
@@ -41,13 +41,13 @@ export function checkMoltApiKey(request, env, requestId = null) {
   const configuredKey = getMoltApiKey(env);
   if (!configuredKey) {
     // FAIL CLOSED — no key configured = no access
-    console.error('[AUTH] MOLT_API_KEY not configured — rejecting request');
+    console.error('[AUTH] WORKER_API_KEY not configured — rejecting request');
     return {
       allowed: false,
       errorResponse: createErrorResponse(
         'CONFIG_ERROR',
-        'API authentication not configured. Set MOLT_API_KEY in worker secrets.',
-        { hint: 'wrangler secret put MOLT_API_KEY' },
+        'API authentication not configured. Set WORKER_API_KEY in worker secrets.',
+        { hint: 'wrangler secret put WORKER_API_KEY' },
         503,
         requestId
       ),
@@ -84,7 +84,7 @@ export function checkMoltApiKey(request, env, requestId = null) {
       errorResponse: createErrorResponse(
         'UNAUTHORIZED',
         'API key required. Send via Authorization: Bearer <key> or X-API-Key header.',
-        { hint: 'wrangler secret put MOLT_API_KEY' },
+        { hint: 'wrangler secret put WORKER_API_KEY' },
         401,
         requestId
       ),

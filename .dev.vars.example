@@ -19,8 +19,10 @@ MOLTBOOK_BASE_URL=
 WRANGLER_API_URL=
 WRANGLER_API_KEY=
 
-# --- Molt / API auth ---
-MOLT_API_KEY=
+# --- Worker API auth ---
+WORKER_API_KEY=
+# Legacy aliases (still work as fallbacks):
+# MOLT_API_KEY=
 # CHATGPT_API_KEY=
 
 # --- Slack ---

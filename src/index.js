@@ -7060,9 +7060,9 @@ const workerHandler = {
           headers: {
             'Content-Type': 'application/json',
             // Internal caller marker — bypasses external auth middleware.
-            // Uses MOLT_API_KEY as token: external callers can't forge it
+            // Uses WORKER_API_KEY as token: external callers can't forge it
             // (they'd need the key, which passes normal auth anyway).
-            'X-Internal-Caller': env.MOLT_API_KEY || '__cron__',
+            'X-Internal-Caller': env.WORKER_API_KEY || env.MOLT_API_KEY || '__cron__',
           },
           body: JSON.stringify(body),
         });
@@ -7088,7 +7088,7 @@ const workerHandler = {
               method: r.method,
               headers: new Headers([
                 ...r.headers.entries(),
-                ['X-Internal-Caller', env.MOLT_API_KEY || '__cron__'],
+                ['X-Internal-Caller', env.WORKER_API_KEY || env.MOLT_API_KEY || '__cron__'],
               ]),
               body: r.body,
             });
@@ -7360,7 +7360,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     // Internal cron/queue calls set X-Internal-Caller with the API key.
     // Can only be forged if caller already has the key (which passes normal auth anyway).
     const internalCaller = request.headers.get('X-Internal-Caller');
-    const configuredKey = env.MOLT_API_KEY || env.CHATGPT_API_KEY;
+    const configuredKey = env.WORKER_API_KEY || env.MOLT_API_KEY || env.CHATGPT_API_KEY;
     const isInternalCall = internalCaller
       && (internalCaller === configuredKey || internalCaller === '__cron__');
 
