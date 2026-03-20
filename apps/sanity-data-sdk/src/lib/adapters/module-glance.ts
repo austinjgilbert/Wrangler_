@@ -13,7 +13,7 @@
  *   Row 3: competitors, techstack, outreach
  */
 
-import type { GlanceContext, ModuleGlanceProps, PipelineStage } from './types';
+import type { GlanceContext, ModuleGlanceProps, PipelineStage, Signal } from './types';
 
 // ─── Module Configs ─────────────────────────────────────────────────────
 
@@ -167,13 +167,34 @@ function derivePeopleGlance(ctx: GlanceContext): ModuleGlanceProps {
 }
 
 function deriveSignalsGlance(ctx: GlanceContext): ModuleGlanceProps {
-  const { activeJobs } = ctx;
+  const { account, signals, activeJobs } = ctx;
+  const gaps: string[] = [];
+
+  // Filter signals for the selected account (case-insensitive match on accountName)
+  const accountName = account?.companyName?.trim().toLowerCase() ?? '';
+  const accountSignals = accountName
+    ? signals.filter((s: Signal) => s.accountName?.trim().toLowerCase() === accountName)
+    : [];
+
+  if (accountSignals.length === 0) gaps.push('No buying signals detected yet');
+
+  // Find the most recent signal for insight text
+  const latest = accountSignals.length > 0
+    ? accountSignals.reduce((a: Signal, b: Signal) =>
+        new Date(b.timestamp) > new Date(a.timestamp) ? b : a)
+    : null;
+
+  // Format signal type for display: 'technology_change' → 'Technology change'
+  const formatType = (t: string) => t.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
   return {
     moduleKey: 'signals',
-    primaryActionLabel: 'Scan Signals',
-    progress: 0,
-    gaps: ['Phase 2 — signal scanning not yet available'],
-    insight: 'Coming soon: buying signals from web activity',
+    primaryActionLabel: accountSignals.length > 0 ? 'Refresh Signals' : 'Scan Signals',
+    progress: accountSignals.length > 0 ? 100 : 0, // Binary: has signals or doesn't
+    gaps,
+    insight: latest
+      ? `${formatType(latest.signalType)} — ${latest.accountName}`
+      : account ? 'No signals yet — run a scan' : 'Select an account first',
     activeJob: activeJobs.get('signals') ?? null,
   };
 }
