@@ -767,10 +767,10 @@ function _isAllowedOrigin(origin, env) {
   if (!origin) return false;
   if (_ALLOWED_ORIGINS.has(origin)) return true;
 
-  // Sanity SDK apps run in iframes — the origin may be any https://*.sanity.io subdomain
+  // Sanity SDK apps run in iframes — the origin may be any https://*.sanity.io or https://*.sanity.studio subdomain
   try {
     const url = new URL(origin);
-    if (url.protocol === 'https:' && (url.hostname === 'sanity.io' || url.hostname.endsWith('.sanity.io'))) return true;
+    if (url.protocol === 'https:' && (url.hostname === 'sanity.io' || url.hostname.endsWith('.sanity.io') || url.hostname === 'sanity.studio' || url.hostname.endsWith('.sanity.studio'))) return true;
   } catch {}
 
   if (env?.ENVIRONMENT !== 'production' && origin.startsWith('http://localhost:')) return true;

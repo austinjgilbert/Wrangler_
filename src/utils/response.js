@@ -27,10 +27,10 @@ function isAllowedOrigin(origin, env) {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
 
-  // Sanity SDK apps run in iframes — the origin may be any https://*.sanity.io subdomain
+  // Sanity SDK apps run in iframes — the origin may be any https://*.sanity.io or https://*.sanity.studio subdomain
   try {
     const url = new URL(origin);
-    if (url.protocol === 'https:' && (url.hostname === 'sanity.io' || url.hostname.endsWith('.sanity.io'))) return true;
+    if (url.protocol === 'https:' && (url.hostname === 'sanity.io' || url.hostname.endsWith('.sanity.io') || url.hostname === 'sanity.studio' || url.hostname.endsWith('.sanity.studio'))) return true;
   } catch {}
 
   // Localhost only in non-production
