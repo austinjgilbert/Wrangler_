@@ -1859,10 +1859,46 @@
 
   // ─── Page context publishing ───────────────────────────────────────────
 
+  // ─── LinkedIn capture dedup ──────────────────────────────────────────
+  let lastLinkedInCaptureUrl = null;
+
+  function maybeLinkedInCapture() {
+    if (detectSource() !== 'linkedin') return;
+    if (!location.pathname.startsWith('/in/')) return;
+
+    // Dedup: don't re-capture the same profile URL on DOM mutations
+    const profileUrl = location.href.split('?')[0].split('#')[0];
+    if (profileUrl === lastLinkedInCaptureUrl) return;
+
+    const extracted = extractLinkedIn();
+    const person = extracted?.people?.[0];
+    if (!person?.name) return; // DOM not ready yet — will retry on next mutation
+
+    lastLinkedInCaptureUrl = profileUrl;
+    chrome.runtime.sendMessage({
+      type: 'wrangler:linkedinCapture',
+      profileUrl,
+      profile: {
+        name: person.name,
+        headline: person.headline || undefined,
+        location: person.location || undefined,
+        about: person.about || undefined,
+        experience: person.experience?.length ? person.experience : undefined,
+        education: person.education?.length ? person.education : undefined,
+        skills: person.skills?.length ? person.skills : undefined,
+        certifications: person.certifications?.length ? person.certifications : undefined,
+        publications: person.publications?.length ? person.publications : undefined,
+        languages: person.languages?.length ? person.languages : undefined,
+        connections: person.connections || undefined,
+      },
+    }).catch(() => {}); // fire-and-forget
+  }
+
   function publishPageContext() {
     const payload = buildPageContext();
     if (!payload) return;
     chrome.runtime.sendMessage({ type: 'wrangler:pageContext', payload }).catch(() => {});
+    maybeLinkedInCapture();
   }
 
   let publishTimer = null;

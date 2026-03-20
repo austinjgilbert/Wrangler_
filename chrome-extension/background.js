@@ -86,6 +86,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // async response
     }
 
+    case 'wrangler:linkedinCapture': {
+      const profile = message.profile;
+      const profileUrl = String(message.profileUrl || '').trim();
+      if (!profile?.name || !profileUrl) {
+        sendResponse({ ok: false, error: 'Missing profile data or URL' });
+        return false;
+      }
+      handleLinkedInCapture(profileUrl, profile)
+        .then((result) => sendResponse({ ok: true, data: result }))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true; // async response
+    }
+
     case 'wrangler:ask': {
       const prompt = String(message.prompt || '').trim();
       if (!prompt) {
@@ -262,6 +275,35 @@ async function requestPageIntel(payload, settings) {
   }));
   if (!data.ok) {
     throw new Error(data?.error?.message || 'Page analysis failed');
+  }
+  return data.data || null;
+}
+
+async function handleLinkedInCapture(profileUrl, profile) {
+  const settings = await getSettings();
+  if (!settings.apiKey) {
+    throw new Error('API key not configured. Open Settings to add your key.');
+  }
+  const workerUrl = normalizeWorkerUrl(settings.workerUrl);
+  const response = await fetch(`${workerUrl}/extension/linkedin-capture`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': settings.apiKey,
+    },
+    body: JSON.stringify({
+      profileUrl,
+      capturedAt: new Date().toISOString(),
+      source: 'extension_dom',
+      profile,
+    }),
+  });
+  const data = await response.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response from worker' },
+  }));
+  if (!data.ok) {
+    throw new Error(data?.error?.message || 'LinkedIn capture failed');
   }
   return data.data || null;
 }
