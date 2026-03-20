@@ -23,11 +23,11 @@ export interface PipelineBarProps {
 // ─── Status Styles ──────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, { bg: string; border: string; text: string }> = {
-  'done-data':    { bg: '#22c55e', border: '#22c55e', text: '#fff' },
-  'done-nodata':  { bg: 'transparent', border: '#f59e0b', text: '#f59e0b' },
-  'active':       { bg: '#3b82f6', border: '#3b82f6', text: '#fff' },
-  'pending':      { bg: '#334155', border: '#475569', text: '#64748b' },
-  'failed':       { bg: '#ef4444', border: '#ef4444', text: '#fff' },
+  'done-data':    { bg: '#408020', border: '#408020', text: '#fff' },
+  'done-nodata':  { bg: 'transparent', border: '#d97706', text: '#d97706' },
+  'active':       { bg: '#4060e0', border: '#4060e0', text: '#fff' },
+  'pending':      { bg: '#eaeaea', border: '#d0d0d8', text: '#a0a0a8' },
+  'failed':       { bg: '#dc2626', border: '#dc2626', text: '#fff' },
 };
 
 function getStageStyle(stage: PipelineStage) {
@@ -122,8 +122,8 @@ export function PipelineBar({ stages, compact = false }: PipelineBarProps) {
                   style={{
                     backgroundColor:
                       stage.status === 'done' || stage.status === 'active'
-                        ? '#334155'
-                        : '#1e293b',
+                        ? '#d0d0d8'
+                        : '#eaeaea',
                   }}
                 />
               )}
@@ -141,7 +141,7 @@ export function PipelineBar({ stages, compact = false }: PipelineBarProps) {
               </div>
               <span
                 className="pipeline-bar__stage-label"
-                style={{ color: style.text === '#fff' ? '#f8fafc' : style.text }}
+                style={{ color: style.text === '#fff' ? '#303038' : style.text }}
               >
                 {stage.label}
               </span>
@@ -158,7 +158,7 @@ export function PipelineBar({ stages, compact = false }: PipelineBarProps) {
           className="pipeline-bar__overall-fill"
           style={{
             width: `${progress}%`,
-            backgroundColor: failedCount > 0 ? '#ef4444' : '#22c55e',
+            backgroundColor: failedCount > 0 ? '#dc2626' : '#408020',
           }}
         />
       </div>

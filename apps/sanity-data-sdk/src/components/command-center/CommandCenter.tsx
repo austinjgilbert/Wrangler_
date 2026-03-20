@@ -72,13 +72,13 @@ function showToast(message: string) {
     bottom: '60px',
     left: '50%',
     transform: 'translateX(-50%)',
-    background: '#334155',
-    color: '#f8fafc',
+    background: '#303038',
+    color: '#ffffff',
     padding: '10px 20px',
     borderRadius: '8px',
     fontSize: '13px',
     zIndex: '200',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     transition: 'opacity 200ms',
   });
   document.body.appendChild(el);

@@ -27,16 +27,16 @@ export interface ModuleConfig {
 export const MODULE_CONFIGS: ModuleConfig[] = [
   // Row 1
   { key: 'profile',     icon: '🏢', label: 'Company Profile',    color: '#3b82f6' },
-  { key: 'opportunity', icon: '🎯', label: 'Opportunity Score',  color: '#f59e0b' },
+  { key: 'opportunity', icon: '🎯', label: 'Opportunity Score',  color: '#d97706' },
   { key: 'approach',    icon: '🧭', label: 'Best Approach',      color: '#8b5cf6' },
   // Row 2
   { key: 'research',    icon: '🔬', label: 'Deep Research',      color: '#06b6d4' },
   { key: 'people',      icon: '👥', label: 'Key People',         color: '#ec4899' },
-  { key: 'signals',     icon: '📡', label: 'Buying Signals',     color: '#10b981' },
+  { key: 'signals',     icon: '📡', label: 'Buying Signals',     color: '#059669' },
   // Row 3
   { key: 'competitors', icon: '⚔️', label: 'Competitors',        color: '#ef4444' },
   { key: 'techstack',   icon: '🔧', label: 'Tech Stack',         color: '#6366f1' },
-  { key: 'outreach',    icon: '📨', label: 'Outreach Queue',     color: '#14b8a6' },
+  { key: 'outreach',    icon: '📨', label: 'Outreach Queue',     color: '#0d9488' },
 ];
 
 // ─── Deriver Functions ──────────────────────────────────────────────────

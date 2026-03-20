@@ -136,8 +136,8 @@ export function AccountSelector({ selectedAccount, onSelect, onClear }: AccountS
               <span
                 className="account-selector__score"
                 style={{
-                  color: selectedAccount.opportunityScore >= 70 ? '#22c55e' :
-                         selectedAccount.opportunityScore >= 40 ? '#f59e0b' : '#64748b',
+                  color: selectedAccount.opportunityScore >= 70 ? '#408020' :
+                         selectedAccount.opportunityScore >= 40 ? '#d97706' : '#a0a0a8',
                 }}
               >
                 {selectedAccount.opportunityScore}
