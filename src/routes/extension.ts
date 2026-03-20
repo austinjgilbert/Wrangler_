@@ -541,7 +541,14 @@ export async function handleExtensionPageIntel(request: Request, requestId: stri
 
 export async function handleExtensionAsk(request: Request, requestId: string, env: any) {
   try {
-    const body: any = await request.json().catch(() => ({}));
+    // ── Size gate: reject oversized payloads before parsing ─────────
+    const { isBodyWithinSizeLimit, sanitizeExtensionPayload, stripHtmlTags } = await import('../utils/extension-sanitize.js');
+    if (!isBodyWithinSizeLimit(request)) {
+      return createErrorResponse('PAYLOAD_TOO_LARGE', 'Request body exceeds 50KB limit', {}, 413, requestId);
+    }
+
+    const rawBody: any = await request.json().catch(() => ({}));
+    const body = sanitizeExtensionPayload(rawBody);
     const prompt = String(body?.prompt || '').trim();
     const page = body?.page || null;
     if (!prompt) {
@@ -576,6 +583,7 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
     // ── P0-6: Store the Q&A exchange as an interaction ──────────────────
     // Fire-and-forget: don't block the response on storage success.
     // If storage fails, the user still gets their answer.
+    // SECURITY: Strip HTML before storage — sanitize-on-write, not sanitize-on-read.
     const { storeInteraction } = await import('../services/interaction-storage.js');
     storeInteraction(
       groqQuery,
@@ -584,8 +592,8 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
       client,
       {
         sessionId: body?.sessionId || null,
-        userPrompt: prompt,
-        gptResponse: answer,
+        userPrompt: stripHtmlTags(prompt),
+        gptResponse: stripHtmlTags(answer),
         domain: intel?.primaryAccount?.domain || '',
         accountKey: intel?.primaryAccount?.accountKey || '',
         referencedAccounts: intel?.primaryAccount?._id
@@ -772,6 +780,8 @@ export async function handleExtensionLearn(request: Request, requestId: string, 
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
+// SECURITY: All GROQ queries in buildRabbitIntel use parameterized $params, not string
+// interpolation. Verified safe against injection — see secops Phase 1 Finding 4.
 export async function buildRabbitIntel(body: CapturePayload, env: any, client: any) {
   const { groqQuery, extractDomain, generateAccountKey, normalizeCanonicalUrl } = await import('../sanity-client.js');
   const pageDomain = extractDomain(body.contextUrl || body.url || '');
@@ -1132,14 +1142,20 @@ function extractContactSignals(body: CapturePayload) {
 }
 
 export function buildRabbitAnswer(prompt: string, intel: any, contextSummary: string) {
+  // SECURITY: stripHtmlTags applied to final output — all interpolated values
+  // (page title, account name, opportunity titles, contact labels) may contain
+  // untrusted data from page scraping or Sanity. Plain text answer should never
+  // contain HTML tags. Import is async so we use a local strip here.
+  const strip = (v: string) => String(v || '').replace(/<[^>]*>/g, '');
+
   const lines = [
-    `Question: ${prompt}`,
+    `Question: ${strip(prompt)}`,
     '',
-    `Current page: ${intel?.page?.title || 'Unknown page'}${intel?.page?.source ? ` (${sourceLabel(intel.page.source)})` : ''}`,
+    `Current page: ${strip(intel?.page?.title) || 'Unknown page'}${intel?.page?.source ? ` (${sourceLabel(intel.page.source)})` : ''}`,
   ];
 
   if (intel?.primaryAccount) {
-    const accountName = intel.primaryAccount.companyName || intel.primaryAccount.name || intel.primaryAccount.domain;
+    const accountName = strip(intel.primaryAccount.companyName || intel.primaryAccount.name || intel.primaryAccount.domain);
     lines.push(`Known account: ${accountName}`);
     if (intel.primaryAccount.profileCompleteness?.score != null) {
       lines.push(`Account completeness: ${intel.primaryAccount.profileCompleteness.score}%`);
@@ -1149,16 +1165,16 @@ export function buildRabbitAnswer(prompt: string, intel: any, contextSummary: st
   if ((intel?.opportunities || []).length > 0) {
     lines.push('', 'What Rabbit sees right now:');
     for (const item of intel.opportunities.slice(0, 4)) {
-      lines.push(`- ${item.title || item}`);
+      lines.push(`- ${strip(item.title || item)}`);
     }
   }
 
   if ((intel?.contacts || []).length > 0) {
-    lines.push('', `Contact details surfaced: ${(intel.contacts || []).slice(0, 4).map((item: any) => item.label || item.value).join(', ')}`);
+    lines.push('', `Contact details surfaced: ${(intel.contacts || []).slice(0, 4).map((item: any) => strip(item.label || item.value)).join(', ')}`);
   }
 
   if ((intel?.connections || []).length > 0) {
-    lines.push(`Warm paths: ${(intel.connections || []).slice(0, 3).map((item: any) => `${item.name}${item.title ? ` (${item.title})` : ''}`).join(', ')}`);
+    lines.push(`Warm paths: ${(intel.connections || []).slice(0, 3).map((item: any) => `${strip(item.name)}${item.title ? ` (${strip(item.title)})` : ''}`).join(', ')}`);
   }
 
   lines.push('', 'Stored system context:');
@@ -1167,7 +1183,7 @@ export function buildRabbitAnswer(prompt: string, intel: any, contextSummary: st
   if ((intel?.nextActions || []).length > 0) {
     lines.push('', 'Best next moves:');
     for (const step of intel.nextActions.slice(0, 5)) {
-      lines.push(`- ${step}`);
+      lines.push(`- ${strip(step)}`);
     }
   }
 
