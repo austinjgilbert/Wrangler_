@@ -20,7 +20,7 @@ const config: SanityConfig[] = [
 ];
 
 function readInitialView(): View {
-  if (typeof window === 'undefined') return 'dashboard'
+  if (typeof window === 'undefined') return 'command-center'
   return readViewFromSearch(window.location.search)
 }
 
@@ -52,20 +52,25 @@ export default function App() {
     <div className="app-shell">
       <div className="app-header">
         <div>
-          <p className="eyebrow">Sanity SDK App</p>
-          <h1>DataViewer</h1>
-          <p className="lede">
-            Full system view: dashboard, accounts, research jobs, activity, people, and technologies from Sanity and the worker.
-          </p>
+          <h1>⚡ Wrangler</h1>
+          <p className="lede">Sales intelligence command center</p>
         </div>
       </div>
 
       <nav className="app-nav">
-        {NAV.map((item) => (
+        <button
+          type="button"
+          className={`nav-tab nav-tab--primary ${view === 'command-center' ? 'active' : ''}`}
+          onClick={() => navigateToView('command-center')}
+        >
+          ⚡ Command Center
+        </button>
+        <span className="nav-divider" />
+        {NAV.filter(item => item.id !== 'command-center').map((item) => (
           <button
             key={item.id}
             type="button"
-            className={`nav-tab ${view === item.id ? 'active' : ''}`}
+            className={`nav-tab nav-tab--secondary ${view === item.id ? 'active' : ''}`}
             onClick={() => navigateToView(item.id)}
           >
             {item.label}

@@ -600,28 +600,67 @@ input {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .nav-tab {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(8, 17, 31, 0.64);
-  color: #dbeafe;
   cursor: pointer;
   font: inherit;
 }
 
-.nav-tab:hover {
-  background: rgba(37, 99, 235, 0.12);
+/* Primary tab — Command Center hero */
+.nav-tab--primary {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
 }
 
-.nav-tab.active {
-  background: rgba(37, 99, 235, 0.2);
-  border-color: rgba(96, 165, 250, 0.7);
+.nav-tab--primary:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.nav-tab--primary.active {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.7);
+  color: #fde68a;
+}
+
+/* Divider between primary and secondary */
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(148, 163, 184, 0.25);
+  align-self: center;
+}
+
+/* Secondary tabs — smaller, quieter */
+.nav-tab--secondary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.nav-tab--secondary:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #dbeafe;
+}
+
+.nav-tab--secondary.active {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #dbeafe;
 }
 
 .app-main {

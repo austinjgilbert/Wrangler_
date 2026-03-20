@@ -17,5 +17,5 @@ export function isView(value: string | null): value is View {
 export function readViewFromSearch(search: string): View {
   const params = new URLSearchParams(search)
   const view = params.get('view')
-  return isView(view) ? view : 'dashboard'
+  return isView(view) ? view : 'command-center'
 }
