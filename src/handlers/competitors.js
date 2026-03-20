@@ -11,6 +11,7 @@ import {
 } from '../services/competitor-research.js';
 
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { hydratePayload } from '../lib/payload-helpers.js';
 
 /**
  * Research competitors for account
@@ -54,13 +55,14 @@ export async function handleResearchCompetitors(
       
       const packQuery = `*[_type == "accountPack" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
       const pack = await groqQuery(client, packQuery, { dotId: `accountPack.${accountKey}`, dashId: `accountPack-${accountKey}`, key: accountKey });
-      accountResearchSet = pack?.payload?.researchSet || null;
+      const packPayload = hydratePayload(pack);
+      accountResearchSet = packPayload.researchSet || null;
       
         // Merge scan data from accountPack into account object for competitor discovery
-        if (pack?.payload?.scan) {
+        if (packPayload.scan) {
           account = {
             ...account,
-            ...pack.payload.scan,
+            ...packPayload.scan,
             domain: account?.domain || pack?.domain || accountKeyFinal,
             canonicalUrl: account?.canonicalUrl || pack?.canonicalUrl,
             companyName: account?.companyName || pack?.companyName,
@@ -85,13 +87,14 @@ export async function handleResearchCompetitors(
         
         const packQuery = `*[_type == "accountPack" && (_id == $dotId || _id == $dashId || accountKey == $key)][0]`;
         const pack = await groqQuery(client, packQuery, { dotId: `accountPack.${accountKeyFinal}`, dashId: `accountPack-${accountKeyFinal}`, key: accountKeyFinal });
-        accountResearchSet = pack?.payload?.researchSet || null;
+        const packPayload2 = hydratePayload(pack);
+        accountResearchSet = packPayload2.researchSet || null;
         
         // Merge scan data from accountPack into account object for competitor discovery
-        if (pack?.payload?.scan) {
+        if (packPayload2.scan) {
           account = {
             ...account,
-            ...pack.payload.scan,
+            ...packPayload2.scan,
             domain: account?.domain || pack?.domain || accountKeyFinal,
             canonicalUrl: account?.canonicalUrl || pack?.canonicalUrl,
             companyName: account?.companyName || pack?.companyName,

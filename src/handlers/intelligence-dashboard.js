@@ -201,14 +201,14 @@ async function getAccountsWithFields(groqQuery, client) {
 async function getAccountPacks(groqQuery, client) {
   const query = `*[_type == "accountPack"] {
     _id, accountKey,
-    "hasScan": defined(payload.scan),
-    "hasDiscovery": defined(payload.discovery) || defined(payload.researchSet.discovery),
-    "hasCrawl": defined(payload.crawl) || defined(payload.researchSet.crawl),
-    "hasEvidence": defined(payload.evidence) || defined(payload.researchSet.evidence),
-    "hasLinkedin": defined(payload.linkedin) || defined(payload.researchSet.linkedin),
-    "hasBrief": defined(payload.brief) || defined(payload.researchSet.brief),
-    "hasVerification": defined(payload.verification) || defined(payload.researchSet.verification),
-    "hasCompetitors": defined(payload.competitors),
+    "hasScan": payloadIndex.hasScan,
+    "hasDiscovery": payloadIndex.hasDiscovery,
+    "hasCrawl": payloadIndex.hasCrawl,
+    "hasEvidence": payloadIndex.hasEvidence,
+    "hasLinkedin": payloadIndex.hasLinkedin,
+    "hasBrief": payloadIndex.hasBrief,
+    "hasVerification": payloadIndex.hasVerification,
+    "hasCompetitors": payloadIndex.hasCompetitors,
     _updatedAt
   }`;
   return await groqQuery(client, query, {}) || [];

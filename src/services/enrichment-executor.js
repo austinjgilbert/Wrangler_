@@ -12,6 +12,7 @@ import {
 } from './research-pipeline.js';
 import { getDocument } from '../sanity-client.js';
 import { executeEnrichmentStage, trimAccountPackPayload } from './enrichment-service.js';
+import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
 
 /**
  * Execute enrichment pipeline stages automatically
@@ -83,7 +84,7 @@ export async function executeEnrichmentPipeline(
         const packId = `accountPack-${currentJob.accountKey}`;
         try {
           const existingPack = await getDocument(client, packId);
-          const existingPayload = existingPack?.payload || {};
+          const existingPayload = hydratePayload(existingPack);
           const updatedPayload = trimAccountPackPayload({
             ...existingPayload,
             scan: researchSet.scan || existingPayload.scan || null,
@@ -100,7 +101,8 @@ export async function executeEnrichmentPipeline(
           if (existingPack && existingPack._id) {
             await patchDocument(client, packId, {
               set: {
-                payload: updatedPayload,
+                payloadIndex: buildPayloadIndex(updatedPayload),
+                payloadData: JSON.stringify(updatedPayload),
                 updatedAt: now,
               },
             });
@@ -111,7 +113,8 @@ export async function executeEnrichmentPipeline(
               accountKey: currentJob.accountKey,
               canonicalUrl: currentJob.canonicalUrl || '',
               domain: (currentJob.canonicalUrl && new URL(currentJob.canonicalUrl).hostname) || '',
-              payload: updatedPayload,
+              payloadIndex: buildPayloadIndex(updatedPayload),
+              payloadData: JSON.stringify(updatedPayload),
               createdAt: now,
               updatedAt: now,
             });

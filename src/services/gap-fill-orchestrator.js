@@ -18,6 +18,7 @@ import {
   buildCompletenessSummary,
   needsBackgroundWork,
 } from './account-completeness.js';
+import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
 
 // ─── Main Entry Point ───────────────────────────────────────────────────
 
@@ -149,11 +150,12 @@ export async function triggerGapFill(opts) {
             accountKey: created.accountKey,
             canonicalUrl: resolvedUrl,
             domain: normalizeDomain(resolvedUrl),
-            payload: {},
+            payloadIndex: buildPayloadIndex({}),
+            payloadData: JSON.stringify({}),
             createdAt: now,
             updatedAt: now,
           });
-          packToUse = { _id: packId, accountKey: created.accountKey, payload: {} };
+          packToUse = { _id: packId, accountKey: created.accountKey, payloadData: '{}' };
         }
       } catch (ensureErr) {
         console.error('Gap-fill ensure account/pack error:', ensureErr?.message);
@@ -313,7 +315,7 @@ async function kickstartFirstStage(groqQuery, upsertDocument, patchDocument, cli
  * Build a classification object from available account data.
  */
 function buildClassification(account, accountPack) {
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
   const scan = payload.scan || payload.researchSet?.scan || {};
   const brief = payload.brief || payload.researchSet?.brief || {};
 
@@ -391,7 +393,8 @@ function buildClassification(account, accountPack) {
 async function triggerCompetitorResearch(groqQuery, upsertDocument, patchDocument, client, accountKey, account, accountPack) {
   try {
     const { researchCompetitors } = await import('./competitor-research.js');
-    const researchSet = accountPack?.payload?.researchSet || null;
+    const packPayload = hydratePayload(accountPack);
+    const researchSet = packPayload.researchSet || null;
 
     const result = await researchCompetitors(
       groqQuery, upsertDocument, patchDocument, client,
@@ -399,16 +402,22 @@ async function triggerCompetitorResearch(groqQuery, upsertDocument, patchDocumen
       { competitorLimit: 5 },
     );
 
-    // Store competitor data in accountPack
+    // Store competitor data in accountPack (read-modify-write: can't dot-notation into blob)
     if (result?.competitors?.length) {
       const packId = `accountPack-${accountKey}`;
+      const currentPack = await safeQuery(groqQuery, client,
+        `*[_type == "accountPack" && _id == $id][0]`,
+        { id: packId });
+      const fullPayload = hydratePayload(currentPack);
+      fullPayload.competitors = {
+        competitors: result.competitors,
+        opportunities: result.opportunities || [],
+        researchedAt: new Date().toISOString(),
+      };
       await patchDocument(client, packId, {
         set: {
-          'payload.competitors': {
-            competitors: result.competitors,
-            opportunities: result.opportunities || [],
-            researchedAt: new Date().toISOString(),
-          },
+          payloadIndex: buildPayloadIndex(fullPayload),
+          payloadData: JSON.stringify(fullPayload),
           updatedAt: new Date().toISOString(),
         },
       });

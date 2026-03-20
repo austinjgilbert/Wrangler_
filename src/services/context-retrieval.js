@@ -292,7 +292,8 @@ export async function getAccountIntelligenceForContext(
     }
   }
 
-  const payload = pack?.payload || {};
+  const { hydratePayload } = await import('../lib/payload-helpers.js');
+  const payload = hydratePayload(pack);
   if (payload.scan?.summary) {
     parts.push(`Scan summary: ${payload.scan.summary}`);
   }

@@ -10,6 +10,7 @@ import {
   findOrCreateMasterAccount,
   normalizeDomain,
 } from './sanity-account.js';
+import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
 
 /**
  * Store account pack with deduplication
@@ -68,7 +69,7 @@ export async function storeAccountPackWithDeduplication(
   
   if (hasExisting) {
     // Update existing pack
-    const currentPayload = existing.payload || {};
+    const currentPayload = hydratePayload(existing);
     const updatedPayload = {
       ...currentPayload,
       ...payloadUpdate,
@@ -86,7 +87,8 @@ export async function storeAccountPackWithDeduplication(
     
     await patchDocument(client, packId, {
       set: {
-        payload: updatedPayload,
+        payloadIndex: buildPayloadIndex(updatedPayload),
+        payloadData: JSON.stringify(updatedPayload),
         updatedAt: now,
         history: history,
         // Ensure accountKey matches master account
@@ -114,7 +116,8 @@ export async function storeAccountPackWithDeduplication(
       domain: normalizeDomain(canonicalUrl),
       createdAt: now,
       updatedAt: now,
-      payload: payloadUpdate,
+      payloadIndex: buildPayloadIndex(payloadUpdate),
+      payloadData: JSON.stringify(payloadUpdate),
       history: type === 'scan' ? [{
         type: 'scan',
         data: data,

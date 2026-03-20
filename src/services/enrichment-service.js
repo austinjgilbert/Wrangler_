@@ -8,6 +8,7 @@
  * - Allows recall of enriched data
  */
 
+import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
 import {
   createPipelineJob,
   executeNextPipelineStage,
@@ -397,7 +398,8 @@ async function ensureAccountPack(groqQuery, upsertDocument, client, accountKey, 
     accountKey,
     canonicalUrl,
     domain: (canonicalUrl && new URL(canonicalUrl).hostname.replace(/^www\./, '')) || '',
-    payload: {},
+    payloadIndex: buildPayloadIndex({}),
+    payloadData: JSON.stringify({}),
     createdAt: now,
     updatedAt: now,
   };
@@ -407,7 +409,7 @@ async function ensureAccountPack(groqQuery, upsertDocument, client, accountKey, 
 
 async function hydrateJobResults(groqQuery, upsertDocument, client, job) {
   const pack = await ensureAccountPack(groqQuery, upsertDocument, client, job.accountKey, job.canonicalUrl);
-  const payload = pack?.payload || {};
+  const payload = hydratePayload(pack);
   return {
     [PIPELINE_STAGES.INITIAL_SCAN]: payload.scan || payload.researchSet?.scan || null,
     [PIPELINE_STAGES.DISCOVERY]: payload.discovery || payload.researchSet?.discovery || null,
@@ -438,7 +440,7 @@ async function buildVirtualJobFromStoredState(groqQuery, upsertDocument, client,
   ]);
   const canonicalUrl = pack?.canonicalUrl || account?.canonicalUrl || (account?.domain ? `https://${account.domain}` : null) || (account?.rootDomain ? `https://${account.rootDomain}` : null);
   if (!canonicalUrl) return null;
-  const payload = pack?.payload || {};
+  const payload = hydratePayload(pack);
   const persistedState = (await readVirtualEnrichmentState(env, accountKey)) || payload.enrichmentState || {};
   const enrichmentState = (!payload.researchSet && ['complete', 'partial'].includes(persistedState.status))
     ? {}
@@ -498,14 +500,15 @@ async function persistStageResult(groqQuery, upsertDocument, patchDocument, clie
   const payloadField = mapStageToPayloadField(stage);
   if (!payloadField) return;
   const pack = await ensureAccountPack(groqQuery, upsertDocument, client, job.accountKey, job.canonicalUrl);
-  const existingPayload = pack?.payload || {};
+  const existingPayload = hydratePayload(pack);
   const nextPayload = {
     ...existingPayload,
     [payloadField]: sanitizeStageResult(stage, result),
   };
   await patchDocument(client, pack._id, {
     set: {
-      payload: nextPayload,
+      payloadIndex: buildPayloadIndex(nextPayload),
+      payloadData: JSON.stringify(nextPayload),
       updatedAt: new Date().toISOString(),
     },
   });
@@ -513,7 +516,7 @@ async function persistStageResult(groqQuery, upsertDocument, patchDocument, clie
 
 async function storePackBackedJob(client, patchDocument, pack, job) {
   const payload = trimAccountPackPayload({
-    ...(pack?.payload || {}),
+    ...hydratePayload(pack),
     enrichmentState: {
       jobId: job.jobId,
       goalKey: job.goalKey || 'full_pipeline',
@@ -536,7 +539,8 @@ async function storePackBackedJob(client, patchDocument, pack, job) {
   });
   await patchDocument(client, pack._id, {
     set: {
-      payload,
+      payloadIndex: buildPayloadIndex(payload),
+      payloadData: JSON.stringify(payload),
       updatedAt: new Date().toISOString(),
     },
   });
@@ -663,7 +667,8 @@ export async function getActiveEnrichmentJob(groqQuery, client, accountKey, goal
     }
 
     const pack = await getAccountPack(groqQuery, client, accountKey);
-    const packJob = buildPackBackedJob(pack, pack?.payload?.enrichmentState || null);
+    const packPayload = hydratePayload(pack);
+    const packJob = buildPackBackedJob(pack, packPayload.enrichmentState || null);
     if (!packJob) return null;
     if (!['pending', 'in_progress'].includes(packJob.status)) return null;
     if (goalKey && packJob.goalKey !== goalKey) return null;
@@ -689,8 +694,9 @@ export async function getEnrichmentJob(groqQuery, client, jobId) {
       return normalizeJobDocument(job);
     }
 
-    const pack = await groqQuery(client, `*[_type == "accountPack" && payload.enrichmentState.jobId == $jobId][0]`, { jobId });
-    return buildPackBackedJob(pack, pack?.payload?.enrichmentState || null);
+    const pack = await groqQuery(client, `*[_type == "accountPack" && payloadIndex.enrichmentState.jobId == $jobId][0]`, { jobId });
+    const packPayload = hydratePayload(pack);
+    return buildPackBackedJob(pack, packPayload.enrichmentState || null);
   } catch (e) {
     return null;
   }
@@ -769,7 +775,8 @@ export async function executeEnrichmentStage(
       };
 
   if (job._type === 'accountPack.enrichmentState' && job.packId) {
-    await storePackBackedJob(client, patchDocument, { _id: job.packId, payload: (await getAccountPack(groqQuery, client, job.accountKey))?.payload || {} }, updatedJob);
+    const existingPack = await getAccountPack(groqQuery, client, job.accountKey);
+    await storePackBackedJob(client, patchDocument, existingPack || { _id: job.packId }, updatedJob);
   } else {
     await patchDocument(client, jobId, nextJobPatch);
   }
@@ -786,7 +793,7 @@ export async function executeEnrichmentStage(
       const existingPack = sanityClient.getDocument ? await sanityClient.getDocument(client, packId) : null;
       
       // Merge researchSet into existing payload
-      const existingPayload = existingPack?.payload || {};
+      const existingPayload = hydratePayload(existingPack);
       const updatedPayload = trimAccountPackPayload({
         ...existingPayload,
         scan: researchSet.scan || existingPayload.scan || null,
@@ -826,9 +833,11 @@ export async function executeEnrichmentStage(
             }
           : updatedPayload;
 
+      const finalPayload = trimAccountPackPayload(payloadWithState);
       await patchDocument(client, packId, {
         set: {
-          payload: trimAccountPackPayload(payloadWithState),
+          payloadIndex: buildPayloadIndex(finalPayload),
+          payloadData: JSON.stringify(finalPayload),
           updatedAt: new Date().toISOString(),
         },
       });
@@ -862,10 +871,13 @@ function patchDocumentShim(upsertDocument) {
       throw new Error('accountPack id required');
     }
     const existingPack = await getDocumentForPatch(client, packIdValue);
-    const nextPayload = trimAccountPackPayload(operations?.set?.payload || existingPack?.payload || {});
+    const nextPayload = trimAccountPackPayload(operations?.set?.payloadData
+      ? JSON.parse(operations.set.payloadData)
+      : hydratePayload(existingPack));
     return upsertDocument(client, {
       ...(existingPack || { _type: 'accountPack', _id: packIdValue }),
-      payload: nextPayload,
+      payloadIndex: buildPayloadIndex(nextPayload),
+      payloadData: JSON.stringify(nextPayload),
       updatedAt: operations?.set?.updatedAt || new Date().toISOString(),
     });
   };
@@ -891,11 +903,12 @@ export async function getCompleteResearchSet(groqQuery, client, accountKey) {
     const raw = await groqQuery(client, query, { packId });
     const pack = Array.isArray(raw) && raw.length ? raw[0] : raw;
     
-    if (!pack || !pack.payload?.researchSet) {
+    const payload = hydratePayload(pack);
+    if (!payload.researchSet) {
       return null;
     }
     
-    return pack.payload.researchSet;
+    return payload.researchSet;
   } catch (e) {
     return null;
   }
@@ -993,7 +1006,7 @@ export async function executeVirtualEnrichmentStage(
     const researchSet = sanitizeResearchSet(buildCompleteResearchSet(job));
     const { getDocument } = await import('../sanity-client.js');
     const existingPack = await getDocument(client, pack._id);
-    const existingPayload = existingPack?.payload || {};
+    const existingPayload = hydratePayload(existingPack);
     const updatedPayload = trimAccountPackPayload({
       ...existingPayload,
       scan: researchSet.scan || null,
@@ -1008,7 +1021,8 @@ export async function executeVirtualEnrichmentStage(
     });
     await patchDocument(client, pack._id, {
       set: {
-        payload: updatedPayload,
+        payloadIndex: buildPayloadIndex(updatedPayload),
+        payloadData: JSON.stringify(updatedPayload),
         updatedAt: new Date().toISOString(),
       },
     });

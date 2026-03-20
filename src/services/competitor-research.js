@@ -11,6 +11,7 @@
 import { discoverCompetitors } from './competitor-discovery.js';
 import { compareAccountToCompetitors } from './comparative-analysis.js';
 import { autoEnrichAccount, getCompleteResearchSet } from './enrichment-service.js';
+import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
 
 /**
  * Research competitors for account
@@ -123,12 +124,17 @@ export async function researchCompetitors(
   await upsertDocument(client, competitorResearchDoc);
   
   // Step 5: Store in accountPack (if patchDocument is available)
+  // Read-modify-write: can't dot-notation into a JSON blob
   if (patchDocument) {
     const packId = `accountPack-${accountKey}`;
     try {
+      const existingPack = await groqQuery(client, `*[_id == $packId][0]`, { packId });
+      const fullPayload = hydratePayload(existingPack);
+      fullPayload.competitorResearch = competitorResearchDoc;
       await patchDocument(client, packId, {
         set: {
-          'payload.competitorResearch': competitorResearchDoc,
+          payloadIndex: buildPayloadIndex(fullPayload),
+          payloadData: JSON.stringify(fullPayload),
           updatedAt: new Date().toISOString(),
         },
       });
@@ -162,8 +168,9 @@ export async function getCompetitorResearch(groqQuery, client, accountKey) {
     const query = `*[_id == $packId][0]`;
     const pack = await groqQuery(client, query, { packId });
     
-    if (pack?.payload?.competitorResearch) {
-      return pack.payload.competitorResearch;
+    const packPayload = hydratePayload(pack);
+    if (packPayload.competitorResearch) {
+      return packPayload.competitorResearch;
     }
     
     // Or get from competitorResearch document

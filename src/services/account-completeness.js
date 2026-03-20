@@ -66,8 +66,10 @@ function hasTechDepth(account) {
  * @param {object} enrichmentJob – latest enrichmentJob document (or null)
  * @returns {{ score: number, dimensions: object, gaps: string[], nextStages: string[] }}
  */
+import { hydratePayload } from '../lib/payload-helpers.js';
+
 export function analyseCompleteness(account, accountPack, enrichmentJob) {
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
 
   const filled = {
     // Pipeline stages

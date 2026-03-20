@@ -5,6 +5,8 @@
  * industry/sector/niche for comparative analysis and opportunity identification.
  */
 
+import { hydratePayload } from '../lib/payload-helpers.js';
+
 /**
  * Discover competitors using multiple strategies
  * @param {Function} groqQuery - GROQ query function
@@ -109,8 +111,8 @@ export async function discoverCompetitors(groqQuery, client, account, options = 
               accountKey: result.accountKey,
               matchScore: 0.1,
               matchReasons: ['fallback: recent accounts'],
-              technologyStack: result.payload?.scan?.technologyStack,
-              businessScale: result.payload?.scan?.businessScale,
+              technologyStack: hydratePayload(result).scan?.technologyStack,
+              businessScale: hydratePayload(result).scan?.businessScale,
             });
           }
         }
@@ -152,9 +154,8 @@ async function findCompetitorsByTechnology(groqQuery, client, techStack, exclude
   }
   
   try {
-    // Query Sanity for all accountPacks (more lenient - we'll filter in code)
-    // This avoids complex GROQ array membership queries that might fail
-    const query = `*[_type == "accountPack" && defined(payload.scan.technologyStack)] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
+    // Query Sanity for all accountPacks with tech stack data
+    const query = `*[_type == "accountPack" && payloadIndex.hasTechnologyStack == true] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
     
     const results = await groqQuery(client, query, {});
     
@@ -167,7 +168,8 @@ async function findCompetitorsByTechnology(groqQuery, client, techStack, exclude
           continue;
         }
         
-        const resultTech = result.payload?.scan?.technologyStack || {};
+        const resultPayload = hydratePayload(result);
+        const resultTech = resultPayload.scan?.technologyStack || {};
         const resultCms = resultTech.cms || [];
         const resultFrameworks = resultTech.frameworks || [];
         const resultLegacy = resultTech.legacySystems || [];
@@ -187,9 +189,9 @@ async function findCompetitorsByTechnology(groqQuery, client, techStack, exclude
             matchScore: commonTechs.length / keyTechs.length,
             matchReasons: [`technology: ${commonTechs.join(', ')}`],
             technologyStack: resultTech,
-            businessScale: result.payload?.scan?.businessScale,
-            performance: result.payload?.scan?.performance,
-            aiReadiness: result.payload?.scan?.aiReadiness,
+            businessScale: resultPayload.scan?.businessScale,
+            performance: resultPayload.scan?.performance,
+            aiReadiness: resultPayload.scan?.aiReadiness,
           });
         }
       }
@@ -218,8 +220,8 @@ async function findCompetitorsByIndustry(groqQuery, client, industry, excludeDom
   }
   
   try {
-    // Query all accountPacks and filter in code (more reliable)
-    const query = `*[_type == "accountPack" && defined(payload.scan.businessUnits)] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
+    // Query all accountPacks with business unit data
+    const query = `*[_type == "accountPack" && payloadIndex.hasBusinessUnits == true] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
     
     const results = await groqQuery(client, query, {});
     
@@ -234,7 +236,8 @@ async function findCompetitorsByIndustry(groqQuery, client, industry, excludeDom
           continue;
         }
         
-        const businessUnits = result.payload?.scan?.businessUnits || {};
+        const resultPayload = hydratePayload(result);
+        const businessUnits = resultPayload.scan?.businessUnits || {};
         const resultIndustry = (businessUnits.industry || '').toLowerCase();
         const resultSector = (businessUnits.sector || '').toLowerCase();
         
@@ -247,8 +250,8 @@ async function findCompetitorsByIndustry(groqQuery, client, industry, excludeDom
             accountKey: result.accountKey,
             matchScore: 0.5,
             matchReasons: [`industry: ${industry}`],
-            technologyStack: result.payload?.scan?.technologyStack,
-            businessScale: result.payload?.scan?.businessScale,
+            technologyStack: resultPayload.scan?.technologyStack,
+            businessScale: resultPayload.scan?.businessScale,
             businessUnits: businessUnits,
           });
         }
@@ -278,8 +281,8 @@ async function findCompetitorsByBusinessModel(groqQuery, client, businessScale, 
   }
   
   try {
-    // Query all accountPacks and filter by business scale
-    const query = `*[_type == "accountPack" && defined(payload.scan.businessScale)] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
+    // Query all accountPacks with business scale data
+    const query = `*[_type == "accountPack" && payloadIndex.hasBusinessScale == true] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
     
     const results = await groqQuery(client, query, {});
     
@@ -294,7 +297,8 @@ async function findCompetitorsByBusinessModel(groqQuery, client, businessScale, 
           continue;
         }
         
-        const resultScale = result.payload?.scan?.businessScale?.businessScale;
+        const resultPayload = hydratePayload(result);
+        const resultScale = resultPayload.scan?.businessScale?.businessScale;
         if (resultScale === targetScale) {
           candidates.push({
             domain: result.domain || result.canonicalUrl?.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0],
@@ -302,8 +306,8 @@ async function findCompetitorsByBusinessModel(groqQuery, client, businessScale, 
             accountKey: result.accountKey,
             matchScore: 0.4,
             matchReasons: [`business_scale: ${targetScale}`],
-            technologyStack: result.payload?.scan?.technologyStack,
-            businessScale: result.payload?.scan?.businessScale,
+            technologyStack: resultPayload.scan?.technologyStack,
+            businessScale: resultPayload.scan?.businessScale,
           });
         }
       }
@@ -332,22 +336,27 @@ async function findCompetitorsByGeography(groqQuery, client, regions, excludeDom
   }
   
   try {
-    // Match by geographic presence
-    const regionConditions = regions.map(r => `payload.scan.businessUnits.regions match "*${r}*"`).join(' || ');
-    const query = `*[_type == "accountPack" && domain != $excludeDomain && (${regionConditions})] | order(updatedAt desc)[0...${options.limit || 20}]`;
+    // Match by geographic presence — fetch packs with business units, filter regions in JS
+    // (can't filter on blob contents in GROQ)
+    const query = `*[_type == "accountPack" && payloadIndex.hasBusinessUnits == true && domain != $excludeDomain] | order(updatedAt desc)[0...${(options.limit || 20) * 3}]`;
     
     const results = await groqQuery(client, query, { excludeDomain });
     
     if (results && Array.isArray(results)) {
       for (const result of results) {
+        const resultPayload = hydratePayload(result);
+        const resultRegions = resultPayload.scan?.businessUnits?.regions || '';
+        const regionStr = typeof resultRegions === 'string' ? resultRegions : JSON.stringify(resultRegions);
+        const matchesRegion = regions.some(r => regionStr.toLowerCase().includes(r.toLowerCase()));
+        if (!matchesRegion) continue;
         candidates.push({
           domain: result.domain,
           canonicalUrl: result.canonicalUrl,
           accountKey: result.accountKey,
           matchScore: 0.3,
           matchReasons: [`geography: ${regions.join(', ')}`],
-          technologyStack: result.payload?.scan?.technologyStack,
-          businessScale: result.payload?.scan?.businessScale,
+          technologyStack: resultPayload.scan?.technologyStack,
+          businessScale: resultPayload.scan?.businessScale,
         });
       }
     }
@@ -376,8 +385,8 @@ async function findCompetitorsByPositioning(groqQuery, client, account, excludeD
     const accountScore = account.opportunityScore || account.technologyStack?.opportunityScore || 0;
     const scoreRange = 20; // ±20 points
     
-    // Query all accountPacks and filter by score range
-    const query = `*[_type == "accountPack" && defined(payload.scan.technologyStack)] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
+    // Query all accountPacks with tech stack and filter by score range
+    const query = `*[_type == "accountPack" && payloadIndex.hasTechnologyStack == true] | order(updatedAt desc)[0...${(options.limit || 20) * 2}]`;
     
     const results = await groqQuery(client, query, {});
     
@@ -391,7 +400,8 @@ async function findCompetitorsByPositioning(groqQuery, client, account, excludeD
           continue;
         }
         
-        const resultScore = result.payload?.scan?.technologyStack?.opportunityScore || result.payload?.scan?.opportunityScore || 0;
+        const resultPayload = hydratePayload(result);
+        const resultScore = resultPayload.scan?.technologyStack?.opportunityScore || resultPayload.scan?.opportunityScore || 0;
         if (resultScore >= accountScore - scoreRange && resultScore <= accountScore + scoreRange) {
           candidates.push({
             domain: result.domain || result.canonicalUrl?.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0],
@@ -399,8 +409,8 @@ async function findCompetitorsByPositioning(groqQuery, client, account, excludeD
             accountKey: result.accountKey,
             matchScore: 0.35,
             matchReasons: ['positioning: similar opportunity score'],
-            technologyStack: result.payload?.scan?.technologyStack,
-            businessScale: result.payload?.scan?.businessScale,
+            technologyStack: resultPayload.scan?.technologyStack,
+            businessScale: resultPayload.scan?.businessScale,
             opportunityScore: resultScore,
           });
         }

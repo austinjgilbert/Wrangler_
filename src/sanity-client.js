@@ -10,6 +10,8 @@
 /**
  * Normalize URL to canonical form for account key generation
  */
+import { buildPayloadIndex, hydratePayload } from './lib/payload-helpers.js';
+
 function normalizeCanonicalUrl(url) {
   if (!url) return null;
   
@@ -382,7 +384,7 @@ async function storeAccountPack(client, accountKey, canonicalUrl, type, data, me
   
   if (existing) {
     // Update existing pack
-    const currentPayload = existing.payload || {};
+    const currentPayload = hydratePayload(existing);
     const updatedPayload = {
       ...currentPayload,
       ...payloadUpdate,
@@ -400,7 +402,8 @@ async function storeAccountPack(client, accountKey, canonicalUrl, type, data, me
     
     await patchDocument(client, packId, {
       set: {
-        payload: updatedPayload,
+        payloadIndex: buildPayloadIndex(updatedPayload),
+        payloadData: JSON.stringify(updatedPayload),
         updatedAt: now,
         history: history,
       },
@@ -417,7 +420,8 @@ async function storeAccountPack(client, accountKey, canonicalUrl, type, data, me
       domain: extractDomain(canonicalUrl),
       createdAt: now,
       updatedAt: now,
-      payload: payloadUpdate,
+      payloadIndex: buildPayloadIndex(payloadUpdate),
+      payloadData: JSON.stringify(payloadUpdate),
       history: type === 'scan' ? [{
         type: 'scan',
         data: data,

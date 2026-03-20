@@ -13,6 +13,7 @@
 
 import { autoEnrichAccount, getEnrichmentStatus } from './enrichment-service.js';
 import { researchCompetitors, getCompetitorResearch } from './competitor-research.js';
+import { buildPayloadIndex } from '../lib/payload-helpers.js';
 import { findOrCreateMasterAccount, getMasterAccount } from './sanity-account.js';
 import { extractQueryPatterns } from './learning-service.js';
 import { storeInteraction } from './learning-storage.js';
@@ -316,12 +317,14 @@ async function createAccountFromUrl(url, context) {
     // Store scan in accountPack (upsert to handle first-time creation)
     try {
       const packId = `accountPack-${accountResult.accountKey}`;
+      const scanPayload = { scan: scanResult };
       await upsertDocument(client, {
         _type: 'accountPack',
         _id: packId,
         accountKey: accountResult.accountKey,
         canonicalUrl: finalUrl,
-        payload: { scan: scanResult },
+        payloadIndex: buildPayloadIndex(scanPayload),
+        payloadData: JSON.stringify(scanPayload),
         updatedAt: new Date().toISOString(),
       });
     } catch (packErr) {

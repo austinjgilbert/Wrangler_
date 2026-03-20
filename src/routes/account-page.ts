@@ -9,6 +9,8 @@
  * "Queue missing enrichment" to run the research pipeline.
  */
 
+import { hydratePayload } from '../lib/payload-helpers.js';
+
 const DIMENSION_LABELS: Record<string, string> = {
   scan: 'Website Scan',
   discovery: 'Page Discovery',
@@ -100,7 +102,7 @@ export async function handleAccountPage(
     const [accountPack, enrichmentJob] =
       accountKey
         ? await Promise.all([
-            groqQuery(client, `*[_type == "accountPack" && accountKey == $key][0]{ accountKey, payload }`, {
+            groqQuery(client, `*[_type == "accountPack" && accountKey == $key][0]{ accountKey, payloadIndex, payloadData }`, {
               key: accountKey,
             }) as Promise<any>,
             groqQuery(client, `*[_type in ["enrich.job", "enrichmentJob"] && accountKey == $key] | order(updatedAt desc)[0]{ _id, jobId, jobKey, status, currentStage, completedStages, failedStages, startedAt, createdAt, updatedAt }`, {
@@ -378,14 +380,14 @@ export async function handleAccountPage(
     ${section(
       'Pipeline stages',
       (() => {
-        const payload = accountPack?.payload || {};
+        const payload = hydratePayload(accountPack);
         const researchSet = payload.researchSet || {};
         const done = [!!payload.scan, !!payload.discovery || !!researchSet.discovery, !!payload.crawl || !!researchSet.crawl, !!payload.evidence || !!researchSet.evidence, !!payload.linkedin || !!researchSet.linkedin, !!payload.brief || !!researchSet.brief, !!payload.verification || !!researchSet.verification].filter(Boolean).length;
         return `${done}/7 stages complete${currentStage ? ` · Current: ${currentStage}` : ''}`;
       })(),
       (() => {
         const stages = ['scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'];
-        const payload = accountPack?.payload || {};
+        const payload = hydratePayload(accountPack);
         const researchSet = payload.researchSet || {};
         const hasScan = !!payload.scan;
         const hasDiscovery = !!payload.discovery || !!researchSet.discovery;

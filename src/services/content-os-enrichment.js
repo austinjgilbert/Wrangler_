@@ -21,8 +21,11 @@
  * Ensure every detected technology has a Technology document in Sanity,
  * then link them to the account via the `technologies` reference array.
  */
+import { hydratePayload } from '../lib/payload-helpers.js';
+
 export async function linkTechnologies(groqQuery, upsertDocument, patchDocument, client, account, accountPack) {
-  const techStack = account?.technologyStack || accountPack?.payload?.scan?.technologyStack || {};
+  const packPayload = hydratePayload(accountPack);
+  const techStack = account?.technologyStack || packPayload.scan?.technologyStack || {};
 
   // Collect all tech names from every category
   const allTechs = new Set();
@@ -119,7 +122,7 @@ export function extractPainPoints(account, accountPack) {
     painPoints.push(pp);
   };
 
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
   const scan = payload.scan || {};
   const researchSet = payload.researchSet || {};
 
@@ -257,7 +260,7 @@ function mapEvidenceToCategory(item) {
  * Extract benchmark data from all available sources.
  */
 export function extractBenchmarks(account, accountPack) {
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
   const scan = payload.scan || {};
   const researchSet = payload.researchSet || {};
   const brief = payload.brief || researchSet?.brief || {};
@@ -308,7 +311,7 @@ export async function linkLeadership(groqQuery, upsertDocument, patchDocument, c
   } catch { /* ignore */ }
 
   // Also check LinkedIn research for people data
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
   const researchSet = payload.researchSet || {};
   const linkedinData = payload.linkedin || researchSet?.linkedin || {};
   const people = linkedinData?.people || linkedinData?.executives || [];
@@ -422,7 +425,7 @@ function deriveBuyerPersona(roleCategory) {
  * Link competitor accounts as proper Sanity references on the account doc.
  */
 export async function linkCompetitors(groqQuery, patchDocument, client, account, accountPack) {
-  const payload = accountPack?.payload || {};
+  const payload = hydratePayload(accountPack);
   const competitorData = payload.competitors || {};
   const competitors = competitorData.competitors || [];
 

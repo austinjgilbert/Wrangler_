@@ -41,7 +41,8 @@ export async function quickGetAccountPack(client, groqQuery, accountKey) {
     accountKey,
     canonicalUrl,
     domain,
-    payload,
+    payloadIndex,
+    payloadData,
     history,
     updatedAt,
     createdAt

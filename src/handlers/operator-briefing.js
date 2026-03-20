@@ -1,4 +1,5 @@
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { hydratePayload } from '../lib/payload-helpers.js';
 
 export async function handleOperatorBriefing(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured) {
   try {
@@ -98,7 +99,7 @@ async function generateOperatorBriefing(groqQuery, upsertDocument, client, optio
     : [];
   const accountPacks = accountKeys.length > 0
     ? await groqQuery(client, `*[_type == "accountPack" && accountKey in $accountKeys]{
-      _id, accountKey, domain, payload, updatedAt
+      _id, accountKey, domain, payloadIndex, payloadData, updatedAt
     }`, { accountKeys }) || []
     : [];
 
@@ -252,9 +253,9 @@ function inferThemes(account, pack, activity) {
     ...(account?.signals || []),
     ...(activity.prompts || []).slice(0, 6),
     ...(activity.responses || []).slice(0, 6),
-    stringifyMaybe(pack?.payload?.researchSet?.brief?.executiveSummary),
-    stringifyMaybe(pack?.payload?.brief?.executiveSummary),
-    stringifyMaybe(pack?.payload?.researchSet?.evidence),
+    stringifyMaybe(hydratePayload(pack).researchSet?.brief?.executiveSummary),
+    stringifyMaybe(hydratePayload(pack).brief?.executiveSummary),
+    stringifyMaybe(hydratePayload(pack).researchSet?.evidence),
   ].filter(Boolean).join('\n').toLowerCase();
 
   if (/ai|automation|copilot|agent/.test(text)) themes.add('ai-adoption');
@@ -336,7 +337,8 @@ function inferPlanTimeline(account, pack, activity, themes) {
     next12Months.push('Security or compliance work may become a gating requirement for other roadmap changes.');
   }
 
-  const briefSummary = stringifyMaybe(pack?.payload?.researchSet?.brief?.executiveSummary || pack?.payload?.brief?.executiveSummary);
+  const packPayload = hydratePayload(pack);
+  const briefSummary = stringifyMaybe(packPayload.researchSet?.brief?.executiveSummary || packPayload.brief?.executiveSummary);
   if (briefSummary) current.push(`Brief signal: ${truncate(briefSummary, 220)}`);
 
   return {
