@@ -43,11 +43,11 @@ type AccountDoc = {
   canonicalUrl?: string | null;
 };
 
-function getAccountLabel(account: AccountDoc | null | undefined): string {
-  return account ? getAccountDisplayName(account) : 'this account';
+function getAccountLabel(account: AccountDoc | ResearchAccountLike | null | undefined): string {
+  return account ? getAccountDisplayName(account) : 'Unknown account';
 }
 
-function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc>): string {
+function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc | ResearchAccountLike>): string {
   const accountId = typeof job.targetEntity === 'string' && job.targetEntity.startsWith('account')
     ? job.targetEntity
     : null;
@@ -56,7 +56,28 @@ function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc>): st
     (accountId ? accountMap.get(accountId) : null)
     || (accountKey ? accountMap.get(`account-${accountKey}`) || accountMap.get(`account.${accountKey}`) : null);
   const accountLabel = getAccountLabel(account);
-  return `Research and enrich ${accountLabel}`;
+  return `Research ${accountLabel}`;
+}
+
+function getStageDisplay(
+  liveStage: string | number | null | undefined,
+  jobStage: string | number | null | undefined,
+  liveStatus: string | undefined,
+  jobStatus: string | undefined,
+): string {
+  if (liveStage != null) {
+    const label = getStageLabel(liveStage);
+    if (label) return label;
+  }
+  if (jobStage != null) {
+    const label = getStageLabel(jobStage);
+    if (label) return label;
+  }
+  const status = liveStatus ?? jobStatus;
+  if (status === 'complete' || status === 'completed' || status === 'done') return 'Complete';
+  if (status === 'failed') return 'Failed';
+  if (status === 'in_progress' || status === 'running') return 'Processing…';
+  return 'Queued';
 }
 
 type LiveStatus = {
@@ -118,13 +139,13 @@ export function EnrichmentView() {
     <section className="detail-panel">
       <div className="detail-header">
         <div>
-          <p className="eyebrow">Research Pipeline</p>
-          <h2>Research jobs</h2>
+          <p className="eyebrow">Research</p>
+          <h2>Account Research</h2>
           <p className="detail-meta">
-            Multi-stage research pipeline. Queue new runs, monitor progress, and advance stalled jobs.
+            Run multi-stage research on target accounts — scanning, crawling, extraction, LinkedIn, and verification.
           </p>
           <p className="detail-meta worker-status" data-status={workerStatus}>
-            Worker: {workerStatus === 'checking' ? 'Checking…' : workerStatus === 'ok' ? 'Connected' : 'Offline'}
+            {workerStatus === 'checking' ? '⏳ Connecting to worker…' : workerStatus === 'ok' ? '🟢 Worker connected' : '🔴 Worker offline'}
           </p>
         </div>
       </div>
@@ -266,26 +287,21 @@ function EnrichmentInner(props: {
                 <div className="job-card job-card-with-diagnostic" key={job.documentId}>
                   <div className="job-card-summary">
                     <strong>{getJobIntentLabel(job, accountMap)}</strong>
-                    <span>
-                      {live?.currentStage != null
-                        ? getStageLabel(live.currentStage)
-                        : job.currentStage != null
-                          ? getStageLabel(job.currentStage)
-                          : 'Waiting to start'}
+                    <span className="job-stage-label">
+                      {getStageDisplay(live?.currentStage, job.currentStage, live?.status, job.status)}
                     </span>
                     <span className={`job-status status-${(live?.status ?? job.status) ?? 'queued'}`}>
                       {humanizeJobStatus(live?.status ?? job.status)}
                     </span>
-                    {(live?.progress != null && live.progress < 100) && (
-                      <span className="job-stage">Progress: {live.progress}%</span>
+                    {(live?.progress != null && live.progress > 0 && live.progress < 100) && (
+                      <div className="job-progress-inline">
+                        <div className="job-progress-bar" style={{ width: `${live.progress}%` }} />
+                        <span className="job-progress-text">{live.progress}%</span>
+                      </div>
                     )}
                   </div>
-                  <div className="job-card-diagnostic">
+                  {(live?.advanceError || live?.selfHealingScheduled) && (
                     <div className="job-diagnostic-row">
-                      <span className="job-diagnostic-meta">
-                        Job ID: {live?.jobId ?? job.documentId}
-                        {job.goalKey != null && ` · ${String(job.goalKey)}`}
-                      </span>
                       {live?.advanceError && (
                         <span className="job-error">Error: {live.advanceError}</span>
                       )}
@@ -293,7 +309,9 @@ function EnrichmentInner(props: {
                         <span className="job-diagnostic-meta">Self-heal scheduled</span>
                       )}
                     </div>
-                    {accountKey && (
+                  )}
+                  {accountKey && (
+                    <div className="job-card-actions">
                       <div className="job-diagnostic-actions">
                         <button
                           type="button"
@@ -301,7 +319,7 @@ function EnrichmentInner(props: {
                           disabled={!hasWorker() || isBusy || props.workerStatus !== 'ok'}
                           onClick={() => refreshJobStatus(accountKey)}
                         >
-                          {isBusy ? '…' : 'Refresh status'}
+                          {isBusy ? '…' : '↻ Refresh'}
                         </button>
                         <button
                           type="button"
@@ -309,7 +327,7 @@ function EnrichmentInner(props: {
                           disabled={!hasWorker() || isBusy || props.workerStatus !== 'ok'}
                           onClick={() => advanceJob(accountKey)}
                         >
-                          Advance step
+                          ▶ Advance
                         </button>
                         <button
                           type="button"
@@ -317,7 +335,7 @@ function EnrichmentInner(props: {
                           disabled={!hasWorker() || props.queuing !== null}
                           onClick={() => props.onQueue(accountKey, canonicalUrl, 'restart')}
                         >
-                          Run again
+                          ↺ Restart
                         </button>
                         <button
                           type="button"
@@ -325,7 +343,7 @@ function EnrichmentInner(props: {
                           disabled={!hasWorker() || props.queuing !== null}
                           onClick={() => props.onQueue(accountKey, canonicalUrl, 'deep')}
                         >
-                          Deep research
+                          🔍 Deep research
                         </button>
                         {((live?.status === 'complete') || job.status === 'complete') && (
                           <a
@@ -334,12 +352,12 @@ function EnrichmentInner(props: {
                             rel="noopener noreferrer"
                             className="btn btn--enrich view-research-link"
                           >
-                            View research
+                            📄 View results
                           </a>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -349,10 +367,10 @@ function EnrichmentInner(props: {
 
       <div className="insight-section">
         <div className="section-header">
-          <h3>Queue by account</h3>
+          <h3>Start new research</h3>
         </div>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Select accounts to queue for research.
+          Pick an account to research. Standard runs the full pipeline; deep research adds extra crawling.
         </p>
         <div className="queue-account-list">
           {accounts.length === 0 ? (
@@ -361,6 +379,7 @@ function EnrichmentInner(props: {
             accounts.slice(0, 30).map((account) => {
               const accountId = account.documentId;
               const accountKey = getAccountKeyFromId(accountId) || accountId;
+              const isActive = activeAccountKeys.includes(accountKey);
               const canonicalUrl =
                 account.canonicalUrl
                 || (account.domain ? `https://${account.domain.replace(/^https?:\/\//, '')}` : '')
@@ -368,9 +387,12 @@ function EnrichmentInner(props: {
                 || `https://${accountKey}`;
 
               return (
-                <div className="queue-account-card" key={accountId}>
-                  <strong>{getAccountLabel(account)}</strong>
-                  <span>{getAccountDomainLabel(account) || 'Website not set'}</span>
+                <div className={`queue-account-card${isActive ? ' queue-account-card--active' : ''}`} key={accountId}>
+                  <div className="queue-account-info">
+                    <strong>{getAccountLabel(account)}</strong>
+                    <span className="queue-account-domain">{getAccountDomainLabel(account) || 'Website not set'}</span>
+                    {isActive && <span className="queue-account-badge">Active</span>}
+                  </div>
                   <div className="queue-actions">
                     <button
                       type="button"
@@ -378,7 +400,7 @@ function EnrichmentInner(props: {
                       disabled={!hasWorker() || props.queuing === `${accountKey}:standard`}
                       onClick={() => props.onQueue(accountKey, canonicalUrl, 'standard')}
                     >
-                      {props.queuing === `${accountKey}:standard` ? 'Queuing…' : 'Run research'}
+                      {props.queuing === `${accountKey}:standard` ? 'Queuing…' : '▶ Research'}
                     </button>
                     <button
                       type="button"
@@ -386,7 +408,7 @@ function EnrichmentInner(props: {
                       disabled={!hasWorker() || props.queuing === `${accountKey}:restart`}
                       onClick={() => props.onQueue(accountKey, canonicalUrl, 'restart')}
                     >
-                      {props.queuing === `${accountKey}:restart` ? 'Queuing…' : 'Run again'}
+                      {props.queuing === `${accountKey}:restart` ? 'Queuing…' : '↺ Restart'}
                     </button>
                     <button
                       type="button"
@@ -394,7 +416,7 @@ function EnrichmentInner(props: {
                       disabled={!hasWorker() || props.queuing === `${accountKey}:deep`}
                       onClick={() => props.onQueue(accountKey, canonicalUrl, 'deep')}
                     >
-                      {props.queuing === `${accountKey}:deep` ? 'Queuing…' : 'Deep research'}
+                      {props.queuing === `${accountKey}:deep` ? 'Queuing…' : '🔍 Deep'}
                     </button>
                   </div>
                 </div>
