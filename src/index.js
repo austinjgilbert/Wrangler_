@@ -7350,13 +7350,9 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       '/health',
       '/schema',
       '/openapi.yaml',
-      '/sanity/status',
-      '/sanity/verify-write',
       '/molt/auth-status',
       '/webhooks/sanity',     // Auth: HMAC signature verification, fail-closed (P0-3)
-      '/webhooks/telegram',   // TODO(@secops): No auth currently — see Finding 7.
-                              // Telegram supports secret_token but handler doesn't check it.
-                              // Exempt here because it needs its own auth mechanism, not API key.
+      '/webhooks/telegram',   // Auth: X-Telegram-Bot-Api-Secret-Token validation (Finding 7)
     ]);
     const AUTH_EXEMPT_PREFIXES = [
       '/track/',              // Tracking pixels — public by design

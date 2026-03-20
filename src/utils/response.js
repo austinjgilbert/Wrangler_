@@ -82,12 +82,11 @@ export function createErrorResponse(code, message, details = null, status = 400,
     ...(requestId && { requestId }),
   };
 
+  const corsHeaders = addCorsHeaders().headers;
+  corsHeaders.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(response), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...addCorsHeaders({}).headers,
-    },
+    headers: corsHeaders,
   });
 }
 
@@ -105,12 +104,11 @@ export function createSuccessResponse(data, requestId = null, status = 200) {
     ...(requestId && { requestId }),
   };
 
+  const corsHeaders = addCorsHeaders().headers;
+  corsHeaders.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(response), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...addCorsHeaders({}).headers,
-    },
+    headers: corsHeaders,
   });
 }
 

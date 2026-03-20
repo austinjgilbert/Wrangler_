@@ -544,8 +544,6 @@ describe('T6: auth exempt paths and prefixes', () => {
     '/health',
     '/schema',
     '/openapi.yaml',
-    '/sanity/status',
-    '/sanity/verify-write',
     '/molt/auth-status',
     '/webhooks/sanity',
     '/webhooks/telegram',
@@ -566,8 +564,6 @@ describe('T6: auth exempt paths and prefixes', () => {
       '/health',
       '/schema',
       '/openapi.yaml',
-      '/sanity/status',
-      '/sanity/verify-write',
       '/molt/auth-status',
       '/webhooks/sanity',
       '/webhooks/telegram',
@@ -603,6 +599,8 @@ describe('T6: auth exempt paths and prefixes', () => {
       '/extension/observe',
       '/accounts',
       '/api/anything',
+      '/sanity/status',      // Moved behind auth — was leaking dataset names + config state
+      '/sanity/verify-write', // Moved behind auth — was leaking error hints
       '/',
       '/healthcheck',        // NOT /health
       '/schemas',            // NOT /schema
@@ -615,8 +613,8 @@ describe('T6: auth exempt paths and prefixes', () => {
   })
 
   describe('exempt path set integrity', () => {
-    it('has exactly 8 exempt paths', () => {
-      expect(AUTH_EXEMPT_PATHS.size).toBe(8)
+    it('has exactly 6 exempt paths', () => {
+      expect(AUTH_EXEMPT_PATHS.size).toBe(6)
     })
 
     it('has exactly 2 exempt prefixes', () => {
@@ -777,16 +775,15 @@ describe('T12: createErrorResponse — detail sanitization', () => {
       expect(body.requestId).toBeUndefined()
     })
 
-    it('BUG: CORS headers lost due to Headers spread into plain object', () => {
-      // createErrorResponse does: { 'Content-Type': '...', ...addCorsHeaders({}).headers }
-      // But Headers objects don't spread into plain objects — entries are lost.
-      // This means error responses lack CORS headers (Vary, ACAO, etc.).
-      // The response still works because addCorsHeadersToResponse() wraps it
-      // at the top-level fetch handler, but it's fragile.
+    it('CORS headers present on error responses (Finding 10 — fixed)', () => {
+      // Previously: { 'Content-Type': '...', ...addCorsHeaders({}).headers }
+      // Headers objects don't spread into plain objects — entries were silently lost.
+      // Fixed: get Headers object first, then .set('Content-Type') on it directly.
       const response = createErrorResponse('TEST', 'test')
-      // Currently null due to the spread bug — if this starts passing,
-      // the bug was fixed and this test should be updated.
-      expect(response.headers.get('Vary')).toBeNull()
+      expect(response.headers.get('Vary')).toBe('Origin')
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, PUT, DELETE, OPTIONS')
+      expect(response.headers.get('Access-Control-Max-Age')).toBe('86400')
+      expect(response.headers.get('Content-Type')).toBe('application/json')
     })
   })
 

@@ -10,8 +10,10 @@
  * Setup:
  *   1. Create a bot via @BotFather on Telegram, get the token.
  *   2. Set TELEGRAM_BOT_TOKEN: wrangler secret put TELEGRAM_BOT_TOKEN
- *   3. Set webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook
- *      Body: { "url": "https://website-scanner.austin-gilbert.workers.dev/webhooks/telegram" }
+ *   3. Set webhook secret: wrangler secret put TELEGRAM_WEBHOOK_SECRET
+ *   4. Set webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook
+ *      Body: { "url": "https://website-scanner.austin-gilbert.workers.dev/webhooks/telegram",
+ *              "secret_token": "<same value as TELEGRAM_WEBHOOK_SECRET>" }
  */
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
@@ -81,6 +83,21 @@ async function answerCallbackQuery(token: string, callbackQueryId: string, text?
 }
 
 export async function handleTelegramWebhook(request: Request, requestId: string, env: any) {
+  // ── Webhook secret validation (Finding 7) ─────────────────────────────
+  // Telegram sends X-Telegram-Bot-Api-Secret-Token if configured via setWebhook.
+  // If TELEGRAM_WEBHOOK_SECRET is set, reject requests without a matching token.
+  // Returns 200 on rejection to prevent Telegram from retrying.
+  const webhookSecret = env.TELEGRAM_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const provided = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+    if (provided !== webhookSecret) {
+      console.warn(`[Telegram] Invalid webhook secret (got ${provided ? 'wrong value' : 'none'})`);
+      return new Response('OK', { status: 200 });
+    }
+  } else {
+    console.warn('[Telegram] TELEGRAM_WEBHOOK_SECRET not set — webhook requests are not authenticated. Set via: wrangler secret put TELEGRAM_WEBHOOK_SECRET');
+  }
+
   const token = env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.warn('[Telegram] TELEGRAM_BOT_TOKEN not set');
