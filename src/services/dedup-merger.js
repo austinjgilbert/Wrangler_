@@ -402,12 +402,12 @@ export async function mergeAccountCluster(
   // Build mutations
   const mutations = [];
 
-  // 1. Update winner with merged data
+  // 1. Update winner with merged data (patch, not createOrReplace — preserves fields we don't track)
+  const { _id, _rev, _type, _createdAt, _updatedAt, ...mergedFields } = winnerDoc;
   mutations.push({
-    createOrReplace: {
-      ...winnerDoc,
-      _id: winnerId,
-      _type: 'account',
+    patch: {
+      id: winnerId,
+      set: mergedFields,
     },
   });
 
@@ -449,8 +449,51 @@ export async function mergeAccountCluster(
     };
   }
 
-  // Execute
-  await mutate(client, mutations);
+  // Execute and verify result
+  let result;
+  try {
+    result = await mutate(client, mutations);
+  } catch (err) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.companyName || winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: false,
+      error: `Mutation failed: ${err?.message || 'unknown error'}`,
+    };
+  }
+
+  // Sanity must return a result object with a transactionId for a successful commit
+  if (!result || (!result.transactionId && !result.results)) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.companyName || winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: false,
+      error: 'Mutation returned empty or invalid response — no transactionId or results',
+    };
+  }
+
+  // Check for partial errors in Sanity response
+  const mutationResults = result.results || [];
+  const failedMutations = mutationResults.filter(r => r?.error);
+  if (failedMutations.length > 0) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.companyName || winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: true,
+      partialFailure: true,
+      failedCount: failedMutations.length,
+      errors: failedMutations.map(f => f.error),
+    };
+  }
 
   return {
     winnerId,
@@ -458,6 +501,7 @@ export async function mergeAccountCluster(
     loserIds,
     refsMoved: repointMutations.length,
     totalMutations: mutations.length,
+    transactionId: result.transactionId || null,
     executed: true,
   };
 }
@@ -496,12 +540,12 @@ export async function mergePersonCluster(
   // Build mutations
   const mutations = [];
 
-  // 1. Update winner with merged data
+  // 1. Update winner with merged data (patch, not createOrReplace — preserves fields we don't track)
+  const { _id, _rev, _type, _createdAt, _updatedAt, ...mergedFields } = winnerDoc;
   mutations.push({
-    createOrReplace: {
-      ...winnerDoc,
-      _id: winnerId,
-      _type: 'person',
+    patch: {
+      id: winnerId,
+      set: mergedFields,
     },
   });
 
@@ -584,8 +628,51 @@ export async function mergePersonCluster(
     };
   }
 
-  // Execute
-  await mutate(client, mutations);
+  // Execute and verify result
+  let result;
+  try {
+    result = await mutate(client, mutations);
+  } catch (err) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: false,
+      error: `Mutation failed: ${err?.message || 'unknown error'}`,
+    };
+  }
+
+  // Sanity must return a result object with a transactionId for a successful commit
+  if (!result || (!result.transactionId && !result.results)) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: false,
+      error: 'Mutation returned empty or invalid response — no transactionId or results',
+    };
+  }
+
+  // Check for partial errors in Sanity response
+  const mutationResults = result.results || [];
+  const failedMutations = mutationResults.filter(r => r?.error);
+  if (failedMutations.length > 0) {
+    return {
+      winnerId,
+      winnerName: winnerDoc.name,
+      loserIds,
+      refsMoved: repointMutations.length,
+      totalMutations: mutations.length,
+      executed: true,
+      partialFailure: true,
+      failedCount: failedMutations.length,
+      errors: failedMutations.map(f => f.error),
+    };
+  }
 
   return {
     winnerId,
@@ -593,6 +680,7 @@ export async function mergePersonCluster(
     loserIds,
     refsMoved: repointMutations.length,
     totalMutations: mutations.length,
+    transactionId: result.transactionId || null,
     executed: true,
   };
 }

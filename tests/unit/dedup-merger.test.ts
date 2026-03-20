@@ -49,6 +49,11 @@ function createMockGroqQuery(docs: Record<string, any>) {
 
 const mockClient = {};
 
+/** Simulate a successful Sanity mutation response */
+function sanityOk() {
+  return { transactionId: `tx-${Date.now()}`, results: [] };
+}
+
 // ── Account merger tests ─────────────────────────────────────────────────
 
 describe('mergeAccountCluster', () => {
@@ -101,7 +106,7 @@ describe('mergeAccountCluster', () => {
     };
 
     const groqQuery = createMockGroqQuery(docs);
-    const mutate = vi.fn().mockResolvedValue({});
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
 
     const cluster = {
       domain: 'example.com',
@@ -115,17 +120,17 @@ describe('mergeAccountCluster', () => {
     expect(result.winnerId).toBe('account.winner');
     expect(mutate).toHaveBeenCalledTimes(1);
 
-    // Check mutations include createOrReplace (merged winner) and delete (loser)
+    // Check mutations include patch (merged winner) and delete (loser)
     const mutations = mutate.mock.calls[0][1];
-    const createOrReplace = mutations.find((m: any) => m.createOrReplace);
+    const patchMutation = mutations.find((m: any) => m.patch?.id === 'account.winner');
     const deleteMutation = mutations.find((m: any) => m.delete);
 
-    expect(createOrReplace).toBeDefined();
-    expect(createOrReplace.createOrReplace._id).toBe('account.winner');
+    expect(patchMutation).toBeDefined();
+    expect(patchMutation.patch.id).toBe('account.winner');
     // Merged data should include loser's benchmarks
-    expect(createOrReplace.createOrReplace.benchmarks?.estimatedRevenue).toBe('$10M');
+    expect(patchMutation.patch.set.benchmarks?.estimatedRevenue).toBe('$10M');
     // Merged data should include loser's frameworks
-    expect(createOrReplace.createOrReplace.technologyStack?.frameworks).toContain('React');
+    expect(patchMutation.patch.set.technologyStack?.frameworks).toContain('React');
 
     expect(deleteMutation).toBeDefined();
     expect(deleteMutation.delete.id).toBe('account.loser');
@@ -143,6 +148,61 @@ describe('mergeAccountCluster', () => {
 
     const result = await mergeAccountCluster(groqQuery, mockClient, mutate, cluster, { dryRun: true });
     expect(result.error).toContain('not found');
+  });
+
+  it('reports failure when mutate returns empty response (D2)', async () => {
+    const docs: Record<string, any> = {
+      'account.winner': {
+        _id: 'account.winner', _type: 'account', accountKey: 'winner',
+        companyName: 'Example Inc', domain: 'example.com',
+      },
+      'account.loser': {
+        _id: 'account.loser', _type: 'account', accountKey: 'loser',
+        companyName: 'Example', domain: 'example.com',
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    // Simulate mutate returning empty object (no transactionId, no results)
+    const mutate = vi.fn().mockResolvedValue({});
+
+    const cluster = {
+      domain: 'example.com',
+      winner: { _id: 'account.winner', accountKey: 'winner' },
+      losers: [{ _id: 'account.loser', accountKey: 'loser' }],
+    };
+
+    const result = await mergeAccountCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(false);
+    expect(result.error).toContain('empty or invalid response');
+  });
+
+  it('reports failure when mutate throws (D2)', async () => {
+    const docs: Record<string, any> = {
+      'account.winner': {
+        _id: 'account.winner', _type: 'account', accountKey: 'winner',
+        companyName: 'Example Inc', domain: 'example.com',
+      },
+      'account.loser': {
+        _id: 'account.loser', _type: 'account', accountKey: 'loser',
+        companyName: 'Example', domain: 'example.com',
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    const mutate = vi.fn().mockRejectedValue(new Error('Network timeout'));
+
+    const cluster = {
+      domain: 'example.com',
+      winner: { _id: 'account.winner', accountKey: 'winner' },
+      losers: [{ _id: 'account.loser', accountKey: 'loser' }],
+    };
+
+    const result = await mergeAccountCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(false);
+    expect(result.error).toContain('Network timeout');
   });
 });
 
@@ -202,7 +262,7 @@ describe('mergePersonCluster', () => {
     };
 
     const groqQuery = createMockGroqQuery(docs);
-    const mutate = vi.fn().mockResolvedValue({});
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
 
     const cluster = {
       matchKey: 'https://www.linkedin.com/in/janedoe',
@@ -217,15 +277,51 @@ describe('mergePersonCluster', () => {
     expect(mutate).toHaveBeenCalledTimes(1);
 
     const mutations = mutate.mock.calls[0][1];
-    const createOrReplace = mutations.find((m: any) => m.createOrReplace);
+    const patchMutation = mutations.find((m: any) => m.patch?.id === 'person.winner');
 
-    expect(createOrReplace).toBeDefined();
-    const merged = createOrReplace.createOrReplace;
+    expect(patchMutation).toBeDefined();
+    const merged = patchMutation.patch.set;
     expect(merged.name).toBe('Jane Elizabeth Doe'); // Longer name wins
     expect(merged.email).toBe('jane@bigco.com'); // Filled from loser
     expect(merged.skills).toContain('Python');
     expect(merged.roleCategory).toBe('engineering');
     expect(merged.seniorityLevel).toBe('director');
+  });
+
+  it('reports partial failures from mutation results', async () => {
+    const docs: Record<string, any> = {
+      'person.winner': {
+        _id: 'person.winner', _type: 'person', personKey: 'winner',
+        name: 'Test User', linkedInUrl: 'https://linkedin.com/in/test',
+      },
+      'person.loser': {
+        _id: 'person.loser', _type: 'person', personKey: 'loser',
+        name: 'Test', linkedInUrl: 'https://linkedin.com/in/test',
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    // Simulate Sanity returning partial errors
+    const mutate = vi.fn().mockResolvedValue({
+      results: [
+        { id: 'person.winner', operation: 'update' },
+        { error: 'Document not found', id: 'person.loser' },
+      ],
+    });
+
+    const cluster = {
+      matchKey: 'https://www.linkedin.com/in/test',
+      matchType: 'linkedin',
+      winner: { _id: 'person.winner', personKey: 'winner' },
+      losers: [{ _id: 'person.loser', personKey: 'loser' }],
+    };
+
+    const result = await mergePersonCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(true);
+    expect(result.partialFailure).toBe(true);
+    expect(result.failedCount).toBe(1);
+    expect(result.errors).toHaveLength(1);
   });
 
   it('repoints networkPerson references', async () => {
@@ -245,7 +341,7 @@ describe('mergePersonCluster', () => {
     };
 
     const groqQuery = createMockGroqQuery(docs);
-    const mutate = vi.fn().mockResolvedValue({});
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
 
     const cluster = {
       matchKey: 'https://www.linkedin.com/in/bob',

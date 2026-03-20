@@ -5347,16 +5347,25 @@ async function handleBatchScan(request, requestId) {
 // ============================================================================
 
 /**
- * Check ADMIN_TOKEN for write operations (if configured)
+ * Check ADMIN_TOKEN for write operations.
+ *
+ * Returns:
+ *   'ok'             — valid admin token provided
+ *   'not_configured' — ADMIN_TOKEN env var is missing (cannot authenticate)
+ *   'denied'         — token provided but invalid, or no token provided
+ *
+ * Callers MUST handle 'not_configured' explicitly — do NOT treat it as
+ * a soft "try next auth method" signal for destructive endpoints.
  */
 function checkAdminToken(request, env) {
   const adminToken = env.ADMIN_TOKEN;
   if (!adminToken) {
-    return true; // No guard if not configured
+    return 'not_configured';
   }
   
   const providedToken = request.headers.get('X-Admin-Token') || request.headers.get('Authorization')?.replace('Bearer ', '');
-  return providedToken === adminToken;
+  if (!providedToken) return 'denied';
+  return providedToken === adminToken ? 'ok' : 'denied';
 }
 
 
@@ -7933,11 +7942,13 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           return createErrorResponse('NOT_FOUND', 'OSINT endpoint not found', { path: url.pathname }, 404, requestId);
         }
       } else if (url.pathname.startsWith('/operator/dedup')) {
-        // ── Deduplication endpoints ──────────────────────────────────────
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
-        if (!auth) {
-          return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+        // ── Deduplication endpoints (destructive — admin token REQUIRED) ─
+        const adminAuth = checkAdminToken(request, env);
+        if (adminAuth === 'not_configured') {
+          return createErrorResponse('CONFIG_ERROR', 'ADMIN_TOKEN not configured. Dedup endpoints require admin auth.', { hint: 'wrangler secret put ADMIN_TOKEN' }, 503, requestId);
+        }
+        if (adminAuth !== 'ok') {
+          return createErrorResponse('UNAUTHORIZED', 'Admin token required for dedup operations. Send via X-Admin-Token header.', {}, 401, requestId);
         }
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { initSanityClient: initSC, groqQuery: gq, mutate: mt } = await import('./sanity-client.js');
@@ -7958,7 +7969,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         }
       } else if (url.pathname.startsWith('/operator/console')) {
         const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+        const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
         if (!auth) {
           return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
         }
@@ -8056,7 +8067,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else if (url.pathname === '/analytics/explain') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
           if (!auth) {
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
@@ -8067,7 +8078,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
             return createErrorResponse('METHOD_NOT_ALLOWED', 'GET or POST required', {}, 405, requestId);
           }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
           if (!auth) {
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
@@ -8076,7 +8087,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else if (url.pathname === '/analytics/superuser') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
           if (!auth) {
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
@@ -8085,7 +8096,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else if (url.pathname === '/analytics/superuser/command') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
           if (!auth) {
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
@@ -8094,7 +8105,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else if (url.pathname === '/analytics/nightly-intelligence') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
           if (!auth) {
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }

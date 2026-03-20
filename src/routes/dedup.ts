@@ -28,6 +28,15 @@ function createResponse(data: any, status = 200, requestId?: string) {
   });
 }
 
+function sanitizeError(error: string): string {
+  // Strip internal paths, stack traces, and sensitive details from error messages
+  return error
+    .replace(/\/[\w\-./]+\.(js|ts)/g, '[internal]')
+    .replace(/at\s+\S+\s+\(.*?\)/g, '')
+    .replace(/SANITY_TOKEN|ADMIN_TOKEN|MOLT_API_KEY/gi, '[REDACTED]')
+    .substring(0, 200);
+}
+
 /**
  * POST /operator/dedup/scan
  * Scans for duplicate accounts and persons. Returns clusters without modifying data.
@@ -68,7 +77,7 @@ export async function handleDedupScan(
       ...result,
     }, 200, requestId);
   } catch (error: any) {
-    return createResponse({ error: error.message }, 500, requestId);
+    return createResponse({ error: sanitizeError(error.message) }, 500, requestId);
   }
 }
 
@@ -114,12 +123,14 @@ export async function handleDedupExecute(
             { dryRun }
           );
           accountResults.push(mergeResult);
-          if (!mergeResult.error) {
+          if (mergeResult.executed && !mergeResult.error && !mergeResult.partialFailure) {
             totalMerged++;
             totalDeleted += mergeResult.loserIds?.length || 0;
+          } else if (mergeResult.error || mergeResult.partialFailure) {
+            errors.push({ type: 'account', cluster: cluster.domain, error: mergeResult.error || 'partial failure' });
           }
         } catch (err: any) {
-          errors.push({ type: 'account', cluster: cluster.domain, error: err.message });
+          errors.push({ type: 'account', cluster: cluster.domain, error: sanitizeError(err.message) });
         }
       }
 
@@ -146,12 +157,14 @@ export async function handleDedupExecute(
             { dryRun }
           );
           personResults.push(mergeResult);
-          if (!mergeResult.error) {
+          if (mergeResult.executed && !mergeResult.error && !mergeResult.partialFailure) {
             totalMerged++;
             totalDeleted += mergeResult.loserIds?.length || 0;
+          } else if (mergeResult.error || mergeResult.partialFailure) {
+            errors.push({ type: 'person', cluster: cluster.matchKey, error: mergeResult.error || 'partial failure' });
           }
         } catch (err: any) {
-          errors.push({ type: 'person', cluster: cluster.matchKey, error: err.message });
+          errors.push({ type: 'person', cluster: cluster.matchKey, error: sanitizeError(err.message) });
         }
       }
 
@@ -173,9 +186,22 @@ export async function handleDedupExecute(
       results.errors = errors;
     }
 
-    return createResponse(results, 200, requestId);
+    // Check for partial failures from mutation result checking
+    const allMergeResults = [
+      ...(results.accounts?.mergeResults || []),
+      ...(results.persons?.mergeResults || []),
+    ];
+    const partialFailures = allMergeResults.filter((r: any) => r.partialFailure);
+    if (partialFailures.length > 0) {
+      results.summary.partialFailures = partialFailures.length;
+      results.warning = 'Some mutations had partial failures — check individual merge results for details';
+    }
+
+    // Return 207 Multi-Status if there were errors or partial failures, 200 if clean
+    const status = (errors.length > 0 || partialFailures.length > 0) ? 207 : 200;
+    return createResponse(results, status, requestId);
   } catch (error: any) {
-    return createResponse({ error: error.message }, 500, requestId);
+    return createResponse({ error: sanitizeError(error.message) }, 500, requestId);
   }
 }
 
@@ -240,6 +266,6 @@ export async function handleDedupMerge(
 
     return createResponse({ error: 'type must be "account" or "person"' }, 400, requestId);
   } catch (error: any) {
-    return createResponse({ error: error.message }, 500, requestId);
+    return createResponse({ error: sanitizeError(error.message) }, 500, requestId);
   }
 }
