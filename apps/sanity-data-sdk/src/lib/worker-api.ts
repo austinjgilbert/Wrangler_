@@ -16,7 +16,13 @@ function assertWorkerConfig(action: string): void {
   }
 }
 
-/** URL to fetch research set for an account (for "View research" link). */
+/**
+ * URL to fetch research set for an account (for "View research" link).
+ * NOTE: This is the ONE place query-string auth is still used — it's a direct
+ * browser navigation (<a href>), so we can't set headers. The Worker still
+ * accepts ?apiKey= for backward compat. Phase 2: replace with a short-lived
+ * token or proxy through the SDK app.
+ */
 export function getResearchSetUrl(accountKey: string): string {
   if (getWorkerConfigMessage('open research')) return '#';
   const url = new URL(`${WORKER_URL}/enrich/research`);
@@ -33,7 +39,7 @@ export function hasWorker(): boolean {
 export async function fetchWorkerHealth(): Promise<boolean> {
   if (!hasWorkerConfig()) return false;
   try {
-    const res = await fetch(withWorkerApiKey(`${WORKER_URL}/health`), { method: 'GET' });
+    const res = await fetch(`${WORKER_URL}/health`, { method: 'GET', headers: workerHeaders() });
     return res.ok;
   } catch {
     return false;
@@ -91,25 +97,20 @@ export interface SnapshotResponse {
   };
 }
 
-function workerHeaders(options?: { includeJsonContentType?: boolean; includeApiKeyHeader?: boolean }): Record<string, string> {
+function workerHeaders(options?: { includeJsonContentType?: boolean }): Record<string, string> {
   const h: Record<string, string> = {};
   if (options?.includeJsonContentType) {
     h['Content-Type'] = 'application/json';
   }
-  if (options?.includeApiKeyHeader && WORKER_API_KEY) {
-    h['x-api-key'] = WORKER_API_KEY;
+  // Always send API key via header (never query string — keys in URLs leak via
+  // server logs, browser history, Referer headers). See: security Finding 8.
+  if (WORKER_API_KEY) {
+    h['X-API-Key'] = WORKER_API_KEY;
   }
   return h;
 }
 
-function withWorkerApiKey(url: string): string {
-  if (!WORKER_API_KEY) return url;
-  const nextUrl = new URL(url);
-  nextUrl.searchParams.set('apiKey', WORKER_API_KEY);
-  return nextUrl.toString();
-}
-
-async function parseWorkerJson<T>(request: Promise<Response>, fallbackMessage: string): Promise<{ response: Response; json: T | Record<string, unknown> }> {
+async function parseWorkerJson<T>(request: Promise<Response>, fallbackMessage: string): Promise<{ response: Response; json: T }> {
   let response: Response;
   try {
     response = await request;
@@ -118,7 +119,7 @@ async function parseWorkerJson<T>(request: Promise<Response>, fallbackMessage: s
     throw new Error(`${fallbackMessage}. Network request to worker failed (${msg}). Check VITE_WORKER_URL and CORS.`);
   }
 
-  const json = await response.json().catch(() => ({}));
+  const json: T = await response.json().catch(() => ({}) as T);
   if (response.status === 401) {
     const err = (json as { error?: { message?: string } })?.error?.message;
     throw new Error(err || `${fallbackMessage}. Worker returned 401. Set VITE_WORKER_API_KEY in .env if the worker requires auth.`);
@@ -129,7 +130,7 @@ async function parseWorkerJson<T>(request: Promise<Response>, fallbackMessage: s
 export async function fetchSnapshot(): Promise<SnapshotResponse['data']> {
   assertWorkerConfig('load dashboard data');
   const { response, json } = await parseWorkerJson<SnapshotResponse>(
-    fetch(withWorkerApiKey(`${WORKER_URL}/operator/console/snapshot?surface=sdk`)),
+    fetch(`${WORKER_URL}/operator/console/snapshot?surface=sdk`, { headers: workerHeaders() }),
     'Failed to load dashboard snapshot'
   );
   if (!response.ok) {
@@ -149,13 +150,14 @@ export async function fetchEnrichStatus(accountKey: string): Promise<{
   assertWorkerConfig('load enrichment status');
   const { response, json } = await parseWorkerJson<{ data?: { status?: unknown }; status?: unknown }>(
     fetch(
-      withWorkerApiKey(`${WORKER_URL}/enrich/status?accountKey=${encodeURIComponent(accountKey)}`)
+      `${WORKER_URL}/enrich/status?accountKey=${encodeURIComponent(accountKey)}`,
+      { headers: workerHeaders() }
     ),
     'Failed to load enrichment status'
   );
   if (!response.ok) return {};
   const status = json?.data?.status ?? json?.status;
-  return typeof status === 'object' ? status : { status };
+  return typeof status === 'object' && status !== null ? (status as Record<string, unknown>) : { status: status as string | undefined };
 }
 
 export async function advanceEnrichment(accountKey: string): Promise<{
@@ -168,16 +170,16 @@ export async function advanceEnrichment(accountKey: string): Promise<{
 }> {
   assertWorkerConfig('advance enrichment');
   const { response, json } = await parseWorkerJson<{ data?: { status?: unknown }; status?: unknown }>(
-    fetch(withWorkerApiKey(`${WORKER_URL}/enrich/advance`), {
+    fetch(`${WORKER_URL}/enrich/advance`, {
       method: 'POST',
-      headers: workerHeaders({ includeJsonContentType: true, includeApiKeyHeader: !WORKER_API_KEY }),
+      headers: workerHeaders({ includeJsonContentType: true }),
       body: JSON.stringify({ accountKey }),
     }),
     'Failed to advance enrichment'
   );
   if (!response.ok) return {};
   const status = json?.data?.status ?? json?.status;
-  return typeof status === 'object' ? status : { status };
+  return typeof status === 'object' && status !== null ? (status as Record<string, unknown>) : { status: status as string | undefined };
 }
 
 export async function queueEnrichment(params: {
@@ -197,9 +199,9 @@ export async function queueEnrichment(params: {
 }): Promise<{ ok?: boolean; jobId?: string; message?: string }> {
   assertWorkerConfig('queue enrichment');
   const { response, json } = await parseWorkerJson<{ ok?: boolean; data?: { queued?: boolean; jobId?: string; message?: string }; jobId?: string; message?: string }>(
-    fetch(withWorkerApiKey(`${WORKER_URL}/enrich/queue`), {
+    fetch(`${WORKER_URL}/enrich/queue`, {
       method: 'POST',
-      headers: workerHeaders({ includeJsonContentType: true, includeApiKeyHeader: !WORKER_API_KEY }),
+      headers: workerHeaders({ includeJsonContentType: true }),
       body: JSON.stringify({
         accountId: params.accountId,
         accountKey: params.accountKey,
