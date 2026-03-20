@@ -550,7 +550,9 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
     const rawBody: any = await request.json().catch(() => ({}));
     const body = sanitizeExtensionPayload(rawBody);
     const prompt = String(body?.prompt || '').trim();
-    const page = body?.page || null;
+    // Sanitize nested page context — array fields (headings, links, people, etc.)
+    // live under body.page for /extension/ask, not at the top level.
+    const page = body?.page ? sanitizeExtensionPayload(body.page) : null;
     if (!prompt) {
       return createErrorResponse('VALIDATION_ERROR', 'prompt is required', {}, 400, requestId);
     }
