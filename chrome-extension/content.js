@@ -947,7 +947,165 @@
     .wrangler-field-label { color: #94a3b8; }
     .wrangler-field-value { color: #f1f5f9; font-weight: 500; }
 
-    /* Phase B: People, Signal, Ask styles go here */
+    /* ─── Phase B: People ──────────────────────────────────── */
+
+    .wrangler-person-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    }
+    .wrangler-person-row:last-child { border-bottom: none; }
+
+    .wrangler-person-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #94a3b8;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    .wrangler-person-avatar[data-decision-maker="true"] {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+
+    .wrangler-person-info { flex: 1; min-width: 0; }
+
+    .wrangler-person-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wrangler-person-title {
+      font-size: 11px;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wrangler-person-company {
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    .wrangler-badge {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .wrangler-badge--dm {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+    .wrangler-badge--warm {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+    }
+    .wrangler-badge--contact {
+      background: rgba(96, 165, 250, 0.15);
+      color: #93c5fd;
+    }
+
+    /* ─── Phase B: Signals ─────────────────────────────────── */
+
+    .wrangler-signal-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    }
+    .wrangler-signal-row:last-child { border-bottom: none; }
+
+    .wrangler-signal-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .wrangler-signal-icon[data-confidence="high"] {
+      background: rgba(245, 158, 11, 0.15);
+    }
+    .wrangler-signal-icon[data-confidence="medium"] {
+      background: rgba(96, 165, 250, 0.15);
+    }
+    .wrangler-signal-icon[data-confidence="low"] {
+      background: rgba(148, 163, 184, 0.1);
+    }
+
+    .wrangler-signal-text {
+      font-size: 12px;
+      color: #e2e8f0;
+      flex: 1;
+      line-height: 1.4;
+    }
+    .wrangler-signal-confidence {
+      font-size: 9px;
+      color: #64748b;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ─── Phase B: Next Actions ────────────────────────────── */
+
+    .wrangler-action-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 4px 0;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+    .wrangler-action-bullet {
+      color: #60a5fa;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ─── Phase B: Contact Signals ─────────────────────────── */
+
+    .wrangler-contact-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      font-size: 12px;
+    }
+    .wrangler-contact-type {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      width: 40px;
+      flex-shrink: 0;
+    }
+    .wrangler-contact-value {
+      color: #93c5fd;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* ─── Buttons ──────────────────────────────────────────────── */
 
@@ -1107,6 +1265,12 @@
     const compactInfo = document.createElement('div');
     compactInfo.className = 'wrangler-compact-info';
     if (account) {
+      const signalSummaryParts = [];
+      if (opportunities.length > 0) signalSummaryParts.push(`${opportunities.length} signal${opportunities.length === 1 ? '' : 's'}`);
+      if (people.length > 0) signalSummaryParts.push(`${people.length} contact${people.length === 1 ? '' : 's'}`);
+      const signalSummary = signalSummaryParts.length > 0
+        ? `<div class="wrangler-info-row">${escapeHtml(signalSummaryParts.join(' \u00B7 '))} \u2014 <span class="wrangler-link" data-action-expand="true">expand for details</span></div>`
+        : '';
       compactInfo.innerHTML = `
         <div class="wrangler-info-row">
           <span>Score:</span>
@@ -1115,6 +1279,7 @@
           <span class="wrangler-info-value">${escapeHtml(humanizeCoverage(coverageStatus))}</span>
         </div>
         ${lastUpdated ? `<div class="wrangler-info-row">Last enriched ${escapeHtml(formatRelativeTime(lastUpdated))}</div>` : ''}
+        ${signalSummary}
       `;
     } else if (intel && !intel.error) {
       compactInfo.innerHTML = `
@@ -1128,6 +1293,14 @@
       compactInfo.innerHTML = `
         <div class="wrangler-info-row">Analyzing page\u2026</div>
       `;
+    }
+    // Wire "expand for details" link
+    const expandLink = compactInfo.querySelector('[data-action-expand]');
+    if (expandLink) {
+      expandLink.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setState('expanded');
+      });
     }
     compact.appendChild(compactInfo);
 
@@ -1246,7 +1419,126 @@
       }));
     }
 
-    // Phase B: Key People, Recent Signals, Ask Wrangler cards go here
+    // ── Phase B: Key People card ──
+    if (people.length > 0 || (intel?.connections || []).length > 0) {
+      const allPeople = [];
+
+      // Warm connections first (highest value)
+      for (const conn of (intel?.connections || []).slice(0, 4)) {
+        allPeople.push({
+          name: conn.name,
+          title: conn.title || '',
+          company: conn.company || '',
+          badge: 'warm',
+          badgeLabel: 'Warm',
+          isDecisionMaker: false,
+        });
+      }
+
+      // Matched people (from page extraction + Sanity lookup)
+      for (const person of people.slice(0, 6)) {
+        // Skip if already shown as a connection
+        if (allPeople.some(p => p.name === person.name)) continue;
+        const isDM = person.seniorityLevel === 'c-suite'
+          || person.seniorityLevel === 'vp'
+          || person.seniorityLevel === 'director';
+        const seniorityLabel = getSeniorityLabel(person.seniorityLevel);
+        allPeople.push({
+          name: person.name,
+          title: person.currentTitle || person.headline || '',
+          company: person.currentCompany || '',
+          badge: isDM ? 'dm' : null,
+          badgeLabel: seniorityLabel,
+          isDecisionMaker: isDM,
+        });
+      }
+
+      if (allPeople.length > 0) {
+        body.appendChild(buildCard('Key People', allPeople.length, false, () => {
+          const el = document.createElement('div');
+          for (const person of allPeople.slice(0, 6)) {
+            const row = document.createElement('div');
+            row.className = 'wrangler-person-row';
+
+            const avatarDM = person.isDecisionMaker ? ' data-decision-maker="true"' : '';
+            let badgeHtml = '';
+            if (person.badge === 'warm') {
+              badgeHtml = '<span class="wrangler-badge wrangler-badge--warm">Warm</span>';
+            } else if (person.badge === 'dm' && person.badgeLabel) {
+              badgeHtml = `<span class="wrangler-badge wrangler-badge--dm">${escapeHtml(person.badgeLabel)}</span>`;
+            }
+
+            row.innerHTML = `
+              <div class="wrangler-person-avatar"${avatarDM}>${escapeHtml(getInitials(person.name))}</div>
+              <div class="wrangler-person-info">
+                <div class="wrangler-person-name">${escapeHtml(person.name)}</div>
+                ${person.title ? `<div class="wrangler-person-title">${escapeHtml(person.title)}</div>` : ''}
+                ${person.company ? `<div class="wrangler-person-company">${escapeHtml(person.company)}</div>` : ''}
+              </div>
+              ${badgeHtml}
+            `;
+            el.appendChild(row);
+          }
+          return el;
+        }));
+      }
+    }
+
+    // ── Phase B: Signals card ──
+    if (opportunities.length > 0) {
+      body.appendChild(buildCard('Signals', opportunities.length, false, () => {
+        const el = document.createElement('div');
+        for (const opp of opportunities.slice(0, 5)) {
+          const row = document.createElement('div');
+          row.className = 'wrangler-signal-row';
+          const icon = getSignalTypeIcon(opp.type);
+          const confidence = opp.confidence || 'medium';
+          row.innerHTML = `
+            <div class="wrangler-signal-icon" data-confidence="${escapeHtml(confidence)}">${icon}</div>
+            <div class="wrangler-signal-text">${escapeHtml(opp.title)}</div>
+            <div class="wrangler-signal-confidence">${escapeHtml(confidence)}</div>
+          `;
+          el.appendChild(row);
+        }
+        return el;
+      }));
+    }
+
+    // ── Phase B: Contact Signals card ──
+    const contacts = intel?.contacts || [];
+    if (contacts.length > 0) {
+      body.appendChild(buildCard('Contact Info', contacts.length, true, () => {
+        const el = document.createElement('div');
+        for (const contact of contacts.slice(0, 8)) {
+          const row = document.createElement('div');
+          row.className = 'wrangler-contact-row';
+          row.innerHTML = `
+            <span class="wrangler-contact-type">${escapeHtml(contact.type || 'info')}</span>
+            <span class="wrangler-contact-value">${escapeHtml(contact.value || contact.label || '')}</span>
+          `;
+          el.appendChild(row);
+        }
+        return el;
+      }));
+    }
+
+    // ── Phase B: Next Actions card ──
+    const nextActions = intel?.nextActions || [];
+    if (nextActions.length > 0) {
+      body.appendChild(buildCard('Next Moves', nextActions.length, true, () => {
+        const el = document.createElement('div');
+        for (const action of nextActions.slice(0, 4)) {
+          const row = document.createElement('div');
+          row.className = 'wrangler-action-row';
+          row.innerHTML = `
+            <span class="wrangler-action-bullet">\u25B8</span>
+            <span>${escapeHtml(action)}</span>
+          `;
+          el.appendChild(row);
+        }
+        return el;
+      }));
+    }
 
     expanded.appendChild(body);
     overlay.appendChild(expanded);
@@ -1281,7 +1573,34 @@
     return card;
   }
 
-  // Phase B: getSignalAge() for signal freshness dots
+  function getSignalTypeIcon(type) {
+    const icons = {
+      'warm-path': '\uD83E\uDD1D',
+      'contact-signal': '\uD83D\uDCE7',
+      'decision-maker': '\u2B50',
+      'community-activity': '\uD83D\uDCAC',
+      'crm-opportunity': '\uD83D\uDCC8',
+      'intel-gap': '\uD83D\uDD0D',
+      'follow-up': '\u23F0',
+    };
+    return icons[type] || '\u26A1';
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = String(name).trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+
+  function getSeniorityLabel(level) {
+    const labels = {
+      'c-suite': 'C-Suite',
+      'vp': 'VP',
+      'director': 'Dir',
+    };
+    return labels[level] || null;
+  }
 
   // ─── Actions ───────────────────────────────────────────────────────────
 
