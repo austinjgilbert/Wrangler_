@@ -173,7 +173,7 @@ async function getDocumentCounts(groqQuery, client) {
     "moltJobs": count(*[_type == "molt.job"]),
     "callSessions": count(*[_type == "call.session"]),
     "networkPersons": count(*[_type == "networkPerson"]),
-    "userInteractions": count(*[_type == "userInteraction"]),
+    "userInteractions": count(*[_type == "interaction"]),
     "total": count(*[!(_type match "system.*")])
   }`;
   return await groqQuery(client, query, {}) || {};

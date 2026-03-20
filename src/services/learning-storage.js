@@ -20,7 +20,7 @@ export async function storeInteraction(
   const interactionId = `interaction-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
   const interactionDoc = {
-    _type: 'userInteraction',
+    _type: 'interaction',
     _id: interactionId,
     accountKey: interaction.accountKey || null,
     accountDomain: interaction.accountDomain || null,
@@ -58,7 +58,7 @@ export async function getInteractionHistory(
   client,
   filters = {}
 ) {
-  let query = '*[_type == "userInteraction"';
+  let query = '*[_type == "interaction"';
   
   if (filters.accountKey) {
     query += ` && accountKey == $accountKey`;
@@ -186,7 +186,7 @@ export async function storeFeedback(
   const feedbackId = `feedback-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   
   const feedbackDoc = {
-    _type: 'learningFeedback',
+    _type: 'feedback',
     _id: feedbackId,
     interactionId: feedback.interactionId || null,
     accountKey: feedback.accountKey || null,
