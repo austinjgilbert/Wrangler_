@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "sh -ac 'set -a; [ -f ./.env ] && . ./.env; set +a; sanity dev'",
     "build": "sanity build",
-    "deploy": "sanity deploy",
+    "deploy": "sh -ac 'set -a; [ -f ./.env ] && . ./.env; set +a; NODE_OPTIONS=--max-old-space-size=768 sanity deploy'",
     "check": "sanity build"
   },
   "keywords": [],

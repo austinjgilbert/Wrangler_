@@ -767,6 +767,12 @@ function _isAllowedOrigin(origin, env) {
   if (!origin) return false;
   if (_ALLOWED_ORIGINS.has(origin)) return true;
 
+  // Sanity SDK apps run in iframes — the origin may be any https://*.sanity.io subdomain
+  try {
+    const url = new URL(origin);
+    if (url.protocol === 'https:' && (url.hostname === 'sanity.io' || url.hostname.endsWith('.sanity.io'))) return true;
+  } catch {}
+
   if (env?.ENVIRONMENT !== 'production' && origin.startsWith('http://localhost:')) return true;
   return false;
 }
