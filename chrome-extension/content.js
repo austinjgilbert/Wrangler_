@@ -267,15 +267,48 @@
         return n ? { name: n, proficiency: extractWithFallbacks(LI_SEL.languages.proficiency, e => e.textContent?.trim(), [el]) } : null;
       });
 
+      const volunteer = extractMultipleItems(LI_SEL.volunteer.container, LI_SEL.volunteer.items, (el) => {
+        const org = extractWithFallbacks(LI_SEL.volunteer.organization, e => e.textContent?.trim(), [el]);
+        return org ? {
+          organization: org,
+          role: extractWithFallbacks(LI_SEL.volunteer.role, e => e.textContent?.trim(), [el]) || undefined,
+          duration: extractWithFallbacks(LI_SEL.volunteer.duration, e => e.textContent?.trim(), [el]) || undefined,
+        } : null;
+      });
+
+      const profileImage = extractWithFallbacks(LI_SEL.basic.profileImage, (el) => {
+        const src = el.getAttribute('src') || el.src || '';
+        // Skip LinkedIn's default ghost/placeholder images
+        return (src && !src.includes('ghost') && !src.includes('default')) ? src : null;
+      });
+
       const connectionsText = extractWithFallbacks(LI_SEL.connections.count);
+      const followersText = extractWithFallbacks(
+        ['.pv-top-card--list-bullet .t-bold', '.top-card-layout__first-subline', '[data-test-id="follower-count"]'],
+        (el) => { const t = el.textContent || ''; return /follower/i.test(t) ? t : null; }
+      );
+
+      // OpenToWork: LinkedIn renders a green banner/frame on the profile photo
+      const openToWork = !!(
+        document.querySelector('.pv-open-to-work-banner') ||
+        document.querySelector('[data-test-id="open-to-work"]') ||
+        document.querySelector('.live-video-hero-image__open-to-work') ||
+        document.querySelector('img[alt*="Open to work"]') ||
+        document.querySelector('span.pv-open-to-carousel-card')
+      );
+
       const currentCompany = experience.find(e => e.isCurrent)?.company || '';
 
       data.people.push({
         name, headline, location: loc, about: (about || '').substring(0, 2000),
         currentCompany, currentTitle: experience.find(e => e.isCurrent)?.title || headline,
         linkedinUrl: location.href, experience, education, skills,
-        certifications, publications, languages,
-        connections: parseCount(connectionsText), source: 'linkedin',
+        certifications, publications, languages, volunteer: volunteer.length ? volunteer : undefined,
+        profileImage: profileImage || undefined,
+        connections: parseCount(connectionsText),
+        followers: parseCount(followersText) || undefined,
+        openToWork: openToWork || undefined,
+        source: 'linkedin',
       });
 
       if (currentCompany) data.accounts.push({ name: currentCompany, source: 'linkedin_profile' });
@@ -1889,7 +1922,11 @@
         certifications: person.certifications?.length ? person.certifications : undefined,
         publications: person.publications?.length ? person.publications : undefined,
         languages: person.languages?.length ? person.languages : undefined,
+        volunteer: person.volunteer?.length ? person.volunteer : undefined,
+        profileImage: person.profileImage || undefined,
         connections: person.connections || undefined,
+        followers: person.followers || undefined,
+        openToWork: person.openToWork || undefined,
       },
     }).catch(() => {}); // fire-and-forget
   }
