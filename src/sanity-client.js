@@ -11,6 +11,12 @@
  * Normalize URL to canonical form for account key generation
  */
 import { buildPayloadIndex, hydratePayload } from './lib/payload-helpers.js';
+import { getAttributeHealth } from './services/attribute-monitor.js';
+import {
+  extractFieldPaths,
+  checkPathsAgainstWhitelist,
+  inferTypeFromId,
+} from './lib/attribute-whitelist.js';
 
 function normalizeCanonicalUrl(url) {
   if (!url) return null;
@@ -88,6 +94,7 @@ function initSanityClient(env) {
     mutateUrl,
     queryUrl,
     apiVersion,
+    env, // Layer 3: write-path guard reads KV health flag via env
   };
 }
 
@@ -274,6 +281,47 @@ async function mutate(client, mutations) {
     if (m.patch && !m.patch.id) {
       console.error('[mutate] patch missing id');
       throw new Error('Mutation patch missing document id');
+    }
+  }
+
+  // ── Layer 3: Write-path guardrail ──
+  // Reads cached attribute health from KV (set by Layer 1 cron).
+  // Only performs path checking when health is critical or wall.
+  // v1: warn/log only — never blocks or throws.
+  const env = client.env;
+  if (env) {
+    try {
+      const health = await getAttributeHealth(env);
+      if (health && (health.level === 'critical' || health.level === 'wall')) {
+        for (const m of mutations) {
+          const doc = m.createIfNotExists || m.createOrReplace || m.create || null;
+          const patch = m.patch;
+
+          let docType, paths;
+
+          if (doc) {
+            docType = doc._type;
+            paths = extractFieldPaths(doc);
+          } else if (patch?.set) {
+            docType = inferTypeFromId(patch.id);
+            paths = extractFieldPaths(patch.set);
+          }
+
+          if (docType && paths?.length > 0) {
+            const check = checkPathsAgainstWhitelist(docType, paths);
+            if (!check.allowed) {
+              console.warn(
+                `[attr-guard] ⚠️ ${check.reason} (health: ${health.level}, ${health.used}/${health.limit} attrs)`
+              );
+              // v1: warn only — do NOT throw or block.
+              // v2 will hard-block at 'wall' level after whitelist is validated.
+            }
+          }
+        }
+      }
+    } catch (guardErr) {
+      // Guard failure must never break mutations
+      console.warn('[attr-guard] Guard check failed (non-fatal):', guardErr?.message || guardErr);
     }
   }
 
