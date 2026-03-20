@@ -1,5 +1,6 @@
 import { useDocuments } from '@sanity/sdk-react';
 import { Suspense } from 'react';
+import { humanizeSignalType, formatTimestamp } from '../lib/formatters';
 
 type DocHandle = { documentId: string; documentType: string };
 
@@ -21,10 +22,10 @@ function SignalList() {
       ) : (
         list.map((doc) => (
           <div className="activity-card" key={doc.documentId}>
-            <strong>{(doc as any).signalType ?? (doc as any).type ?? 'Signal'}</strong>
+            <strong>{humanizeSignalType((doc as any).signalType ?? (doc as any).type)}</strong>
             <span>{(doc as any).summary ?? (doc as any).source ?? doc.documentId}</span>
             <span className="activity-meta">
-              {[(doc as any).source, (doc as any).timestamp].filter(Boolean).join(' · ')}
+              {[(doc as any).source, formatTimestamp((doc as any).timestamp)].filter(Boolean).join(' · ')}
             </span>
           </div>
         ))
@@ -81,7 +82,7 @@ export function ActivityView() {
           <p className="eyebrow">Activity &amp; Events</p>
           <h2>Signals &amp; interactions</h2>
           <p className="detail-meta">
-            Real-time activity from Sanity (signals, interactions).
+            Signals and interactions across your accounts.
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useDocuments } from '@sanity/sdk-react';
 import { Suspense } from 'react';
 import { dedupeAccounts, getAccountDisplayName } from '../lib/account-dedupe';
+import { humanizeJobStatus, humanizeSignalType, formatTimestamp } from '../lib/formatters';
 
 type CountDoc = {
   documentId: string;
@@ -71,22 +72,8 @@ function getStageLabel(stage: string | number | null | undefined): string | null
   }
 }
 
-function getJobStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case 'in_progress':
-      return 'In progress';
-    case 'pending':
-      return 'Queued';
-    case 'queued':
-      return 'Queued';
-    case 'complete':
-      return 'Complete';
-    case 'failed':
-      return 'Failed';
-    default:
-      return status || 'Queued';
-  }
-}
+// Deduplicated — uses shared humanizeJobStatus from formatters.ts
+const getJobStatusLabel = humanizeJobStatus;
 
 function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc>): string {
   const accountId = typeof job.targetEntity === 'string' && job.targetEntity.startsWith('account')
@@ -201,10 +188,10 @@ function DashboardSignalSection() {
         ) : (
           signals.slice(0, 10).map((signal) => (
             <div className="signal-card" key={signal.documentId}>
-              <strong>{signal.signalType || signal.type || 'Signal'}</strong>
+              <strong>{humanizeSignalType(signal.signalType ?? signal.type)}</strong>
               <span>{signal.accountName ?? signal.summary ?? 'Unknown'}</span>
               <span className="signal-meta">
-                {[signal.source, signal.timestamp].filter(Boolean).join(' · ')}
+                {[signal.source, formatTimestamp(signal.timestamp)].filter(Boolean).join(' · ')}
               </span>
             </div>
           ))
@@ -254,10 +241,10 @@ export function DashboardView() {
     <section className="detail-panel">
       <div className="detail-header">
         <div>
-          <p className="eyebrow">DataViewer</p>
+          <p className="eyebrow">Overview</p>
           <h2>Dashboard</h2>
           <p className="detail-meta">
-            Live system overview from Sanity. Worker connectivity is no longer required for this view.
+            Live counts and recent activity across your portfolio.
           </p>
         </div>
       </div>

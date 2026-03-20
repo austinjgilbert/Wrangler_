@@ -4,6 +4,7 @@ import type React from 'react'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { getWorkerConfigMessage } from '../lib/app-env'
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe'
+import { humanizeCoverageStatus, formatTimestamp } from '../lib/formatters'
 import { fetchEnrichStatus, hasWorker, queueEnrichment } from '../lib/worker-api'
 
 type LinkedRecord = {
@@ -210,7 +211,7 @@ function buildTree(account: ProjectedAccount | null): TreeNode | null {
   return {
     id: account._id,
     title,
-    meta: [account.domain || account.rootDomain, account.accountKey, account.industry].filter(Boolean).join(' · '),
+    meta: [account.domain || account.rootDomain, account.industry].filter(Boolean).join(' · '),
     badges: compactStrings([
       account.opportunityScore != null ? `Opportunity ${account.opportunityScore}` : null,
       account.profileCompleteness?.score != null ? `Profile ${account.profileCompleteness.score}%` : null,
@@ -886,7 +887,7 @@ function AccountDetails({
           <p className="eyebrow">Selected Account</p>
           <h2>{title}</h2>
           <p className="detail-meta">
-            {[account.domain || account.rootDomain, account.accountKey, account.industry].filter(Boolean).join(' · ')}
+            {[account.domain || account.rootDomain, account.industry].filter(Boolean).join(' · ')}
           </p>
         </div>
         <div className="mode-row">
@@ -962,7 +963,7 @@ function AccountDetails({
         <div className="coverage-grid">
           {coverageItems.map((item) => (
             <div className={`coverage-card status-${item.status}`} key={item.label}>
-              <span className="coverage-status">{item.status}</span>
+              <span className="coverage-status">{humanizeCoverageStatus(item.status)}</span>
               <strong>{item.label}</strong>
               <p>{item.detail}</p>
             </div>
@@ -1073,7 +1074,7 @@ function AccountDetails({
                 <div className="contact-meta">
                   {contact.email ? <span>{contact.email}</span> : null}
                   {contact.phone ? <span>{contact.phone}</span> : null}
-                  {contact.linkedinUrl ? <span>{contact.linkedinUrl}</span> : null}
+                  {contact.linkedinUrl ? <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn ↗</a> : null}
                 </div>
               </div>
             ))

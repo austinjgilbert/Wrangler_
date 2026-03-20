@@ -70,10 +70,10 @@ export function PeopleListView() {
     <section className="detail-panel">
       <div className="detail-header">
         <div>
-          <p className="eyebrow">DataView</p>
+          <p className="eyebrow">Contacts</p>
           <h2>People</h2>
           <p className="detail-meta">
-            People linked to accounts from Sanity.
+            Contacts and decision-makers across your portfolio.
           </p>
         </div>
       </div>

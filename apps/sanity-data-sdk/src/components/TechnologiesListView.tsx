@@ -60,10 +60,10 @@ export function TechnologiesListView() {
     <section className="detail-panel">
       <div className="detail-header">
         <div>
-          <p className="eyebrow">DataView</p>
+          <p className="eyebrow">Tech Stack</p>
           <h2>Technologies</h2>
           <p className="detail-meta">
-            Technology stack and vendor data from Sanity.
+            Technology stack and vendor data across your portfolio.
           </p>
         </div>
       </div>

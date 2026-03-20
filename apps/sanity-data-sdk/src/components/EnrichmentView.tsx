@@ -121,10 +121,10 @@ export function EnrichmentView() {
           <p className="eyebrow">Research Pipeline</p>
           <h2>Research jobs</h2>
           <p className="detail-meta">
-            Multi-stage research from Sanity. New runs ask the worker to fill gaps and self-heal. Use diagnostics per job to refresh status, advance one step, or rerun a job.
+            Multi-stage research pipeline. Queue new runs, monitor progress, and advance stalled jobs.
           </p>
           <p className="detail-meta worker-status" data-status={workerStatus}>
-            Worker: {workerStatus === 'checking' ? 'Checking…' : workerStatus === 'ok' ? 'Reachable' : 'Unreachable — set VITE_WORKER_URL and check network'}
+            Worker: {workerStatus === 'checking' ? 'Checking…' : workerStatus === 'ok' ? 'Connected' : 'Offline'}
           </p>
         </div>
       </div>
