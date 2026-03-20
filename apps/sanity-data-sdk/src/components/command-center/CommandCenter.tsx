@@ -20,6 +20,7 @@ import './CommandCenter.css';
 
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getAccountDisplayName } from '../../lib/account-dedupe';
 import { AccountSelector } from './AccountSelector';
 import { JobTracker } from './JobTracker';
 import { ModuleGrid } from './ModuleGrid';
@@ -109,7 +110,7 @@ export function CommandCenter() {
   const resolveAccountName = useCallback(
     (key: string) => {
       if (selectedAccount && selectedAccount.accountKey === key) {
-        return selectedAccount.companyName;
+        return getAccountDisplayName(selectedAccount);
       }
       return key;
     },

@@ -13,6 +13,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Account } from '../../lib/adapters';
+import { getAccountDisplayName } from '../../lib/account-dedupe';
 import {
   transformSnapshotAccounts,
   sortAccountsForSelector,
@@ -129,7 +130,7 @@ export function AccountSelector({ selectedAccount, onSelect, onClear }: AccountS
       {selectedAccount ? (
         <div className="account-selector__selected">
           <button className="account-selector__trigger" onClick={handleOpen}>
-            <span className="account-selector__company">{selectedAccount.companyName}</span>
+            <span className="account-selector__company">{getAccountDisplayName(selectedAccount)}</span>
             <span className="account-selector__domain">{selectedAccount.rootDomain}</span>
             {selectedAccount.opportunityScore !== undefined && (
               <span
@@ -197,7 +198,7 @@ export function AccountSelector({ selectedAccount, onSelect, onClear }: AccountS
                 onClick={() => handleSelect(account)}
               >
                 <div className="account-selector__item-main">
-                  <span className="account-selector__item-name">{account.companyName}</span>
+                  <span className="account-selector__item-name">{getAccountDisplayName(account)}</span>
                   <span className="account-selector__item-domain">{account.rootDomain}</span>
                 </div>
                 <div className="account-selector__item-meta">
