@@ -7917,6 +7917,30 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else {
           return createErrorResponse('NOT_FOUND', 'OSINT endpoint not found', { path: url.pathname }, 404, requestId);
         }
+      } else if (url.pathname.startsWith('/operator/dedup')) {
+        // ── Deduplication endpoints ──────────────────────────────────────
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+        if (!auth) {
+          return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+        }
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { initSanityClient: initSC, groqQuery: gq, mutate: mt } = await import('./sanity-client.js');
+        const dedupClient = initSC(env);
+        if (!dedupClient) {
+          return createErrorResponse('CONFIG_ERROR', 'Sanity not configured', {}, 500, requestId);
+        }
+        const sanity = { groqQuery: gq, client: dedupClient, mutate: mt };
+        const { handleDedupScan, handleDedupExecute, handleDedupMerge } = await import('./routes/dedup.ts');
+        if (url.pathname === '/operator/dedup/scan') {
+          return await handleDedupScan(request, requestId, env, sanity);
+        } else if (url.pathname === '/operator/dedup/execute') {
+          return await handleDedupExecute(request, requestId, env, sanity);
+        } else if (url.pathname === '/operator/dedup/merge') {
+          return await handleDedupMerge(request, requestId, env, sanity);
+        } else {
+          return createErrorResponse('NOT_FOUND', 'Dedup endpoint not found. Use /operator/dedup/scan, /execute, or /merge', { path: url.pathname }, 404, requestId);
+        }
       } else if (url.pathname.startsWith('/operator/console')) {
         const { checkMoltApiKey } = await import('./utils/molt-auth.js');
         const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;

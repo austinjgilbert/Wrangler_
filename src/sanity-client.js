@@ -586,6 +586,7 @@ export {
   isSanityQuotaError,
   getSanityServiceError,
   groqQuery,
+  mutate,
   upsertDocument,
   patchDocument,
   deleteDocument,
