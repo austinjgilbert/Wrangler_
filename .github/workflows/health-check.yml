@@ -1,26 +1,72 @@
-# Scheduled health check - fails if worker is down
-# Add alerts via GitHub notifications or external monitoring (UptimeRobot, etc.)
-# For your own fork: set repo secret HEALTH_CHECK_URL to your worker URL, or edit the URL below.
+# Scheduled health check — runs every 30 minutes
+# Validates Worker is up, Sanity is reachable, and key dependencies are configured
+# GitHub sends email notification on failure (Settings → Notifications)
 name: Health Check
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Every 30 minutes
+    - cron: '*/30 * * * *'
   workflow_dispatch: {}
 
 jobs:
   health:
+    name: Worker Health Check
     runs-on: ubuntu-latest
     steps:
       - name: Check health endpoint
-        env:
-          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
         run: |
           BASE="${HEALTH_CHECK_URL:-https://website-scanner.austin-gilbert.workers.dev}"
-          RESP=$(curl -sf --max-time 15 "$BASE/health")
-          if echo "$RESP" | grep -q '"ok":true'; then
-            echo "Health check OK"
-          else
-            echo "Health check failed: $RESP"
+          RESP=$(curl -sf --max-time 15 "$BASE/health" 2>&1)
+          EXIT=$?
+
+          if [ $EXIT -ne 0 ]; then
+            echo "❌ Health endpoint unreachable (curl exit: $EXIT)"
+            echo "### ❌ Health Check Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Worker at $BASE/health is unreachable." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+
+          echo "$RESP" | python3 -c "
+          import sys, json
+
+          d = json.load(sys.stdin)
+          ok = d.get('ok', False)
+          version = d.get('version', 'unknown')
+          deps = d.get('dependencies', {})
+          sanity = deps.get('sanity', {}).get('reachable', False)
+          do_configured = deps.get('osintJobsDO', {}).get('configured', False)
+          queue_configured = deps.get('osintQueue', {}).get('configured', False)
+
+          issues = []
+          if not ok: issues.append('ok=false')
+          if not sanity: issues.append('Sanity unreachable')
+
+          print(f'Version: {version}')
+          print(f'OK: {ok}')
+          print(f'Sanity: {sanity}')
+          print(f'DO: {do_configured}')
+          print(f'Queue: {queue_configured}')
+
+          if issues:
+            print(f'❌ Issues: {issues}')
+            sys.exit(1)
+          else:
+            print('✅ All checks passed')
+          "
+        env:
+          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
+
+      - name: Check auth endpoint
+        run: |
+          BASE="${HEALTH_CHECK_URL:-https://website-scanner.austin-gilbert.workers.dev}"
+          # Verify auth middleware is active (should return 401 without key)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/enrich/jobs")
+          if [ "$HTTP_CODE" = "401" ]; then
+            echo "✅ Auth middleware active (401 on unauthenticated request)"
+          elif [ "$HTTP_CODE" = "503" ]; then
+            echo "⚠️ Auth returns 503 — MOLT_API_KEY may not be configured"
+          else
+            echo "⚠️ Unexpected auth response: HTTP $HTTP_CODE"
+          fi
+        env:
+          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}

@@ -1,0 +1,84 @@
+# PR Check — runs on every pull request to catch issues before merge
+# Validates: type safety, unit tests, Worker build, SDK app build
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'share/sdk-delivery-*'
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  worker-check:
+    name: Worker — Typecheck + Test + Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build (dry-run deploy)
+        run: npm run build
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Report bundle size
+        run: |
+          if [ -d "dist" ]; then
+            SIZE=$(du -sh dist/ | cut -f1)
+            GZIP=$(find dist -name '*.js' -exec gzip -c {} \; | wc -c)
+            GZIP_KB=$((GZIP / 1024))
+            echo "### 📦 Worker Bundle" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total:** ${SIZE}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Gzipped JS:** ${GZIP_KB}KB" >> $GITHUB_STEP_SUMMARY
+            if [ "$GZIP_KB" -gt 500 ]; then
+              echo "- ⚠️ Bundle exceeds 500KB gzipped — review for optimization" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+  sdk-check:
+    name: SDK App — Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install SDK dependencies
+        run: npm ci
+        working-directory: apps/sanity-data-sdk
+
+      - name: Build SDK app
+        run: npm run build
+        working-directory: apps/sanity-data-sdk
+        env:
+          NODE_OPTIONS: '--max-old-space-size=768'
+          # Use placeholder values for build validation — real values set at deploy time
+          VITE_SANITY_PROJECT_ID: 'build-check'
+          VITE_SANITY_DATASET: 'production'
+          VITE_WORKER_URL: 'https://build-check.example.com'

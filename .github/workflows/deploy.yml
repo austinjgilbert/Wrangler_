@@ -1,4 +1,6 @@
-name: Deploy Worker
+# Deploy — Worker + SDK App with post-deploy health gate
+# Triggers on push to main or manual dispatch
+name: Deploy Worker + SDK
 
 on:
   push:
@@ -6,8 +8,13 @@ on:
       - main
   workflow_dispatch: {}
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # Never cancel an in-progress deploy
+
 jobs:
   test:
+    name: Pre-deploy checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,33 +22,36 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Unit tests
         run: npm run test:unit
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Build (dry-run)
+        run: npm run build
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  deploy:
+  deploy-worker:
+    name: Deploy Worker to Cloudflare
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -52,3 +62,95 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env=production
+
+      - name: Post-deploy health gate
+        run: |
+          echo "Waiting 10s for Worker to propagate..."
+          sleep 10
+
+          WORKER_URL="https://website-scanner.austin-gilbert.workers.dev"
+          MAX_RETRIES=3
+          RETRY=0
+
+          while [ $RETRY -lt $MAX_RETRIES ]; do
+            RESP=$(curl -sf --max-time 15 "$WORKER_URL/health" 2>&1) && break
+            RETRY=$((RETRY + 1))
+            echo "Health check attempt $RETRY failed, retrying in 5s..."
+            sleep 5
+          done
+
+          if [ $RETRY -eq $MAX_RETRIES ]; then
+            echo "❌ Health check failed after $MAX_RETRIES attempts"
+            echo "### ❌ Post-Deploy Health Check FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "Worker at $WORKER_URL/health did not respond after $MAX_RETRIES attempts." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "$RESP" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          ok = d.get('ok', False)
+          sanity = d.get('dependencies', {}).get('sanity', {}).get('reachable', False)
+          version = d.get('version', 'unknown')
+
+          print(f'Version: {version}')
+          print(f'OK: {ok}')
+          print(f'Sanity reachable: {sanity}')
+
+          # Write summary
+          with open('$GITHUB_STEP_SUMMARY', 'a') if '$GITHUB_STEP_SUMMARY' != '' else sys.stdout as f:
+            pass
+
+          assert ok, f'Health check returned ok=false: {json.dumps(d)}'
+          assert sanity, f'Sanity unreachable: {json.dumps(d)}'
+          print('✅ Health check passed')
+          "
+
+          # Write GitHub step summary
+          echo "### ✅ Post-Deploy Health Check Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** $WORKER_URL/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Response:** \`$RESP\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-sdk:
+    name: Deploy SDK App
+    needs: deploy-worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install SDK dependencies
+        run: npm ci
+        working-directory: apps/sanity-data-sdk
+
+      - name: Build SDK app
+        run: npm run build
+        working-directory: apps/sanity-data-sdk
+        env:
+          NODE_OPTIONS: '--max-old-space-size=768'
+          VITE_SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          VITE_SANITY_DATASET: 'production'
+          VITE_WORKER_URL: 'https://website-scanner.austin-gilbert.workers.dev'
+          VITE_WORKER_API_KEY: ${{ secrets.WORKER_API_KEY }}
+
+      - name: Deploy SDK app
+        run: npx sanity deploy
+        working-directory: apps/sanity-data-sdk
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Worker:** https://website-scanner.austin-gilbert.workers.dev" >> $GITHUB_STEP_SUMMARY
+          echo "- **SDK App:** https://www.sanity.io/@of8nbhG8g/application/fhba58obwhfounyb1893q6ea/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
