@@ -31,11 +31,13 @@ import {
   type GlanceContext,
   type TransformedBriefing,
   transformBriefingResponse,
+  workerGet,
   workerPost,
   getCached,
   setCache,
   clearCache,
   type RawGoodMorningResponse,
+  type Signal,
   buildPipelineStages,
 } from '../../lib/adapters';
 
@@ -55,8 +57,11 @@ function extractDomain(url?: string): string {
  * Stub modules — Phase 2 features that show a toast when clicked.
  * Uses CANONICAL module keys (post-rename).
  */
+
+/** Stage names in pipeline order — used to map currentStage string to an index. */
+const STAGE_ORDER = ['initial_scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'] as const;
+
 const STUB_MODULES: Record<string, string> = {
-  signals: 'Signal scanning coming in Phase 2 — will detect buying signals from web activity',
   techstack: 'Deep tech scan coming in Phase 2 — will map full technology stack',
   opportunity: 'Opportunity scoring coming in Phase 2 — will rank deal likelihood',       // FIX #1: was 'pipeline'
   approach: 'Approach generation coming in Phase 2 — will build personalized outreach strategy', // FIX #1: was 'gaps'
@@ -131,6 +136,64 @@ export function CommandCenter() {
     enabled: !!selectedAccount,
   });
 
+  // ── Pipeline Data (enrichment status → real pipeline stages) ──────────
+  // Fetches /enrich/status when an account is selected, maps currentStage
+  // to a stage index for buildPipelineStages(). Three cases:
+  //   'in_progress' → indexOf(currentStage) marks stages done/active/pending
+  //   'complete'    → index 7 (past all stages) → all done
+  //   'not_started' → undefined index → all pending
+
+  const [pipelineStageIndex, setPipelineStageIndex] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!selectedAccount) {
+      setPipelineStageIndex(undefined);
+      return;
+    }
+
+    workerGet<{ ok: boolean; data: { status: Record<string, unknown> } }>(
+      `/enrich/status?accountKey=${encodeURIComponent(selectedAccount.accountKey)}`,
+    )
+      .then((res) => {
+        // Double-nesting: workerGet returns { ok, data: WorkerJSON, status }
+        // WorkerJSON is { ok, data: { status: { status, currentStage, ... } } }
+        // TODO: type workerGet response properly when adapter types are cleaned up
+        const statusPayload = (res.data as any)?.data?.status ?? (res.data as any)?.status ?? {};
+        const enrichStatus = statusPayload.status as string | undefined;
+        const currentStage = statusPayload.currentStage as string | undefined;
+
+        if (enrichStatus === 'complete') {
+          setPipelineStageIndex(STAGE_ORDER.length); // 7 → all stages done
+        } else if (enrichStatus === 'in_progress' && currentStage) {
+          const idx = STAGE_ORDER.indexOf(currentStage as typeof STAGE_ORDER[number]);
+          setPipelineStageIndex(idx >= 0 ? idx : undefined);
+        } else {
+          setPipelineStageIndex(undefined); // not_started → all pending
+        }
+      })
+      .catch(() => {
+        setPipelineStageIndex(undefined);
+      });
+  }, [selectedAccount]);
+
+  // ── Signals Data (from snapshot, already fetched by AccountSelector) ──
+  // Extracts signals.recent from /operator/console/snapshot.
+  // HTTP cache deduplicates with AccountSelector's fetch.
+
+  const [signals, setSignals] = useState<Signal[]>([]);
+
+  useEffect(() => {
+    workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
+      .then((res) => {
+        // TODO: type workerGet response properly when adapter types are cleaned up
+        const recent = (res.data as any)?.data?.signals?.recent ?? [];
+        setSignals(recent);
+      })
+      .catch(() => {
+        setSignals([]);
+      });
+  }, []); // Fetch once on mount — signals are system-wide, not per-account
+
   // ── Briefing Fetch ────────────────────────────────────────────────────
 
   const fetchBriefing = useCallback(async () => {
@@ -197,6 +260,25 @@ export function CommandCenter() {
       const stubMessage = STUB_MODULES[moduleKey];
       if (stubMessage) {
         showToast(stubMessage);
+        return;
+      }
+
+      // Signals: refresh snapshot data (no heavy analytics endpoint)
+      if (moduleKey === 'signals') {
+        if (!selectedAccount) {
+          showToast('Select an account first');
+          return;
+        }
+        showToast('Refreshing signals...');
+        workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
+          .then((res) => {
+            const recent = (res.data as any)?.data?.signals?.recent ?? [];
+            setSignals(recent);
+            const name = selectedAccount.companyName?.trim().toLowerCase() ?? '';
+            const count = recent.filter((s: Signal) => s.accountName?.trim().toLowerCase() === name).length;
+            showToast(count > 0 ? `Found ${count} signal${count > 1 ? 's' : ''}` : 'No signals found');
+          })
+          .catch(() => showToast('Failed to refresh signals'));
         return;
       }
 
@@ -276,10 +358,11 @@ export function CommandCenter() {
     () => ({
       account: selectedAccount,
       briefing,
-      pipelineStages: buildPipelineStages({}), // TODO: Wire to real pipeline data
-      activeJobs: activeJobsByModule,           // FIX #2: from hook, not empty Map
+      pipelineStages: buildPipelineStages({}, pipelineStageIndex),
+      activeJobs: activeJobsByModule,
+      signals,
     }),
-    [selectedAccount, briefing, activeJobsByModule],
+    [selectedAccount, briefing, pipelineStageIndex, activeJobsByModule, signals],
   );
 
   // ── Render ────────────────────────────────────────────────────────────

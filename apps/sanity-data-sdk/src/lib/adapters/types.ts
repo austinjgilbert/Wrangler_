@@ -173,11 +173,24 @@ export interface ModuleGlanceProps {
   activeJob: ModuleActiveJob | null;
 }
 
+// ─── Signals ────────────────────────────────────────────────────────────
+
+/** Signal from /operator/console/snapshot → signals.recent[] */
+export interface Signal {
+  id: string;
+  signalType: string;           // 'technology_change', 'leadership_change', 'funding', etc.
+  accountName: string;
+  timestamp: string;            // ISO datetime
+  source?: string;
+  uncertaintyState: string;     // 'likely' | 'confirmed' | 'uncertain'
+}
+
 export interface GlanceContext {
   account: Account | null;
   briefing: TransformedBriefing | null;
   pipelineStages: PipelineStage[];
   activeJobs: Map<string, ModuleActiveJob>;
+  signals: Signal[];
 }
 
 // ─── Urgency Thresholds ─────────────────────────────────────────────────

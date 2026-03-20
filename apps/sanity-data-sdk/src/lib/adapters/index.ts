@@ -18,6 +18,7 @@ export type {
   PipelineStage,
   PipelineStageName,
   RawGoodMorningResponse,
+  Signal,
   TopAccount,
   TransformedBriefing,
   Urgency,

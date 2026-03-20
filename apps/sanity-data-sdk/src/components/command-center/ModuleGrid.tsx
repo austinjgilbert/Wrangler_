@@ -9,8 +9,8 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { ModuleShell } from './ModuleShell';
-import { PipelineBar } from './PipelineBar';
-import type { ActionButton, Account, ModuleGlanceProps } from '../../lib/adapters';
+import { ResearchDetail } from './ResearchDetail';
+import type { ActionButton, ModuleGlanceProps } from '../../lib/adapters';
 import {
   MODULE_CONFIGS,
   deriveAllModuleGlanceProps,
@@ -73,8 +73,11 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
             onCollapse={handleCollapse}
             onAction={onModuleAction}
             detailContent={
-              expandedConfig.key === 'research'
-                ? <PipelineBar stages={glanceContext.pipelineStages} />
+              expandedConfig.key === 'research' && glanceContext.account
+                ? <ResearchDetail
+                    accountKey={glanceContext.account.accountKey}
+                    pipelineStages={glanceContext.pipelineStages}
+                  />
                 : undefined
             }
             actions={[
