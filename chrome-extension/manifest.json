@@ -3,7 +3,6 @@
   "name": "Wrangler",
   "version": "4.0.0",
   "description": "Sales intelligence overlay — surfaces account insights, enrichment status, and research context on any page you browse.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
   "permissions": [
     "activeTab",
     "scripting",
