@@ -8279,10 +8279,11 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         );
       }
     } catch (error) {
+      console.error('[FATAL] Unhandled error:', error.message, error.stack);
       return createErrorResponse(
         'INTERNAL_ERROR',
         'Internal server error',
-        { message: error.message, stack: error.stack },
+        { hint: error.message },
         500,
         requestId
       );

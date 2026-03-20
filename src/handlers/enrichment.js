@@ -221,10 +221,11 @@ export async function handleQueueEnrichment(
     }, requestId);
     
   } catch (error) {
+    console.error('[ENRICH_QUEUE] Error:', error.message, error.stack);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to queue enrichment',
-      { error: error.message },
+      { hint: error.message },
       500,
       requestId
     );
