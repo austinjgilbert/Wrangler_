@@ -1,16 +1,21 @@
 /**
- * Rabbit – Background Service Worker
+ * Wrangler – Background Service Worker (v2)
  *
- * Always-on browser intelligence:
- * - receives DOM snapshots from content.js
- * - calls worker-side page intelligence
- * - updates the in-page overlay
- * - stores high-value captures quietly in the background
- * - answers prompt-box questions with grounded worker data
+ * Event-driven service worker for the Wrangler Chrome extension.
+ * - Receives DOM snapshots from content.js
+ * - Calls Worker /extension/page-intel for account context
+ * - Manages capture toggle state (green active / gray paused)
+ * - Answers overlay Q&A via /extension/ask
+ * - Stores high-value captures via /extension/capture
  */
 
 const DEFAULT_WORKER_URL = 'https://website-scanner.austin-gilbert.workers.dev';
+const WRANGLER_APP_URL = 'https://www.sanity.io/@of8nbhG8g/application/fhba58obwhfounyb1893q6ea/';
+
+// Debounce timers for page analysis (per tab)
 const analysisTimers = new Map();
+
+// ─── Installation ────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -20,114 +25,124 @@ chrome.runtime.onInstalled.addListener((details) => {
       totalCaptures: 0,
       todayCaptures: 0,
       lastCaptureDate: '',
-      rabbitAutoObserve: true,
-      rabbitOverlayEnabled: true,
-      rabbitStoreImportant: true,
-      rabbitLearnMode: false,
-      rabbitLearnSessionId: '',
-      rabbitLearnStatus: null,
-      rabbitLastInsight: null,
+      captureEnabled: true,
+      overlayEnabled: true,
+      storeImportant: true,
     });
   }
 
-  chrome.contextMenus.create({
-    id: 'capture-page',
-    title: 'Capture this page to Sanity',
-    contexts: ['page'],
-  });
-  chrome.contextMenus.create({
-    id: 'capture-selection',
-    title: 'Send selected text to Sanity',
-    contexts: ['selection'],
-  });
-  chrome.contextMenus.create({
-    id: 'send-to-account-plan',
-    title: 'Send to Account Plan Builder',
-    contexts: ['page', 'selection'],
-  });
+  // Phase B: Context menus (requires contextMenus permission)
+  // chrome.contextMenus.create({ id: 'wrangler-capture-page', ... });
+
+  // Set initial icon state
+  updateIconState(true);
 });
 
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.totalCaptures) {
-    const count = changes.totalCaptures.newValue || 0;
-    chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
-    chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
+// ─── Action icon click → toggle capture ──────────────────────────────────────
+
+chrome.action.onClicked.addListener(async () => {
+  const { captureEnabled } = await chrome.storage.local.get(['captureEnabled']);
+  const newState = !captureEnabled;
+  await chrome.storage.local.set({ captureEnabled: newState });
+  await updateIconState(newState);
+
+  // Notify all tabs of state change
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (tab.id) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'wrangler:captureStateChanged',
+        enabled: newState,
+      }).catch(() => {});
+    }
   }
 });
 
+async function updateIconState(enabled) {
+  const color = enabled ? '#22c55e' : '#6b7280';
+  const text = enabled ? '' : 'OFF';
+  await chrome.action.setBadgeBackgroundColor({ color });
+  await chrome.action.setBadgeText({ text });
+  await chrome.action.setTitle({
+    title: enabled ? 'Wrangler — Capture active' : 'Wrangler — Capture paused',
+  });
+}
+
+// ─── Message handling ────────────────────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'rabbit:pageContext') {
-    const tabId = sender?.tab?.id;
-    if (!tabId || !message.payload) {
-      sendResponse({ ok: false, error: 'Missing tab or payload' });
+  if (!message?.type) return false;
+
+  switch (message.type) {
+    case 'wrangler:pageContext': {
+      const tabId = sender?.tab?.id;
+      if (!tabId || !message.payload) {
+        sendResponse({ ok: false, error: 'Missing tab or payload' });
+        return false;
+      }
+      scheduleAnalysis(tabId, message.payload)
+        .then((result) => sendResponse({ ok: true, data: result }))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true; // async response
+    }
+
+    // Phase B: wrangler:ask (Ask Wrangler card)
+
+    case 'wrangler:getState': {
+      const tabId = sender?.tab?.id || message.tabId;
+      Promise.all([
+        getTabState(tabId),
+        chrome.storage.local.get(['captureEnabled', 'overlayEnabled']),
+      ])
+        .then(([tabState, settings]) => {
+          sendResponse({
+            ok: true,
+            data: {
+              intel: tabState?.intel || null,
+              captureEnabled: settings.captureEnabled !== false,
+              overlayEnabled: settings.overlayEnabled !== false,
+            },
+          });
+        })
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true;
+    }
+
+    case 'wrangler:openApp': {
+      const accountKey = message.accountKey || '';
+      const url = accountKey
+        ? `${WRANGLER_APP_URL}?view=command-center&account=${encodeURIComponent(accountKey)}`
+        : `${WRANGLER_APP_URL}?view=command-center`;
+      chrome.tabs.create({ url });
+      sendResponse({ ok: true });
       return false;
     }
 
-    scheduleAnalysis(tabId, message.payload)
-      .then((result) => sendResponse({ ok: true, data: result }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-
-  if (message?.type === 'rabbit:ask') {
-    handleAsk(message.payload || {}, sender?.tab?.id)
-      .then((result) => sendResponse({ ok: true, data: result }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-
-  if (message?.type === 'rabbit:getLatestIntel') {
-    const tabId = sender?.tab?.id || message.tabId;
-    getTabState(tabId)
-      .then((state) => sendResponse({ ok: true, data: { intel: state?.intel || null, learnIntel: state?.learnIntel || null } }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-
-  return false;
-});
-
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const stored = await getSettings();
-  if (!stored.apiKey) {
-    console.warn('[Rabbit] No API key configured — open the extension popup to set it.');
-    return;
-  }
-
-  const workerUrl = normalizeWorkerUrl(stored.workerUrl);
-
-  if (info.menuItemId === 'capture-page' && tab?.id) {
-    const extracted = await extractTabPayload(tab.id);
-    if (extracted) {
-      await capturePayload(workerUrl, stored.apiKey, extracted);
+    case 'wrangler:openSettings': {
+      chrome.runtime.openOptionsPage();
+      sendResponse({ ok: true });
+      return false;
     }
-  }
 
-  if (info.menuItemId === 'capture-selection' && info.selectionText) {
-    const payload = {
-      url: tab?.url || 'context-menu://selection',
-      title: `Selection from ${tab?.title || 'unknown'}`,
-      source: 'text_paste',
-      capturedAt: new Date().toISOString(),
-      accounts: [],
-      people: [],
-      technologies: [],
-      signals: [],
-      metadata: {},
-      rawText: info.selectionText.substring(0, 15000),
-    };
-    await capturePayload(workerUrl, stored.apiKey, payload);
-  }
+    case 'wrangler:setOverlayEnabled': {
+      chrome.storage.local.set({ overlayEnabled: !!message.enabled });
+      sendResponse({ ok: true });
+      return false;
+    }
 
-  if (info.menuItemId === 'send-to-account-plan') {
-    await sendToAccountPlan(workerUrl, stored.apiKey, info, tab);
+    default:
+      return false;
   }
 });
+
+// Phase B: Context menus (requires contextMenus permission in manifest)
+
+// ─── Page analysis (debounced) ───────────────────────────────────────────────
 
 async function scheduleAnalysis(tabId, payload) {
   const settings = await getSettings();
-  if (!settings.apiKey || !settings.rabbitAutoObserve) {
-    return { skipped: true, reason: 'Auto-observe disabled or API key missing' };
+  if (!settings.apiKey || !settings.captureEnabled) {
+    return { skipped: true, reason: 'Capture disabled or API key missing' };
   }
 
   if (analysisTimers.has(tabId)) {
@@ -139,66 +154,68 @@ async function scheduleAnalysis(tabId, payload) {
       analysisTimers.delete(tabId);
       try {
         const state = await getTabState(tabId);
+
+        // Skip if page hasn't changed
         if (state?.lastFingerprint === payload.fingerprint) {
-          resolve({ skipped: true, reason: 'Fingerprint unchanged', intel: state.intel || null });
+          resolve({
+            skipped: true,
+            reason: 'Fingerprint unchanged',
+            intel: state.intel || null,
+          });
           return;
         }
 
+        // Save payload immediately
         await setTabState(tabId, {
           lastFingerprint: payload.fingerprint,
           payload,
           lastObservedAt: new Date().toISOString(),
         });
 
+        // Request page intelligence from Worker
         const intel = await requestPageIntel(payload, settings);
-        let learnIntel = state?.learnIntel || null;
-        if (settings.rabbitLearnMode) {
-          if (!settings.rabbitLearnSessionId) {
-            const learnSessionId = createLearnSessionId(payload);
-            await chrome.storage.local.set({ rabbitLearnSessionId: learnSessionId });
-            settings.rabbitLearnSessionId = learnSessionId;
-          }
-          learnIntel = await requestLearnMode(payload, settings);
-        }
+
         await setTabState(tabId, {
           lastFingerprint: payload.fingerprint,
           payload,
           intel,
-          learnIntel,
           lastObservedAt: new Date().toISOString(),
         });
 
+        // Determine if overlay should be notified
         const previousIntel = state?.intel || null;
-        const shouldInterrupt = !previousIntel
+        const shouldNotify = !previousIntel
           || previousIntel.interruptKey !== intel?.interruptKey
           || (intel?.interruptLevel === 'high' && previousIntel?.interruptLevel !== 'high');
 
-        if (settings.rabbitOverlayEnabled && shouldInterrupt) {
-          await chrome.tabs.sendMessage(tabId, { type: 'rabbit:intel', intel }).catch(() => {});
+        if (settings.overlayEnabled && shouldNotify) {
+          await chrome.tabs.sendMessage(tabId, {
+            type: 'wrangler:intel',
+            intel,
+          }).catch(() => {});
         }
 
+        // Store intel for badge
         if (intel) {
-          await chrome.storage.local.set({
-            rabbitLastInsight: intel,
-            rabbitLastIntel: intel,
-          });
-        }
-        if (learnIntel) {
-          await chrome.storage.local.set({
-            rabbitLearnStatus: learnIntel,
-          });
+          await chrome.storage.local.set({ lastIntel: intel });
         }
 
-        if (intel?.shouldStoreCapture && settings.rabbitStoreImportant) {
-          const storedFingerprints = Array.isArray(state?.storedFingerprints) ? state.storedFingerprints : [];
+        // Auto-capture high-value pages
+        if (intel?.shouldStoreCapture && settings.storeImportant) {
+          const storedFingerprints = Array.isArray(state?.storedFingerprints)
+            ? state.storedFingerprints
+            : [];
           if (!storedFingerprints.includes(payload.fingerprint)) {
-            const captureResult = await capturePayload(normalizeWorkerUrl(settings.workerUrl), settings.apiKey, payload);
+            const captureResult = await capturePayload(
+              normalizeWorkerUrl(settings.workerUrl),
+              settings.apiKey,
+              payload,
+            );
             storedFingerprints.push(payload.fingerprint);
             await setTabState(tabId, {
               ...state,
               payload,
               intel,
-              learnIntel,
               lastFingerprint: payload.fingerprint,
               storedFingerprints: storedFingerprints.slice(-25),
               lastCaptureResult: captureResult,
@@ -207,12 +224,8 @@ async function scheduleAnalysis(tabId, payload) {
           }
         }
 
-        if (settings.rabbitOverlayEnabled && learnIntel) {
-          await chrome.tabs.sendMessage(tabId, { type: 'rabbit:learnIntel', learnIntel }).catch(() => {});
-        }
-
-        await updateActionBadgeForIntel(intel);
-        resolve({ intel, learnIntel });
+        await updateBadgeForIntel(intel);
+        resolve({ intel });
       } catch (error) {
         reject(error);
       }
@@ -222,235 +235,28 @@ async function scheduleAnalysis(tabId, payload) {
   });
 }
 
-async function handleAsk(payload, senderTabId) {
-  const settings = await getSettings();
-  if (!settings.apiKey) throw new Error('Missing API key');
-
-  let page = payload.page || null;
-  const tabId = senderTabId || payload.tabId || null;
-  if (!page && tabId) {
-    const state = await getTabState(tabId);
-    page = state?.payload || null;
-  }
-  if (!page && tabId) {
-    page = await extractTabPayload(tabId);
-  }
-
-  const response = await fetch(`${normalizeWorkerUrl(settings.workerUrl)}/extension/ask`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${settings.apiKey}`,
-    },
-    body: JSON.stringify({
-      prompt: payload.prompt || '',
-      page,
-      threadId: payload.threadId || null,
-    }),
-  });
-  const data = await response.json().catch(() => ({ ok: false, error: { message: 'Invalid response from worker' } }));
-  if (!data.ok) {
-    throw new Error(data?.error?.message || 'Question failed');
-  }
-  return data.data;
-}
+// ─── Worker API calls ────────────────────────────────────────────────────────
 
 async function requestPageIntel(payload, settings) {
   const response = await fetch(`${normalizeWorkerUrl(settings.workerUrl)}/extension/page-intel`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${settings.apiKey}`,
+      'X-API-Key': settings.apiKey,
     },
     body: JSON.stringify(payload),
   });
-  const data = await response.json().catch(() => ({ ok: false, error: { message: 'Invalid response from worker' } }));
+  const data = await response.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response from worker' },
+  }));
   if (!data.ok) {
     throw new Error(data?.error?.message || 'Page analysis failed');
   }
   return data.data || null;
 }
 
-async function requestLearnMode(payload, settings) {
-  const response = await fetch(`${normalizeWorkerUrl(settings.workerUrl)}/extension/learn`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${settings.apiKey}`,
-    },
-    body: JSON.stringify({
-      ...payload,
-      learnMode: {
-        sessionId: settings.rabbitLearnSessionId || createLearnSessionId(payload),
-      },
-    }),
-  });
-  const data = await response.json().catch(() => ({ ok: false, error: { message: 'Invalid response from worker' } }));
-  if (!data.ok) {
-    throw new Error(data?.error?.message || 'Learn Mode failed');
-  }
-  return data.data || null;
-}
-
-async function sendToAccountPlan(workerUrl, apiKey, info, tab) {
-  let extractedData = null;
-  if (tab?.id) {
-    extractedData = await extractTabPayload(tab.id);
-  }
-
-  const ingestPayload = {
-    selectedText: info.selectionText ? info.selectionText.substring(0, 15000) : '',
-    pageUrl: tab?.url || '',
-    pageTitle: tab?.title || '',
-  };
-
-  if (extractedData) {
-    ingestPayload.extractedData = {
-      source: extractedData.source || 'website',
-      accounts: (extractedData.accounts || []).slice(0, 20),
-      people: (extractedData.people || []).slice(0, 20),
-      technologies: (extractedData.technologies || []).slice(0, 50),
-      signals: (extractedData.signals || []).slice(0, 20),
-      metadata: extractedData.metadata || {},
-      rawText: (extractedData.rawText || '').substring(0, 15000),
-    };
-  }
-
-  let screenshotDataUrl = null;
-  try {
-    if (tab?.id) {
-      screenshotDataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-    }
-  } catch {}
-  if (screenshotDataUrl) ingestPayload.screenshotDataUrl = screenshotDataUrl;
-
-  let accountName = extractedData?.accounts?.[0]?.name || '';
-  if (!accountName) {
-    accountName = (tab?.title || '')
-      .replace(/\s*[\|–—-]\s*(LinkedIn|Company Page|Overview|About|Salesforce|HubSpot|Outreach|Home).*$/i, '')
-      .trim()
-      .substring(0, 100);
-  }
-  ingestPayload.accountName = accountName || 'Unknown Account';
-
-  const resp = await fetch(`${workerUrl}/account-plan/context/ingest`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(ingestPayload),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (data && data.ok && data.data?.draftId) {
-    const contextUrl = `${workerUrl}/account-plan/context?draftId=${encodeURIComponent(data.data.draftId)}&accountName=${encodeURIComponent(data.data.accountName || '')}`;
-    chrome.tabs.create({ url: contextUrl });
-    return;
-  }
-  console.warn('[Rabbit] Account Plan ingest failed:', data);
-}
-
-async function extractTabPayload(tabId) {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js'],
-    });
-  } catch {}
-
-  await new Promise((resolve) => setTimeout(resolve, 120));
-
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        if (window.__rabbitBuildPageContext) return window.__rabbitBuildPageContext();
-        if (window.__moltExtract) return window.__moltExtract();
-        return null;
-      },
-    });
-    if (result?.result) return result.result;
-  } catch {}
-
-  try {
-    const [fallback] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: fallbackExtract,
-    });
-    return fallback?.result || null;
-  } catch {
-    return null;
-  }
-}
-
-function extractDomainFromUrl(url) {
-  try {
-    return new URL(url).hostname || '';
-  } catch {
-    return '';
-  }
-}
-
-function inferCompanyNameFromCapture(payload, domain) {
-  const accountName = (payload?.accounts || []).find(account => account?.name)?.name;
-  if (accountName) return accountName;
-
-  const metaSiteName = payload?.metadata?.ogSiteName
-    || payload?.metadata?.['og:site_name']
-    || payload?.metadata?.['application-name'];
-  if (metaSiteName) return String(metaSiteName).trim();
-
-  const titleRoot = String(payload?.title || '')
-    .split(/\s+[\|\-–—]\s+/)
-    .map(part => part.trim())
-    .find(Boolean);
-  if (titleRoot) return titleRoot;
-
-  const base = String(domain || '').replace(/^www\./i, '').split('.')[0] || '';
-  return base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
-}
-
-function enrichCapturePayload(payload) {
-  if (!payload) return null;
-
-  const url = payload.interaction?.url || payload.url || payload.contextUrl || '';
-  const domain = String(payload.domain || payload.interaction?.domain || extractDomainFromUrl(url)).trim();
-  if (!domain) {
-    console.warn('[Rabbit] Interaction skipped: missing domain');
-    return null;
-  }
-
-  const timestamp = payload.interaction?.timestamp || payload.capturedAt || new Date().toISOString();
-  const title = payload.interaction?.title || payload.title || '';
-  const companyName = String(
-    payload.companyName
-      || payload.interaction?.companyName
-      || inferCompanyNameFromCapture(payload, domain),
-  ).trim();
-  const interaction = {
-    _type: 'interaction',
-    source: 'chrome_extension',
-    domain,
-    url,
-    title,
-    companyName,
-    timestamp,
-  };
-
-  console.log('[Rabbit] Chrome Extension Interaction:', interaction);
-
-  return {
-    ...payload,
-    url,
-    title,
-    domain,
-    companyName,
-    capturedAt: timestamp,
-    captureSource: 'chrome_extension',
-    pageSource: payload.pageSource || payload.source || 'website',
-    interaction,
-  };
-}
+// Phase B: handleAsk() for Ask Wrangler card (/extension/ask endpoint)
 
 async function capturePayload(workerUrl, apiKey, payload) {
   try {
@@ -463,59 +269,137 @@ async function capturePayload(workerUrl, apiKey, payload) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey,
       },
       body: JSON.stringify(enrichedPayload),
     });
 
     const data = await resp.json().catch(() => ({}));
     if (data && data.ok) {
-      const stored = await chrome.storage.local.get(['totalCaptures', 'todayCaptures', 'lastCaptureDate']);
+      const stored = await chrome.storage.local.get([
+        'totalCaptures',
+        'todayCaptures',
+        'lastCaptureDate',
+      ]);
       const today = new Date().toDateString();
       const total = (stored.totalCaptures || 0) + 1;
-      const todayCount = stored.lastCaptureDate === today ? (stored.todayCaptures || 0) + 1 : 1;
-      await chrome.storage.local.set({ totalCaptures: total, todayCaptures: todayCount, lastCaptureDate: today });
+      const todayCount = stored.lastCaptureDate === today
+        ? (stored.todayCaptures || 0) + 1
+        : 1;
+      await chrome.storage.local.set({
+        totalCaptures: total,
+        todayCaptures: todayCount,
+        lastCaptureDate: today,
+      });
     }
     return data;
   } catch (error) {
-    console.error('[Rabbit] Send failed:', error.message);
+    console.error('[Wrangler] Capture failed:', error.message);
     return { ok: false, error: { message: error.message } };
   }
 }
 
-async function updateActionBadgeForIntel(intel) {
-  const count = Math.min(9, (intel?.opportunities || []).length || 0);
-  await chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
-  await chrome.action.setBadgeBackgroundColor({ color: count > 0 ? '#f59e0b' : '#22c55e' });
+// ─── Payload enrichment ──────────────────────────────────────────────────────
+
+function enrichCapturePayload(payload) {
+  if (!payload) return null;
+
+  const url = payload.interaction?.url || payload.url || payload.contextUrl || '';
+  const domain = String(
+    payload.domain || payload.interaction?.domain || extractDomainFromUrl(url),
+  ).trim();
+  if (!domain) {
+    console.warn('[Wrangler] Capture skipped: missing domain');
+    return null;
+  }
+
+  const timestamp = payload.interaction?.timestamp || payload.capturedAt || new Date().toISOString();
+  const title = payload.interaction?.title || payload.title || '';
+  const companyName = String(
+    payload.companyName
+      || payload.interaction?.companyName
+      || inferCompanyNameFromCapture(payload, domain),
+  ).trim();
+
+  return {
+    ...payload,
+    url,
+    title,
+    domain,
+    companyName,
+    capturedAt: timestamp,
+    captureSource: 'chrome_extension',
+    pageSource: payload.pageSource || payload.source || 'website',
+    interaction: {
+      _type: 'interaction',
+      source: 'chrome_extension',
+      domain,
+      url,
+      title,
+      companyName,
+      timestamp,
+    },
+  };
 }
 
-async function getSettings() {
-  return chrome.storage.local.get([
-    'workerUrl',
-    'apiKey',
-    'rabbitAutoObserve',
-    'rabbitOverlayEnabled',
-    'rabbitStoreImportant',
-    'rabbitLearnMode',
-    'rabbitLearnSessionId',
-  ]);
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function extractDomainFromUrl(url) {
+  try {
+    return new URL(url).hostname || '';
+  } catch {
+    return '';
+  }
 }
 
-function normalizeWorkerUrl(workerUrl) {
-  return (workerUrl || DEFAULT_WORKER_URL).replace(/\/+$/, '');
+function inferCompanyNameFromCapture(payload, domain) {
+  const accountName = (payload?.accounts || []).find((a) => a?.name)?.name;
+  if (accountName) return accountName;
+
+  const metaSiteName = payload?.metadata?.ogSiteName
+    || payload?.metadata?.['og:site_name']
+    || payload?.metadata?.['application-name'];
+  if (metaSiteName) return String(metaSiteName).trim();
+
+  const titleRoot = String(payload?.title || '')
+    .split(/\s+[|–—-]\s+/)
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (titleRoot) return titleRoot;
+
+  const base = String(domain || '').replace(/^www\./i, '').split('.')[0] || '';
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
 }
 
-async function getTabState(tabId) {
-  if (!tabId) return null;
-  const key = `rabbitTabState:${tabId}`;
-  const result = await chrome.storage.session.get([key]);
-  return result[key] || null;
-}
+async function extractTabPayload(tabId) {
+  // E5: Use message passing instead of window globals.
+  // Content script handles 'wrangler:extractPayload' and returns page context.
+  try {
+    // Ensure content script is injected
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js'],
+      });
+    } catch {}
 
-async function setTabState(tabId, state) {
-  if (!tabId) return;
-  const key = `rabbitTabState:${tabId}`;
-  await chrome.storage.session.set({ [key]: state });
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    // Request payload via message passing (no window globals)
+    const response = await chrome.tabs.sendMessage(tabId, { type: 'wrangler:extractPayload' });
+    if (response?.ok && response.data) return response.data;
+  } catch {}
+
+  // Fallback: inline extraction if content script isn't responding
+  try {
+    const [fallback] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: fallbackExtract,
+    });
+    return fallback?.result || null;
+  } catch {
+    return null;
+  }
 }
 
 function fallbackExtract() {
@@ -526,23 +410,13 @@ function fallbackExtract() {
       : h.includes('outreach.io') ? 'outreach'
         : h.includes('commonroom.io') ? 'commonroom'
           : h.includes('hubspot.com') ? 'hubspot'
-            : h.includes('looker.com') ? 'looker'
-              : 'website';
+            : 'website';
 
   const text = (document.body?.innerText || '').substring(0, 15000);
   const emails = [...new Set((text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).slice(0, 25))];
   const phones = [...new Set((text.match(/(?:\+?\d[\d\s().-]{7,}\d)/g) || []).slice(0, 20))];
   const timestamp = new Date().toISOString();
-  const companyName = (document.title.split(/\s+[\|\-–—]\s+/)[0] || h.replace(/^www\./i, '').split('.')[0] || '').trim();
-  const interaction = {
-    _type: 'interaction',
-    source: 'chrome_extension',
-    domain: h,
-    url,
-    title: document.title,
-    companyName,
-    timestamp,
-  };
+  const companyName = (document.title.split(/\s+[|–—-]\s+/)[0] || h.replace(/^www\./i, '').split('.')[0] || '').trim();
 
   return {
     url,
@@ -562,16 +436,49 @@ function fallbackExtract() {
     phones,
     rawText: text,
     fingerprint: [url, document.title, text.slice(0, 500)].join('|'),
-    interaction,
+    interaction: {
+      _type: 'interaction',
+      source: 'chrome_extension',
+      domain: h,
+      url,
+      title: document.title,
+      companyName,
+      timestamp,
+    },
   };
 }
 
-function createLearnSessionId(payload) {
-  try {
-    const url = new URL(payload?.contextUrl || payload?.url || '');
-    const host = (url.hostname || 'session').replace(/[^a-z0-9.-]/gi, '-');
-    return `learn-${host}-${new Date().toISOString().slice(0, 13).replace(/[:T]/g, '-')}`;
-  } catch {
-    return `learn-${Date.now()}`;
-  }
+async function updateBadgeForIntel(intel) {
+  const count = Math.min(9, (intel?.opportunities || []).length || 0);
+  await chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
+  await chrome.action.setBadgeBackgroundColor({
+    color: count > 0 ? '#f59e0b' : '#22c55e',
+  });
+}
+
+async function getSettings() {
+  return chrome.storage.local.get([
+    'workerUrl',
+    'apiKey',
+    'captureEnabled',
+    'overlayEnabled',
+    'storeImportant',
+  ]);
+}
+
+function normalizeWorkerUrl(workerUrl) {
+  return (workerUrl || DEFAULT_WORKER_URL).replace(/\/+$/, '');
+}
+
+async function getTabState(tabId) {
+  if (!tabId) return null;
+  const key = `wranglerTab:${tabId}`;
+  const result = await chrome.storage.session.get([key]);
+  return result[key] || null;
+}
+
+async function setTabState(tabId, state) {
+  if (!tabId) return;
+  const key = `wranglerTab:${tabId}`;
+  await chrome.storage.session.set({ [key]: state });
 }

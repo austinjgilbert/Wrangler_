@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wrangler Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      padding: 40px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 32px; }
+    .field { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus { outline: none; border-color: #60a5fa; }
+    .hint { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    .toggle-label { font-size: 13px; color: #f1f5f9; }
+    .toggle-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #334155;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: #f1f5f9;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-track { background: #22c55e; }
+    .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: #f59e0b;
+      color: #0f172a;
+    }
+    .btn-primary:hover { background: #fbbf24; }
+    .btn-secondary {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover { background: #334155; }
+    .actions { display: flex; gap: 10px; margin-top: 24px; }
+    .status {
+      font-size: 12px;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .status.success { display: block; background: rgba(34, 197, 94, 0.15); color: #86efac; }
+    .status.error { display: block; background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+    .divider { height: 1px; background: rgba(148, 163, 184, 0.1); margin: 24px 0; }
+  </style>
+</head>
+<body>
+  <h1>⚡ Wrangler Settings</h1>
+  <p class="subtitle">Sales intelligence extension configuration</p>
+
+  <div class="field">
+    <label>Worker URL</label>
+    <input type="text" id="workerUrl" placeholder="https://website-scanner.austin-gilbert.workers.dev">
+    <p class="hint">The Cloudflare Worker that powers Wrangler</p>
+  </div>
+
+  <div class="field">
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="Enter your API key">
+    <p class="hint">Same key used in the SDK app (X-API-Key header)</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Auto-capture</div>
+      <div class="toggle-desc">Automatically capture high-value pages when browsing</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="storeImportant">
+      <span class="toggle-track"></span>
+    </label>
+  </div>
+
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Show overlay</div>
+      <div class="toggle-desc">Display the Wrangler pill on every page</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="overlayEnabled">
+      <span class="toggle-track"></span>
+    </label>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="save">Save Settings</button>
+    <button class="btn btn-secondary" id="test">Test Connection</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
