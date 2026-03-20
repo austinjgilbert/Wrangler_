@@ -23,7 +23,6 @@
  * See: index-blob-schema-and-migration-map on the board
  */
 
-import { createClient } from '@sanity/client';
 import { buildPayloadIndex } from '../src/lib/payload-helpers.js';
 
 // ── Config ──
@@ -32,11 +31,60 @@ const BATCH_SIZE = 10;
 const PROJECT_ID = process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID || 'nlqb7zmk';
 const DATASET = process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET || 'production';
 const TOKEN = process.env.SANITY_TOKEN || process.env.SANITY_API_TOKEN || process.env.VITE_SANITY_TOKEN;
+const API_VERSION = '2024-01-01';
 
-const mode = process.argv.includes('--execute') ? 'execute'
+const mode = process.argv.includes('--unset-legacy') ? 'unset-legacy'
+  : process.argv.includes('--execute') ? 'execute'
   : process.argv.includes('--verify') ? 'verify'
   : process.argv.includes('--rollback') ? 'rollback'
   : 'dry-run';
+
+// ── Sanity HTTP API helpers (no @sanity/client dependency) ──
+
+const BASE_URL = `https://${PROJECT_ID}.api.sanity.io/v${API_VERSION}`;
+
+async function sanityQuery(query, params = {}) {
+  const url = new URL(`${BASE_URL}/data/query/${DATASET}`);
+  url.searchParams.set('query', query);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(`$${key}`, JSON.stringify(value));
+  }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Sanity query failed (${response.status}): ${text}`);
+  }
+
+  const data = await response.json();
+  return data.result;
+}
+
+async function sanityMutate(mutations) {
+  const url = `${BASE_URL}/data/mutate/${DATASET}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ mutations }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Sanity mutate failed (${response.status}): ${text}`);
+  }
+
+  return await response.json();
+}
 
 // ── Main ──
 
@@ -46,14 +94,6 @@ async function main() {
     process.exit(1);
   }
 
-  const client = createClient({
-    projectId: PROJECT_ID,
-    dataset: DATASET,
-    token: TOKEN,
-    apiVersion: '2024-01-01',
-    useCdn: false,
-  });
-
   console.log(`\n🔧 accountPack Index+Blob Migration`);
   console.log(`   Mode: ${mode.toUpperCase()}`);
   console.log(`   Project: ${PROJECT_ID}`);
@@ -61,7 +101,7 @@ async function main() {
   console.log(`   Batch size: ${BATCH_SIZE}\n`);
 
   // Fetch all accountPack documents
-  const packs = await client.fetch(
+  const packs = await sanityQuery(
     `*[_type == "accountPack"]{ _id, _rev, accountKey, payload, payloadIndex, payloadData }`
   );
   console.log(`📦 Found ${packs.length} accountPack documents\n`);
@@ -74,15 +114,17 @@ async function main() {
   if (mode === 'verify') {
     await runVerify(packs);
   } else if (mode === 'rollback') {
-    await runRollback(client, packs);
+    await runRollback(packs);
+  } else if (mode === 'unset-legacy') {
+    await runUnsetLegacy(packs);
   } else {
-    await runMigrate(client, packs);
+    await runMigrate(packs);
   }
 }
 
 // ── Migrate ──
 
-async function runMigrate(client, packs) {
+async function runMigrate(packs) {
   const needsMigration = packs.filter(p => {
     // Has old-style payload object and no payloadData yet
     return p.payload && typeof p.payload === 'object' && !p.payloadData;
@@ -167,7 +209,7 @@ async function runMigrate(client, packs) {
 
     if (mode === 'execute') {
       try {
-        const result = await client.mutate(mutations, { visibility: 'async' });
+        const result = await sanityMutate(mutations);
         migrated += mutations.length;
         console.log(`  ✅ Batch ${batchNum}: ${mutations.length} docs migrated`);
       } catch (e) {
@@ -269,7 +311,7 @@ async function runVerify(packs) {
 
 // ── Rollback ──
 
-async function runRollback(client, packs) {
+async function runRollback(packs) {
   const toRollback = packs.filter(p => p.payloadData);
 
   console.log(`🔄 Rolling back ${toRollback.length} migrated documents...\n`);
@@ -296,10 +338,15 @@ async function runRollback(client, packs) {
     }));
 
     if (mode === 'execute') {
-      // Rollback also requires --execute
-      console.error('❌ Rollback requires --execute flag. This is a dry run.');
-      console.log(`  🔍 Would rollback ${mutations.length} docs in batch ${batchNum}`);
-      rolled += mutations.length;
+      // --rollback --execute: actually execute the rollback
+      try {
+        await sanityMutate(mutations);
+        rolled += mutations.length;
+        console.log(`  ✅ Batch ${batchNum}: ${mutations.length} docs rolled back`);
+      } catch (e) {
+        console.error(`  ❌ Batch ${batchNum} failed: ${e.message}`);
+        errors += mutations.length;
+      }
     } else {
       console.log(`  🔍 DRY RUN: Would rollback ${mutations.length} docs in batch ${batchNum}`);
       rolled += mutations.length;
@@ -307,8 +354,86 @@ async function runRollback(client, packs) {
   }
 
   console.log(`\n${'═'.repeat(50)}`);
-  console.log(`🔄 Rollback: ${rolled} docs would be affected`);
-  console.log(`   Run with --rollback --execute to apply.`);
+  console.log(`🔄 Rollback: ${rolled} docs ${mode === 'execute' ? 'rolled back' : 'would be affected'}`);
+  if (mode !== 'execute') {
+    console.log(`   Run with --rollback --execute to apply.`);
+  }
+  if (errors > 0) {
+    console.log(`   Errors: ${errors}`);
+  }
+}
+
+// ── Unset Legacy ──
+
+async function runUnsetLegacy(packs) {
+  const execute = process.argv.includes('--execute');
+  const emptyOnly = process.argv.includes('--empty-only');
+
+  // Only unset docs that have payloadData (confirmed backup)
+  let targets = packs.filter(p => p.payloadData);
+
+  if (emptyOnly) {
+    // Only unset empty shells (payload was {} = 2 bytes as JSON string)
+    targets = targets.filter(p => !p.payload || (typeof p.payload === 'object' && Object.keys(p.payload).length === 0));
+    console.log(`🎯 Empty-only mode: targeting ${targets.length} empty shell docs\n`);
+  } else {
+    console.log(`🎯 Targeting ALL ${targets.length} migrated docs for payload unset\n`);
+  }
+
+  const skipped = packs.filter(p => !p.payloadData);
+  if (skipped.length > 0) {
+    console.log(`⚠️  Skipping ${skipped.length} docs without payloadData (no backup)\n`);
+  }
+
+  if (targets.length === 0) {
+    console.log('Nothing to unset.');
+    return;
+  }
+
+  let unset = 0;
+  let errors = 0;
+
+  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+    const batch = targets.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(targets.length / BATCH_SIZE);
+
+    console.log(`\n── Batch ${batchNum}/${totalBatches} (${batch.length} docs) ──`);
+
+    const mutations = batch.map(pack => {
+      const payloadSize = pack.payload ? JSON.stringify(pack.payload).length : 0;
+      console.log(`  🗑️  ${pack._id} (payload: ${payloadSize} bytes)`);
+      return {
+        patch: {
+          id: pack._id,
+          ifRevisionID: pack._rev,
+          unset: ['payload'],
+        },
+      };
+    });
+
+    if (execute) {
+      try {
+        await sanityMutate(mutations);
+        unset += mutations.length;
+        console.log(`  ✅ Batch ${batchNum}: ${mutations.length} docs unset`);
+      } catch (e) {
+        console.error(`  ❌ Batch ${batchNum} failed: ${e.message}`);
+        errors += mutations.length;
+      }
+    } else {
+      unset += mutations.length;
+      console.log(`  🔍 DRY RUN: Would unset ${mutations.length} docs`);
+    }
+  }
+
+  console.log(`\n${'═'.repeat(50)}`);
+  console.log(`${execute ? '✅ UNSET COMPLETE' : '🔍 UNSET DRY RUN COMPLETE'}`);
+  console.log(`   Unset: ${unset}`);
+  console.log(`   Errors: ${errors}`);
+  if (!execute) {
+    console.log(`\n   Run with --unset-legacy --execute to apply.`);
+  }
 }
 
 // ── Run ──
