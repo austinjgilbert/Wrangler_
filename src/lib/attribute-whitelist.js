@@ -170,6 +170,8 @@ export const ATTRIBUTE_WHITELIST = {
     'context', 'context.*', // context has dynamic sub-fields
     'metadata', 'metadata.*', // metadata has dynamic sub-fields
     'payload', 'payload.*',
+    // Round 2: 4 paths from production data
+    'sequence', 'timeSpent', 'timestamp', 'userSegment',
   ]),
 
   usageLog: new Set([
@@ -180,6 +182,8 @@ export const ATTRIBUTE_WHITELIST = {
     'responseTimeMs', 'responseBodySize',
     'queryParams', 'referer',
     'metadata', 'metadata.*', // metadata.ipAddress, metadata.requestBodySize, metadata.userAgent
+    // Round 2: 3 top-level paths that also exist under metadata.*
+    'ipAddress', 'requestBodySize', 'userAgent',
   ]),
 
   actionCandidate: new Set([
@@ -230,6 +234,8 @@ export const ATTRIBUTE_WHITELIST = {
     'metadata', 'metadata.*',
     'stages', 'stages.*',
     'result', 'result.*',
+    // Round 2: 3 paths from production data
+    'context', 'input', 'inputType',
   ]),
 
   // ── Types previously misclassified as "pass-through" ──
@@ -243,6 +249,11 @@ export const ATTRIBUTE_WHITELIST = {
     'createdAt', 'updatedAt', 'occurredAt',
     'metadata', 'metadata.*',
     'context', 'context.*',
+    // Round 2: 14 paths from production data
+    'accountDomain', 'action', 'feedback',
+    'intent', 'nextAction', 'outcome',
+    'patterns', 'patterns.entities', 'patterns.intent', 'patterns.patterns',
+    'query', 'responseTime', 'sessionId', 'timestamp',
   ]),
 
   brief: new Set([
@@ -274,6 +285,14 @@ export const ATTRIBUTE_WHITELIST = {
     'status', 'sentAt', 'createdAt', 'updatedAt',
     'metadata', 'metadata.*',
     'context', 'context.*',
+    // Round 2: 16 paths from production data
+    'accountName', 'actionCandidateId', 'composeUrl',
+    'confidenceBreakdown', 'draftPolicyVersion',
+    'gmailDraftId', 'gmailMessageId',
+    'lastValidatedAt', 'observedAt',
+    'recipientCompany', 'recipientName', 'recipientTitle',
+    'refreshPriority', 'staleAfter',
+    'strategyVersion', 'uncertaintyState',
   ]),
 
   // ── Types that exist in production but should NOT receive new writes ──
