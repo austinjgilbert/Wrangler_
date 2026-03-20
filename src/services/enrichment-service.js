@@ -397,7 +397,7 @@ async function ensureAccountPack(groqQuery, upsertDocument, client, accountKey, 
     _id: `accountPack-${accountKey}`,
     accountKey,
     canonicalUrl,
-    domain: (canonicalUrl && new URL(canonicalUrl).hostname.replace(/^www\./, '')) || '',
+    domain: (() => { try { return new URL(canonicalUrl).hostname.replace(/^www\./, ''); } catch { return ''; } })(),
     payloadIndex: buildPayloadIndex({}),
     payloadData: JSON.stringify({}),
     createdAt: now,
@@ -619,12 +619,17 @@ export async function queueEnrichmentJob(
     await upsertDocument(client, jobDoc);
   } catch (error) {
     const message = String(error?.message || '');
-    if (!/attribute\/datatype count|validationError/i.test(message)) {
+    if (!/attribute\/datatype count|validationError|exceeds the limit|attribute limit/i.test(message)) {
       throw error;
     }
 
-    const pack = await ensureAccountPack(groqQuery, upsertDocument, client, accountKey, canonicalUrl);
-    await storePackBackedJob(client, patchDocumentShim(upsertDocument), pack, job);
+    try {
+      const pack = await ensureAccountPack(groqQuery, upsertDocument, client, accountKey, canonicalUrl);
+      await storePackBackedJob(client, patchDocumentShim(upsertDocument), pack, job);
+    } catch (fallbackError) {
+      console.error('[ENRICH_QUEUE] Fallback failed:', fallbackError.message, fallbackError.stack);
+      throw fallbackError;
+    }
   }
   
   // Trigger first stage execution (async, non-blocking)
