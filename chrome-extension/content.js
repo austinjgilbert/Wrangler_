@@ -1107,6 +1107,66 @@
       text-overflow: ellipsis;
     }
 
+    /* ─── Phase B: Ask Wrangler ────────────────────────────── */
+
+    .wrangler-ask-form {
+      display: flex;
+      gap: 6px;
+    }
+    .wrangler-ask-input {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      color: #f1f5f9;
+      outline: none;
+      min-width: 0;
+    }
+    .wrangler-ask-input::placeholder { color: #64748b; }
+    .wrangler-ask-input:focus { border-color: rgba(96, 165, 250, 0.5); }
+
+    .wrangler-ask-submit {
+      background: rgba(96, 165, 250, 0.15);
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      border-radius: 6px;
+      color: #93c5fd;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: inherit;
+    }
+    .wrangler-ask-submit:hover { background: rgba(96, 165, 250, 0.25); }
+    .wrangler-ask-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .wrangler-ask-response {
+      margin-top: 8px;
+      padding: 10px;
+      background: #1e293b;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #e2e8f0;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .wrangler-ask-error {
+      color: #f87171;
+    }
+    .wrangler-ask-loading {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
     /* ─── Buttons ──────────────────────────────────────────────── */
 
     .wrangler-btn {
@@ -1536,6 +1596,72 @@
           `;
           el.appendChild(row);
         }
+        return el;
+      }));
+    }
+
+    // ── Phase B: Ask Wrangler card ──
+    if (account || (intel && !intel.error)) {
+      body.appendChild(buildCard('Ask Wrangler', null, true, () => {
+        const el = document.createElement('div');
+
+        const form = document.createElement('div');
+        form.className = 'wrangler-ask-form';
+
+        const input = document.createElement('input');
+        input.className = 'wrangler-ask-input';
+        input.type = 'text';
+        const askTarget = account?.companyName || account?.name || account?.domain || 'this page';
+        input.placeholder = `What should I know about ${askTarget}?`;
+        input.setAttribute('autocomplete', 'off');
+
+        const submitBtn = document.createElement('button');
+        submitBtn.className = 'wrangler-ask-submit';
+        submitBtn.textContent = 'Ask';
+
+        form.appendChild(input);
+        form.appendChild(submitBtn);
+        el.appendChild(form);
+
+        const responseArea = document.createElement('div');
+        responseArea.style.display = 'none';
+        el.appendChild(responseArea);
+
+        function submitAsk() {
+          const prompt = input.value.trim();
+          if (!prompt) return;
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = '\u2026';
+          responseArea.style.display = 'block';
+          responseArea.className = 'wrangler-ask-response wrangler-ask-loading';
+          responseArea.textContent = 'Thinking\u2026';
+
+          const page = buildPageContext();
+          chrome.runtime.sendMessage(
+            { type: 'wrangler:ask', prompt, page },
+            (response) => {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Ask';
+              if (response?.ok && response.data) {
+                responseArea.className = 'wrangler-ask-response';
+                responseArea.textContent = response.data.answer || 'No answer returned.';
+              } else {
+                responseArea.className = 'wrangler-ask-response wrangler-ask-error';
+                responseArea.textContent = response?.error || 'Failed to get answer.';
+              }
+            }
+          );
+        }
+
+        submitBtn.addEventListener('click', submitAsk);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitAsk();
+          }
+        });
+
         return el;
       }));
     }

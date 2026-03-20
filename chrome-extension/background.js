@@ -86,7 +86,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // async response
     }
 
-    // Phase B: wrangler:ask (Ask Wrangler card)
+    case 'wrangler:ask': {
+      const prompt = String(message.prompt || '').trim();
+      if (!prompt) {
+        sendResponse({ ok: false, error: 'prompt is required' });
+        return false;
+      }
+      handleAsk(prompt, message.page || null)
+        .then((result) => sendResponse({ ok: true, data: result }))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true; // async response
+    }
 
     case 'wrangler:getState': {
       const tabId = sender?.tab?.id || message.tabId;
@@ -256,7 +266,32 @@ async function requestPageIntel(payload, settings) {
   return data.data || null;
 }
 
-// Phase B: handleAsk() for Ask Wrangler card (/extension/ask endpoint)
+async function handleAsk(prompt, page) {
+  const settings = await getSettings();
+  if (!settings.apiKey) {
+    throw new Error('API key not configured. Open Settings to add your key.');
+  }
+  const workerUrl = normalizeWorkerUrl(settings.workerUrl);
+  const body = { prompt };
+  if (page) body.page = page;
+
+  const response = await fetch(`${workerUrl}/extension/ask`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': settings.apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response from worker' },
+  }));
+  if (!data.ok) {
+    throw new Error(data?.error?.message || 'Ask failed');
+  }
+  return data.data || null;
+}
 
 async function capturePayload(workerUrl, apiKey, payload) {
   try {
