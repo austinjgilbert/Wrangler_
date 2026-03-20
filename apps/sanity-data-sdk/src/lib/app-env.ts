@@ -1,5 +1,9 @@
 type EnvValue = string | undefined
 
+// Build-time env injected by scripts/inject-env.sh (runs before sanity build).
+// Falls back to import.meta.env for local dev (sanity dev loads .env natively).
+import { BUILD_ENV } from './build-env.generated'
+
 const PLACEHOLDER_VALUES = new Set([
   'your-api-key',
   'your-key',
@@ -12,12 +16,17 @@ const PLACEHOLDER_VALUES = new Set([
 ])
 
 function readEnv(name: string, fallback = ''): string {
-  const value =
+  // 1. Check build-time injected env (works with sanity build)
+  const fromBuild = BUILD_ENV[name]
+  if (fromBuild) return fromBuild.trim()
+
+  // 2. Check Vite's import.meta.env (works with sanity dev)
+  const fromMeta =
     typeof import.meta !== 'undefined'
       ? ((import.meta as ImportMeta & { env?: Record<string, EnvValue> }).env?.[name] ?? '')
       : ''
 
-  const normalized = String(value || '').trim()
+  const normalized = String(fromMeta || '').trim()
   return normalized || fallback
 }
 
@@ -44,9 +53,13 @@ function currentPageProtocol(): string | null {
 
 export const SANITY_PROJECT_ID = readEnv('VITE_SANITY_PROJECT_ID', 'nlqb7zmk')
 export const SANITY_DATASET = readEnv('VITE_SANITY_DATASET', 'production')
-export const WORKER_URL = sanitizeWorkerUrl(readEnv('VITE_WORKER_URL'))
+export const WORKER_URL = sanitizeWorkerUrl(
+  readEnv('VITE_WORKER_URL', 'https://website-scanner.austin-gilbert.workers.dev')
+)
 /** Set VITE_WORKER_API_KEY in .env if your worker protects /operator/console (e.g. MOLT_API_KEY). Enrich routes work without it. */
-export const WORKER_API_KEY = sanitizeWorkerApiKey(readEnv('VITE_WORKER_API_KEY', ''))
+export const WORKER_API_KEY = sanitizeWorkerApiKey(
+  readEnv('VITE_WORKER_API_KEY', '')
+)
 
 export function hasWorkerConfig(options?: { currentProtocol?: string | null }): boolean {
   return !getWorkerConfigMessage('reach the worker', options)
