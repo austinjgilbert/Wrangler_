@@ -7303,7 +7303,7 @@ async function logUsageForRequest(request, url, requestId, env, response, startT
  * Route request to appropriate handler
  */
 // Paths that can be used for auth-only testing (e.g. from ChatGPT) without requiring Sanity.
-const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/feedback', '/molt/auth-status', '/wrangler/ingest', '/extension/capture', '/extension/page-intel', '/extension/ask', '/extension/learn', '/system/self-heal'];
+const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/jobs/run', '/molt/feedback', '/molt/auth-status', '/wrangler/ingest', '/extension/capture', '/extension/page-intel', '/extension/ask', '/extension/learn', '/extension/linkedin-capture', '/system/self-heal'];
 
 const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
@@ -7652,6 +7652,13 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionLearn } = await import('./routes/extension.ts');
         return await handleExtensionLearn(request, requestId, env);
+      } else if (url.pathname === '/extension/linkedin-capture') {
+        { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkMoltApiKey(request, env, requestId);
+        if (!auth.allowed) return auth.errorResponse;
+        const { handleLinkedInCapture } = await import('./routes/linkedin-capture.ts');
+        return await handleLinkedInCapture(request, requestId, env);
       } else if (url.pathname === '/system/self-heal') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { checkMoltApiKey } = await import('./utils/molt-auth.js');
