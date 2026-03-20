@@ -2,9 +2,11 @@
  * Attribute Path Whitelist — Layer 3 Write Guard
  *
  * Every field path that Sanity mutations are allowed to write.
- * Generated from production data analysis (2026-03-20).
+ * REGENERATED from production data inspection (2026-03-20).
  *
  * UPDATE THIS FILE when adding new fields to any schema.
+ * Run `node scripts/generate-whitelist.js` to regenerate from production.
+ *
  * The write guard in mutate() will reject/warn on unknown paths
  * when attribute health is critical or wall.
  *
@@ -13,6 +15,7 @@
 
 // ── Whitelist per document type ──
 // Each Set contains all known field paths (dot-notation) for that type.
+// Entries ending in '.*' are prefix wildcards — any sub-path is allowed.
 // Sanity internal fields (_id, _type, _rev, _createdAt, _updatedAt) are
 // always allowed and excluded from checking.
 
@@ -28,6 +31,11 @@ export const ATTRIBUTE_WHITELIST = {
     'opportunityScore',
     'aiReadiness', 'aiReadiness.score',
     'performance', 'performance.performanceScore',
+
+    // Pain points (array of objects)
+    'painPoints',
+    'painPoints.category', 'painPoints.confidence',
+    'painPoints.description', 'painPoints.severity', 'painPoints.source',
 
     // Business scale
     'businessScale', 'businessScale.businessScale',
@@ -73,7 +81,7 @@ export const ATTRIBUTE_WHITELIST = {
     'benchmarks.headquarters', 'benchmarks.publicOrPrivate',
     'benchmarks.stockTicker', 'benchmarks.yearFounded', 'benchmarks.updatedAt',
 
-    // Competitor research
+    // Competitor research summary (on account doc)
     'competitorResearch', 'competitorResearch.count',
     'competitorResearch.researchedAt',
 
@@ -84,22 +92,8 @@ export const ATTRIBUTE_WHITELIST = {
     'relationships.techOpportunityCount', 'relationships.lastDetectedAt',
 
     // Technology (references array + legacy nested object)
-    'technologies', 'technologyStack',
-    // technologyStack sub-fields (legacy — budget for consolidation)
-    'technologyStack.cms', 'technologyStack.frameworks',
-    'technologyStack.legacySystems', 'technologyStack.pimSystems',
-    'technologyStack.damSystems', 'technologyStack.lmsSystems',
-    'technologyStack.analytics', 'technologyStack.ecommerce',
-    'technologyStack.hosting', 'technologyStack.marketing',
-    'technologyStack.payments', 'technologyStack.chat',
-    'technologyStack.monitoring', 'technologyStack.authProviders',
-    'technologyStack.searchTech', 'technologyStack.cssFrameworks',
-    'technologyStack.cdnMedia', 'technologyStack.cicd',
-    'technologyStack.cmsSystems', 'technologyStack.modernFrameworks',
-    'technologyStack.headlessIndicators', 'technologyStack.systemDuplication',
-    'technologyStack.migrationOpportunities', 'technologyStack.painPoints',
-    'technologyStack.roiInsights', 'technologyStack.opportunityScore',
-    'technologyStack.allDetected',
+    'technologies',
+    'technologyStack', 'technologyStack.*', // prefix wildcard — deeply nested
 
     // Signals & refs
     'signals',
@@ -111,7 +105,7 @@ export const ATTRIBUTE_WHITELIST = {
     'accountKey', 'canonicalUrl', 'domain',
     'createdAt', 'updatedAt',
 
-    // Index+Blob fields (the ONLY payload fields allowed post-migration)
+    // Index+Blob fields
     'payloadIndex',
     'payloadIndex.hasScan', 'payloadIndex.hasDiscovery',
     'payloadIndex.hasCrawl', 'payloadIndex.hasEvidence',
@@ -119,44 +113,63 @@ export const ATTRIBUTE_WHITELIST = {
     'payloadIndex.hasVerification', 'payloadIndex.hasCompetitors',
     'payloadIndex.hasCompetitorResearch', 'payloadIndex.hasTechnologyStack',
     'payloadIndex.hasBusinessUnits', 'payloadIndex.hasBusinessScale',
-    'payloadIndex.enrichmentState',
-    'payloadIndex.enrichmentState.jobId',
-    'payloadIndex.enrichmentState.status',
-    'payloadIndex.enrichmentState.currentStage',
-    'payloadIndex.enrichmentState.completedStages',
-    'payloadIndex.enrichmentState.failedStages',
-    'payloadIndex.enrichmentState.startedAt',
-    'payloadIndex.enrichmentState.updatedAt',
+    'payloadIndex.enrichmentState', 'payloadIndex.enrichmentState.*', // wildcard for sub-fields
     'payloadIndex.enrichmentCompletedAt',
     'payloadData', // JSON string blob — 1 attribute
 
-    // History & meta
-    'history',
-    'meta', 'meta.storedBy',
+    // History array (deeply nested — each entry has data.* with full scan results)
+    'history', 'history.*', // prefix wildcard — history entries are deeply nested
 
-    // BLOCKED: 'payload' and 'payload.*' — the old freeform object
-    // These are NOT in the whitelist. Any write to payload.* will be flagged.
+    // Meta
+    'meta', 'meta.*', // meta.storedBy, meta.autoSaved, meta.requestId, etc.
   ]),
 
   person: new Set([
-    'name', 'firstName', 'lastName', 'title', 'company',
-    'linkedinUrl', 'linkedInUrl', // both casings exist (known dupe)
+    // Core identity
+    'name', 'firstName', 'lastName', 'personKey',
+    'linkedinUrl', 'linkedInUrl', 'linkedInSlug', // both casings exist
     'email', 'phone', 'location',
-    'source', 'confidence', 'lastVerifiedAt',
-    'accountKey', 'domain',
     'createdAt', 'updatedAt',
+
+    // Current role
+    'currentCompany', 'currentTitle', 'headline',
+    'roleCategory', 'seniorityLevel', 'isDecisionMaker',
+
+    // LinkedIn capture fields
+    'about', 'captureSource', 'capturedAt',
+    'connections', 'followers', 'openToWork',
+    'profileImageUrl',
+
+    // Arrays from LinkedIn
+    'certifications', 'education', 'experience',
+    'languages', 'publications', 'skills', 'volunteer',
+
+    // Profile analysis (from enrichment)
+    'profileAnalysis', 'profileAnalysis.*',
+
+    // Legacy/enrichment fields
+    'source', 'confidence', 'lastVerifiedAt',
+    'accountKey', 'domain', 'rootDomain',
+    'title', 'company',
   ]),
 
   technology: new Set([
     'name', 'slug', 'category', 'subcategory', 'vendor',
     'detectedAt', 'source', 'confidence',
     'accountCount', 'firstDetectedAt', 'lastDetectedAt',
+    // Production fields
+    'isLegacy', 'isMigrationTarget', 'lastEnrichedAt',
   ]),
 
   userPattern: new Set([
     'userId', 'patternType', 'patternKey', 'count',
-    'firstSeen', 'lastSeen', 'metadata',
-    'payload', 'payload.value',
+    'firstSeen', 'lastSeen',
+    'createdAt', 'updatedAt',
+    // Production fields from actual docs
+    'action', 'approach', 'outcome', 'thinking', 'toolsUsed',
+    'context', 'context.*', // context has dynamic sub-fields
+    'metadata', 'metadata.*', // metadata has dynamic sub-fields
+    'payload', 'payload.*',
   ]),
 
   usageLog: new Set([
@@ -165,38 +178,111 @@ export const ATTRIBUTE_WHITELIST = {
     'techSummary', 'enrichmentSummary',
     'requestId', 'statusCode', 'success', 'timestamp',
     'responseTimeMs', 'responseBodySize',
-    'queryParams', 'requestBodySize', 'userAgent', 'ipAddress', 'referer',
-    'metadata',
+    'queryParams', 'referer',
+    'metadata', 'metadata.*', // metadata.ipAddress, metadata.requestBodySize, metadata.userAgent
   ]),
 
   actionCandidate: new Set([
-    'accountKey', 'actionType', 'title', 'description',
-    'priority', 'status', 'confidence', 'reasoning',
-    'suggestedAt', 'expiresAt', 'completedAt',
-    'context', 'metadata',
-    'payload', 'payload.value',
-    'domain', 'source', 'createdAt', 'updatedAt',
-    'category', 'subCategory', 'targetPersonId',
-    'outcome', 'outcome.result', 'outcome.completedAt',
-    'outcome.notes', 'outcome.revenue',
+    // Core identity
+    'id', 'actionType',
+    'createdAt', 'updatedAt', 'observedAt',
+
+    // References
+    'account', 'person',
+
+    // Scoring & confidence
+    'confidence', 'opportunityScore', 'urgency',
+    'confidenceBreakdown', 'confidenceBreakdown.*', // deeply nested scoring
+
+    // Pattern matching
+    'patternMatch', 'patternVersion',
+    'scoringVersion', 'strategyVersion',
+    'rankingPolicyVersion',
+
+    // Draft & lifecycle
+    'draftPolicyVersion', 'draftStatus',
+    'lifecycleStatus', 'uncertaintyState',
+    'expirationTime', 'staleAfter',
+    'refreshPriority',
+
+    // Evidence & signals
+    'evidence', 'evidenceRefs',
+    'signals', 'signalRefs',
+    'missingData',
+
+    // Recommendations
+    'recommendedNextStep', 'whyNow',
+
+    // Validation
+    'lastValidatedAt',
+    'latestOutcomeEventId',
   ]),
 
   orchestrationJob: new Set([
     'jobId', 'accountKey', 'canonicalUrl', 'goalKey',
     'status', 'currentStage', 'completedStages', 'failedStages',
     'startedAt', 'updatedAt', 'completedAt', 'priority',
-    'options', 'metadata', 'error',
-    'stages', 'result', 'domain',
+    'domain', 'companyName',
+    'error',
+    // These have deeply nested sub-fields from stage results
+    'options', 'options.*',
+    'data', 'data.*',
+    'metadata', 'metadata.*',
+    'stages', 'stages.*',
+    'result', 'result.*',
+  ]),
+
+  // ── Types previously misclassified as "pass-through" ──
+  // All 4 are written via upsertDocument() and go through mutate()
+
+  interaction: new Set([
+    'userId', 'accountKey', 'personKey', 'domain',
+    'interactionType', 'channel', 'direction',
+    'subject', 'body', 'summary',
+    'sentiment', 'confidence',
+    'createdAt', 'updatedAt', 'occurredAt',
+    'metadata', 'metadata.*',
+    'context', 'context.*',
+  ]),
+
+  brief: new Set([
+    'accountKey', 'personKey', 'personName',
+    'canonicalUrl', 'companyName',
+    'source', 'createdAt', 'updatedAt',
+    // The data object is deeply nested with enrichment results
+    'data', 'data.*',
+    // Meta
+    'meta', 'meta.*',
+  ]),
+
+  competitorResearch: new Set([
+    'accountKey', 'accountDomain',
+    'createdAt', 'updatedAt',
+    // Competitors array
+    'competitors', 'competitors.*',
+    // Insights & opportunities arrays
+    'insights', 'opportunities',
+    // The comparison object embeds a FULL account doc (143+ paths)
+    // Using prefix wildcard to avoid enumerating every sub-path
+    'comparison', 'comparison.*',
+  ]),
+
+  gmailDraft: new Set([
+    'userId', 'accountKey', 'personKey',
+    'subject', 'body', 'to', 'cc', 'bcc',
+    'threadId', 'messageId', 'draftId',
+    'status', 'sentAt', 'createdAt', 'updatedAt',
+    'metadata', 'metadata.*',
+    'context', 'context.*',
   ]),
 
   // ── Types that exist in production but should NOT receive new writes ──
-  // (legacy/duplicate types from the audit)
   _blocked: new Set([
-    'enrichmentJob',   // legacy duplicate of enrich.job
+    'enrichmentJob',   // legacy duplicate of orchestrationJob
     'company',         // duplicate of account
     'networkPerson',   // duplicate of person
-    'draftAction',     // duplicate of actionCandidate
-    'signal',          // never used in writes, 32 fields
+    'scanResult',      // legacy — data now in accountPack
+    'crawlResult',     // legacy — data now in accountPack
   ]),
 };
 
@@ -235,6 +321,29 @@ export function extractFieldPaths(obj, prefix = '') {
 }
 
 /**
+ * Check if a path matches the whitelist, including wildcard prefixes.
+ * A whitelist entry like 'data.*' matches 'data.foo', 'data.foo.bar', etc.
+ *
+ * @param {Set} whitelist - The whitelist Set for this type
+ * @param {string} path - The field path to check
+ * @returns {boolean}
+ */
+function pathMatchesWhitelist(whitelist, path) {
+  // Direct match
+  if (whitelist.has(path)) return true;
+
+  // Check prefix wildcards: if whitelist has 'foo.*', match 'foo.bar', 'foo.bar.baz'
+  // Walk up the path looking for a wildcard parent
+  const parts = path.split('.');
+  for (let i = 1; i < parts.length; i++) {
+    const prefix = parts.slice(0, i).join('.') + '.*';
+    if (whitelist.has(prefix)) return true;
+  }
+
+  return false;
+}
+
+/**
  * Check if a mutation's field paths are all in the whitelist.
  *
  * @param {string} docType - The _type of the document
@@ -262,7 +371,7 @@ export function checkPathsAgainstWhitelist(docType, paths) {
     };
   }
 
-  const unknownPaths = paths.filter(p => !whitelist.has(p));
+  const unknownPaths = paths.filter(p => !pathMatchesWhitelist(whitelist, p));
 
   return {
     allowed: unknownPaths.length === 0,
@@ -282,7 +391,7 @@ export function checkPathsAgainstWhitelist(docType, paths) {
  */
 export function inferTypeFromId(id) {
   if (!id) return null;
-  if (id.startsWith('account.')) return 'account';
+  if (id.startsWith('account.') || id.startsWith('account-')) return 'account';
   if (id.startsWith('accountPack-')) return 'accountPack';
   if (id.startsWith('actionCandidate-')) return 'actionCandidate';
   if (id.startsWith('usageLog-')) return 'usageLog';
@@ -290,5 +399,9 @@ export function inferTypeFromId(id) {
   if (id.startsWith('person-') || id.startsWith('person.')) return 'person';
   if (id.startsWith('tech-') || id.startsWith('technology-')) return 'technology';
   if (id.startsWith('userPattern-')) return 'userPattern';
+  if (id.startsWith('interaction-')) return 'interaction';
+  if (id.startsWith('brief-')) return 'brief';
+  if (id.startsWith('competitorResearch-')) return 'competitorResearch';
+  if (id.startsWith('gmailDraft-')) return 'gmailDraft';
   return null;
 }

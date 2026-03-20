@@ -22,7 +22,6 @@ describe('extractFieldPaths', () => {
   it('does not recurse into arrays', () => {
     const paths = extractFieldPaths({ tags: ['a', 'b'], signals: ['CMS: WordPress'] });
     expect(paths).toEqual(['tags', 'signals']);
-    // Array items should NOT produce paths like 'tags.0'
   });
 
   it('skips Sanity internal fields', () => {
@@ -63,10 +62,8 @@ describe('extractFieldPaths', () => {
       technologies: [{ _key: 'react', _ref: 'tech-react', _type: 'reference' }],
       aiReadiness: { score: 25 },
     });
-    // technologies is an array — just the parent path
     expect(paths).toContain('technologies');
     expect(paths).not.toContain('technologies._key');
-    // aiReadiness is an object — recurse
     expect(paths).toContain('aiReadiness');
     expect(paths).toContain('aiReadiness.score');
   });
@@ -130,11 +127,75 @@ describe('checkPathsAgainstWhitelist', () => {
     expect(result.reason).toContain('...');
     expect(result.reason).toContain('10 unknown path(s)');
   });
+
+  // ── NEW: Prefix wildcard matching ──
+
+  it('allows paths matching wildcard prefixes (technologyStack.*)', () => {
+    const result = checkPathsAgainstWhitelist('account', [
+      'name', 'technologyStack', 'technologyStack.cms',
+      'technologyStack.allDetected', 'technologyStack.allDetected.name',
+    ]);
+    expect(result.allowed).toBe(true);
+    expect(result.unknownPaths).toEqual([]);
+  });
+
+  it('allows deeply nested paths under wildcard (history.*)', () => {
+    const result = checkPathsAgainstWhitelist('accountPack', [
+      'history', 'history.data', 'history.data.aiReadiness',
+      'history.data.aiReadiness.score', 'history.storedAt', 'history.type',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
+
+  it('allows competitorResearch comparison.* paths', () => {
+    const result = checkPathsAgainstWhitelist('competitorResearch', [
+      'accountKey', 'comparison', 'comparison.account',
+      'comparison.account.name', 'comparison.account.technologyStack.cms',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
+
+  it('allows brief data.* paths', () => {
+    const result = checkPathsAgainstWhitelist('brief', [
+      'accountKey', 'personKey', 'data',
+      'data.executiveSummary', 'data.topRoiPlays',
+      'data.opportunityConfidence', 'data.opportunityConfidence.score',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
+
+  it('allows person profileAnalysis.* paths', () => {
+    const result = checkPathsAgainstWhitelist('person', [
+      'name', 'headline', 'profileAnalysis',
+      'profileAnalysis.summary', 'profileAnalysis.skills',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
+
+  it('allows actionCandidate confidenceBreakdown.* paths', () => {
+    const result = checkPathsAgainstWhitelist('actionCandidate', [
+      'confidence', 'confidenceBreakdown',
+      'confidenceBreakdown.actionConfidence',
+      'confidenceBreakdown.dataConfidence',
+      'confidenceBreakdown.notes',
+      'confidenceBreakdown.updatedAt',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
+
+  it('allows orchestrationJob data.* and options.* paths', () => {
+    const result = checkPathsAgainstWhitelist('orchestrationJob', [
+      'jobId', 'status', 'data', 'data.scanResult',
+      'data.scanResult.technologyStack', 'options', 'options.maxDepth',
+    ]);
+    expect(result.allowed).toBe(true);
+  });
 });
 
 describe('inferTypeFromId', () => {
-  it('infers account type', () => {
+  it('infers account type from both prefixes', () => {
     expect(inferTypeFromId('account.abc123')).toBe('account');
+    expect(inferTypeFromId('account-abc123')).toBe('account');
   });
 
   it('infers accountPack type', () => {
@@ -154,6 +215,24 @@ describe('inferTypeFromId', () => {
     expect(inferTypeFromId('person.abc')).toBe('person');
   });
 
+  // ── NEW: 4 previously misclassified types ──
+
+  it('infers interaction type', () => {
+    expect(inferTypeFromId('interaction-abc123')).toBe('interaction');
+  });
+
+  it('infers brief type', () => {
+    expect(inferTypeFromId('brief-abc123-1234')).toBe('brief');
+  });
+
+  it('infers competitorResearch type', () => {
+    expect(inferTypeFromId('competitorResearch-abc123-1234')).toBe('competitorResearch');
+  });
+
+  it('infers gmailDraft type', () => {
+    expect(inferTypeFromId('gmailDraft-abc123')).toBe('gmailDraft');
+  });
+
   it('returns null for unknown ID patterns', () => {
     expect(inferTypeFromId('random-id-123')).toBeNull();
     expect(inferTypeFromId(null)).toBeNull();
@@ -162,10 +241,11 @@ describe('inferTypeFromId', () => {
 });
 
 describe('ATTRIBUTE_WHITELIST structure', () => {
-  it('has whitelists for all core types', () => {
+  it('has whitelists for all 12 active types', () => {
     const expectedTypes = [
       'account', 'accountPack', 'person', 'technology',
       'userPattern', 'usageLog', 'actionCandidate', 'orchestrationJob',
+      'interaction', 'brief', 'competitorResearch', 'gmailDraft',
     ];
     for (const type of expectedTypes) {
       expect(ATTRIBUTE_WHITELIST[type]).toBeInstanceOf(Set);
@@ -177,6 +257,8 @@ describe('ATTRIBUTE_WHITELIST structure', () => {
     expect(ATTRIBUTE_WHITELIST._blocked).toBeInstanceOf(Set);
     expect(ATTRIBUTE_WHITELIST._blocked.has('enrichmentJob')).toBe(true);
     expect(ATTRIBUTE_WHITELIST._blocked.has('company')).toBe(true);
+    expect(ATTRIBUTE_WHITELIST._blocked.has('scanResult')).toBe(true);
+    expect(ATTRIBUTE_WHITELIST._blocked.has('crawlResult')).toBe(true);
   });
 
   it('accountPack whitelist does NOT include payload or payload.*', () => {
@@ -191,5 +273,38 @@ describe('ATTRIBUTE_WHITELIST structure', () => {
     expect(ap.has('payloadIndex')).toBe(true);
     expect(ap.has('payloadData')).toBe(true);
     expect(ap.has('payloadIndex.hasScan')).toBe(true);
+  });
+
+  it('account whitelist includes painPoints fields', () => {
+    const a = ATTRIBUTE_WHITELIST.account;
+    expect(a.has('painPoints')).toBe(true);
+    expect(a.has('painPoints.category')).toBe(true);
+    expect(a.has('painPoints.severity')).toBe(true);
+  });
+
+  it('person whitelist includes LinkedIn capture fields', () => {
+    const p = ATTRIBUTE_WHITELIST.person;
+    expect(p.has('currentCompany')).toBe(true);
+    expect(p.has('currentTitle')).toBe(true);
+    expect(p.has('headline')).toBe(true);
+    expect(p.has('personKey')).toBe(true);
+    expect(p.has('roleCategory')).toBe(true);
+    expect(p.has('seniorityLevel')).toBe(true);
+    expect(p.has('captureSource')).toBe(true);
+    expect(p.has('capturedAt')).toBe(true);
+    expect(p.has('openToWork')).toBe(true);
+    expect(p.has('profileImageUrl')).toBe(true);
+    expect(p.has('about')).toBe(true);
+    expect(p.has('certifications')).toBe(true);
+    expect(p.has('education')).toBe(true);
+    expect(p.has('experience')).toBe(true);
+    expect(p.has('languages')).toBe(true);
+    expect(p.has('publications')).toBe(true);
+    expect(p.has('volunteer')).toBe(true);
+  });
+
+  it('competitorResearch uses comparison.* wildcard', () => {
+    const cr = ATTRIBUTE_WHITELIST.competitorResearch;
+    expect(cr.has('comparison.*')).toBe(true);
   });
 });
