@@ -26,7 +26,7 @@ function PeopleListInner() {
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No people in dataset.</p>
+        <p className="muted">No contacts found yet. Run research to discover key people.</p>
       ) : (
         <div className="contact-grid">
           {list.map((doc) => (

@@ -10,12 +10,12 @@ import {
 } from '../lib/worker-api';
 import { getWorkerConfigMessage } from '../lib/app-env';
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe';
+import { humanizeJobStatus } from '../lib/formatters';
 import {
   getAccountKeyFromId,
   getActiveJobAccountKeys,
   getJobAccountKey,
   getJobCanonicalUrl,
-  getJobStatusLabel,
   getStageLabel,
   type ResearchAccountLike,
   type ResearchJobLike,
@@ -141,7 +141,7 @@ export function EnrichmentView() {
         </div>
       )}
 
-      <Suspense fallback={<div className="loading-state panel">Loading research jobs from Sanity…</div>}>
+      <Suspense fallback={<div className="loading-state panel">Loading research jobs…</div>}>
         <EnrichmentInner queuing={queuing} onQueue={handleQueue} workerStatus={workerStatus} />
       </Suspense>
     </section>
@@ -274,7 +274,7 @@ function EnrichmentInner(props: {
                           : 'Waiting to start'}
                     </span>
                     <span className={`job-status status-${(live?.status ?? job.status) ?? 'queued'}`}>
-                      {getJobStatusLabel(live?.status ?? job.status)}
+                      {humanizeJobStatus(live?.status ?? job.status)}
                     </span>
                     {(live?.progress != null && live.progress < 100) && (
                       <span className="job-stage">Progress: {live.progress}%</span>
@@ -352,11 +352,11 @@ function EnrichmentInner(props: {
           <h3>Queue by account</h3>
         </div>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Accounts loaded directly from Sanity. Queue research through the worker.
+          Select accounts to queue for research.
         </p>
         <div className="queue-account-list">
           {accounts.length === 0 ? (
-            <p className="muted">No accounts found in Sanity.</p>
+            <p className="muted">No accounts found.</p>
           ) : (
             accounts.slice(0, 30).map((account) => {
               const accountId = account.documentId;

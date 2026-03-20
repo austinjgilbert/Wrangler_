@@ -24,7 +24,7 @@ function TechnologiesListInner() {
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No technologies in dataset.</p>
+        <p className="muted">No technologies detected yet.</p>
       ) : (
         <div className="tags" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {list.map((doc) => (

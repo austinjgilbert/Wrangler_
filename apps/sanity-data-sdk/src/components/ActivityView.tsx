@@ -18,7 +18,7 @@ function SignalList() {
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No signals in dataset.</p>
+        <p className="muted">No signals yet.</p>
       ) : (
         list.map((doc) => (
           <div className="activity-card" key={doc.documentId}>
@@ -58,7 +58,7 @@ function InteractionList() {
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No interactions in dataset.</p>
+        <p className="muted">No interactions yet.</p>
       ) : (
         list.map((doc) => (
           <div className="activity-card" key={doc.documentId}>

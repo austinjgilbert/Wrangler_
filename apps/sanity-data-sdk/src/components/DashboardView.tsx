@@ -143,7 +143,7 @@ function DashboardJobSection() {
       </div>
       <div className="job-list">
         {jobs.length === 0 ? (
-          <p className="muted">No recent research jobs in Sanity.</p>
+          <p className="muted">No recent research jobs.</p>
         ) : (
           jobs.slice(0, 12).map((job) => (
             <div className="job-card" key={job.documentId}>
@@ -248,7 +248,7 @@ export function DashboardView() {
           </p>
         </div>
       </div>
-      <Suspense fallback={<div className="loading-state panel">Loading dashboard from Sanity…</div>}>
+      <Suspense fallback={<div className="loading-state panel">Loading dashboard…</div>}>
         <DashboardInner />
       </Suspense>
     </section>
