@@ -125,6 +125,14 @@ export function dedupeAccounts<T extends AccountLike>(accounts: T[]): T[] {
     .filter(Boolean)
 }
 
+/**
+ * Detect strings that are just hex hashes (e.g. accountKeys like "a81de76636158a8e").
+ * These get mangled by titleCase into "A 81 De 76636158 A 8 E" — return as-is instead.
+ */
+function isHexHash(value: string): boolean {
+  return /^[a-f0-9]{8,}$/i.test(value.replace(/[\s.-]/g, ''))
+}
+
 export function getAccountDisplayName(account: AccountLike | null | undefined) {
   if (!account) return 'Unknown account'
 
@@ -137,6 +145,12 @@ export function getAccountDisplayName(account: AccountLike | null | undefined) {
     rootDomain: account.rootDomain,
     canonicalUrl: account.canonicalUrl,
   })
+
+  // If the normalizer produced a mangled hex hash (Title Case splits digits),
+  // fall back to the raw accountKey or domain instead.
+  if (normalized && isHexHash(normalized)) {
+    return account.domain || account.rootDomain || account.accountKey || normalized.toLowerCase()
+  }
 
   return normalized || account.companyName || account.name || account.domain || account.rootDomain || getDocumentId(account) || 'Unknown account'
 }
