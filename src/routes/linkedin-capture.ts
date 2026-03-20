@@ -11,6 +11,7 @@
  */
 
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { generatePersonKey } from '../services/enhanced-storage-service.js';
 
 interface LinkedInExperience {
   title: string;
@@ -51,29 +52,8 @@ interface LinkedInCaptureBody {
   };
 }
 
-/**
- * Derive a stable person key from a LinkedIn URL.
- * Uses SHA-1 hash of the normalized URL, truncated to 32 hex chars.
- * Falls back to name-based key if no URL.
- */
-async function derivePersonKey(profileUrl: string, name?: string): Promise<string | null> {
-  const input = profileUrl
-    ? profileUrl.toLowerCase().trim().replace(/\/$/, '')
-    : name?.toLowerCase().trim();
-
-  if (!input) return null;
-
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-1', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
-  } catch {
-    // Cloudflare Workers always have crypto.subtle, but just in case
-    return null;
-  }
-}
+// Person key generation uses the shared generatePersonKey() from enhanced-storage-service.js
+// to ensure consistent hashing across all person creation paths (extension capture, enrichment, etc.)
 
 /**
  * Extract the LinkedIn username slug from a profile URL.
@@ -164,7 +144,7 @@ async function queueAIEnrichment(
   if (corpus.length < 100) return;
 
   try {
-    const { callLlm } = await import('../lib/llm.js');
+    const { callLlm } = await import('../lib/llm.ts');
 
     const systemPrompt = `You are a sales intelligence analyst. Analyze LinkedIn profiles and return structured JSON for sales teams. Return ONLY valid JSON, no markdown fences.`;
 
@@ -267,8 +247,8 @@ export async function handleLinkedInCapture(
       return createErrorResponse('SANITY_ERROR', 'Sanity not configured', {}, 500, requestId);
     }
 
-    // Generate person key from LinkedIn URL
-    const personKey = await derivePersonKey(body.profileUrl, body.profile.name);
+    // Generate person key from LinkedIn URL — uses shared function for consistent hashing
+    const personKey = await generatePersonKey(body.profileUrl, body.profile.name);
     if (!personKey) {
       return createErrorResponse(
         'KEY_ERROR',
@@ -279,7 +259,7 @@ export async function handleLinkedInCapture(
       );
     }
 
-    const personId = `person.${personKey}`;
+    const personId = `person-${personKey}`;
     const slug = extractLinkedInSlug(body.profileUrl);
     const profile = body.profile;
     const now = new Date().toISOString();

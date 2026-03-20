@@ -7188,6 +7188,18 @@ const workerHandler = {
         }
       })());
       ctx.waitUntil(runRoute('/system/self-heal', {}));
+      // Attribute health monitoring — detect attribute sprawl before it becomes a crisis
+      ctx.waitUntil((async () => {
+        try {
+          const { checkAttributeHealth } = await import('./services/attribute-monitor.js');
+          const health = await checkAttributeHealth(env);
+          if (health && !health.error && (health.level === 'critical' || health.level === 'wall')) {
+            console.error(`[scheduled] ATTRIBUTE ALERT: ${health.used}/${health.limit} (${health.level})`);
+          }
+        } catch (err) {
+          console.error('[scheduled] attribute health check error:', err?.message);
+        }
+      })());
     } else if (cron === '15 13 * * *') {
       // Consolidated daily intelligence pipeline (was 3 separate crons: 13:15, 13:30, 13:45)
       // Merged to stay within free-tier 3-cron limit. All tasks run concurrently via ctx.waitUntil.
