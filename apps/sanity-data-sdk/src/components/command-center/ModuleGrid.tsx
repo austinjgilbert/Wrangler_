@@ -14,6 +14,7 @@ import { ResearchDetail } from './ResearchDetail';
 import { TechStackDetail } from './TechStackDetail';
 import { CompetitorsDetail } from './CompetitorsDetail';
 import { PeopleDetail } from './PeopleDetail';
+import { SignalsDetail } from './SignalsDetail';
 import type { ActionButton, ModuleGlanceProps } from '../../lib/adapters';
 import {
   MODULE_CONFIGS,
@@ -67,6 +68,14 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
         );
       case 'techstack':
         return <TechStackDetail accountKey={account.accountKey} />;
+      case 'signals':
+        return (
+          <SignalsDetail
+            accountKey={account.accountKey}
+            accountName={account.companyName}
+            signals={glanceContext.signals}
+          />
+        );
       case 'competitors':
         return <CompetitorsDetail accountKey={account.accountKey} />;
       case 'people':
@@ -74,7 +83,7 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
       default:
         return undefined;
     }
-  }, [glanceContext.account, glanceContext.pipelineStages]);
+  }, [glanceContext.account, glanceContext.pipelineStages, glanceContext.signals]);
 
   // ── Expanded Layout ─────────────────────────────────────────────────
 
