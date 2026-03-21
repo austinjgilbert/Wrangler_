@@ -1,6 +1,7 @@
 import { useDocuments } from '@sanity/sdk-react';
 import { Suspense, useMemo, useState } from 'react';
 import { useNavigation } from '../lib/navigation';
+import { humanizeFieldName } from '../lib/formatters';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -146,8 +147,8 @@ function PeopleListInner() {
                   )}
                 </p>
                 <div className="chip-row">
-                  {doc.roleCategory ? <span className="chip">{doc.roleCategory}</span> : null}
-                  {doc.seniorityLevel ? <span className="chip">{doc.seniorityLevel}</span> : null}
+                  {doc.roleCategory ? <span className="chip">{humanizeFieldName(doc.roleCategory)}</span> : null}
+                  {doc.seniorityLevel ? <span className="chip">{humanizeFieldName(doc.seniorityLevel)}</span> : null}
                 </div>
                 <div className="contact-meta">
                   {doc.email && <span>{doc.email}</span>}
