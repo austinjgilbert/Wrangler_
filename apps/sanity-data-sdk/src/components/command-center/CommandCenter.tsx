@@ -19,7 +19,7 @@
 import './CommandCenter.css';
 
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAccountDisplayName } from '../../lib/account-dedupe';
 import { AccountSelector } from './AccountSelector';
 import { JobTracker } from './JobTracker';
@@ -64,30 +64,7 @@ const STUB_MODULES: Record<string, string> = {
   outreach: 'Outreach queues are generated during morning briefing — use Command Center refresh to update',
 };
 
-function showToast(message: string) {
-  console.info(`[CommandCenter] ${message}`);
-  const el = document.createElement('div');
-  el.textContent = message;
-  Object.assign(el.style, {
-    position: 'fixed',
-    bottom: '60px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: '#303038',
-    color: '#ffffff',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    zIndex: '200',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    transition: 'opacity 200ms',
-  });
-  document.body.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 200);
-  }, 2500);
-}
+// showToast is now React state-driven — see toastMessage state inside CommandCenter()
 
 // ─── Component ──────────────────────────────────────────────────────────
 
@@ -98,6 +75,16 @@ export function CommandCenter() {
   const [briefing, setBriefing] = useState<TransformedBriefing | null>(null);
   const [briefingError, setBriefingError] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
+
+  // ── Toast (React state-driven, no DOM manipulation) ─────────────────
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMessage(message);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2500);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // ── Job Polling (FIX #2: hook wired, replaces placeholder Map) ──────
   // Polls for active enrichment jobs. Adaptive intervals (3-30s),
@@ -433,6 +420,11 @@ export function CommandCenter() {
         lastPollAt={lastPollAt}
         onRefresh={refreshJobs}
       />
+
+      {/* Toast (rendered in component tree, not document.body) */}
+      {toastMessage && (
+        <div className="command-center__toast">{toastMessage}</div>
+      )}
     </div>
   );
 }
