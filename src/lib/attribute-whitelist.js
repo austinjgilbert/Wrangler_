@@ -117,19 +117,21 @@ export const ATTRIBUTE_WHITELIST = {
     'payloadIndex.enrichmentCompletedAt',
     'payloadData', // JSON string blob — 1 attribute
 
+    // Tech analysis (AI-generated insights — Index+Blob pattern, 10 paths total)
+    // Schema: tech-schema-definition, approved by @reviewcode
+    'techAnalysisIndex',                          // parent object (1 path)
+    'techAnalysisIndex.hasTechAnalysis',           // boolean
+    'techAnalysisIndex.lastAnalyzedAt',            // datetime
+    'techAnalysisIndex.stackMaturity',             // enum: modern|mixed|legacy
+    'techAnalysisIndex.legacyCount',               // number
+    'techAnalysisIndex.totalTechnologies',          // number
+    'techAnalysisData',                            // JSON string blob (1 path)
+
     // History array (deeply nested — each entry has data.* with full scan results)
     'history', 'history.*', // prefix wildcard — history entries are deeply nested
 
     // Meta
     'meta', 'meta.*', // meta.storedBy, meta.autoSaved, meta.requestId, etc.
-
-    // Tech Analysis (WS1a schema — 5 index + 1 blob = 6 paths)
-    'techAnalysisIndex.hasTechAnalysis',
-    'techAnalysisIndex.lastAnalyzedAt',
-    'techAnalysisIndex.stackMaturity',
-    'techAnalysisIndex.legacyCount',
-    'techAnalysisIndex.totalTechnologies',
-    'techAnalysisData', // JSON string blob — AI analysis output
   ]),
 
   person: new Set([
@@ -163,13 +165,14 @@ export const ATTRIBUTE_WHITELIST = {
 
   technology: new Set([
     // Core identity
-    'name', 'slug', 'category',
-    // Classification (populated by migration script)
+    'name', 'slug', 'category', 'subcategory', 'vendor',
+    // Classification (populated by migration script + AI analysis)
     'status', 'confidence', 'source',
+    // Discovery timestamps
+    'detectedAt', 'firstDetectedAt', 'lastDetectedAt', 'lastEnrichedAt',
+    'accountCount',
     // Flags
     'isLegacy', 'isMigrationTarget',
-    // Timestamps
-    'lastEnrichedAt',
   ]),
 
   userPattern: new Set([

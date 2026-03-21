@@ -7330,7 +7330,7 @@ const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
   '/track', '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
   '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/', '/gmail/',
-  '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/webhooks', '/orchestrate', '/person/',
+  '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/technologies/', '/webhooks', '/orchestrate', '/person/',
   '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
   '/operator/console',
   '/memory',
@@ -7916,6 +7916,23 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleGetProspectingOpportunities } = await import('./handlers/competitors.js');
           return await handleGetProspectingOpportunities(request, requestId, env, groqQuery, assertSanityConfigured);
+        }
+      } else if (url.pathname.startsWith('/technologies/')) {
+        // ── Technologies intelligence endpoints ──────────────────────────
+        if (url.pathname === '/technologies/insights') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { handleTechInsights } = await import('./technologies.js');
+          return await handleTechInsights(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (url.pathname === '/technologies/analyze') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { handleTechAnalyze } = await import('./technologies.js');
+          return await handleTechAnalyze(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured, ctx);
+        } else if (url.pathname === '/technologies/search') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { handleTechSearch } = await import('./technologies.js');
+          return await handleTechSearch(request, requestId);
+        } else {
+          return createErrorResponse('NOT_FOUND', 'Technologies endpoint not found', { hint: 'Available: /technologies/insights, /technologies/analyze, /technologies/search' }, 404, requestId);
         }
       } else if (url.pathname === '/scan') {
         return await handleScan(request, requestId, env);
