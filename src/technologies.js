@@ -250,7 +250,7 @@ export async function handleTechInsights(request, requestId, env, groqQuery, ass
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to fetch technology insights',
-      { hint: error.message },
+      { hint: 'Check accountKey parameter and Sanity configuration' },
       500,
       requestId
     );
@@ -356,7 +356,7 @@ export async function handleTechAnalyze(request, requestId, env, groqQuery, upse
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to trigger technology analysis',
-      { hint: error.message },
+      { hint: 'Check accountKey parameter and Sanity configuration' },
       500,
       requestId
     );
