@@ -1,8 +1,7 @@
 /**
  * TechStackRadar.tsx — React wrapper for the tech stack radar chart.
  *
- * Handles: canvas ref, 1.2s entry animation, mousemove hit testing,
- * click → onCategoryClick(category). Stops animation after completion.
+ * Phase B: rAF→ref refactor — zero React re-renders during animation.
  *
  * Integration: rendered inside TechStackDetail module.
  */
@@ -28,29 +27,23 @@ export function TechStackRadar({
 }: TechStackRadarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
-  const startRef = useRef(performance.now());
+  const startRef = useRef(0);
+  const progressRef = useRef(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [animDone, setAnimDone] = useState(false);
 
-  const draw = useCallback(
-    (progress: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      drawTechRadar(canvas, categories, width, height, progress, hoveredIndex);
-    },
-    [categories, width, height, hoveredIndex],
-  );
-
   useEffect(() => {
     startRef.current = performance.now();
+    progressRef.current = 0;
     setAnimDone(false);
     setHoveredIndex(null);
 
     function tick() {
       const elapsed = performance.now() - startRef.current;
-      const progress = Math.min(1, elapsed / ANIM_MS);
-      draw(progress);
-      if (progress < 1) {
+      progressRef.current = Math.min(1, elapsed / ANIM_MS);
+      const canvas = canvasRef.current;
+      if (canvas) drawTechRadar(canvas, categories, width, height, progressRef.current, null);
+      if (progressRef.current < 1) {
         animRef.current = requestAnimationFrame(tick);
       } else {
         setAnimDone(true);
@@ -65,11 +58,13 @@ export function TechStackRadar({
         animRef.current = null;
       }
     };
-  }, [categories, width, height]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [categories, width, height]);
 
   useEffect(() => {
-    if (animDone) draw(1);
-  }, [hoveredIndex, animDone, draw]);
+    if (animDone && canvasRef.current) {
+      drawTechRadar(canvasRef.current, categories, width, height, 1, hoveredIndex);
+    }
+  }, [hoveredIndex, animDone, categories, width, height]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {

@@ -19,7 +19,7 @@ import { GRAPH_TOKENS as T, hexToRgba, drawRoundedRect } from './types';
 
 const PAD = { top: 50, right: 30, bottom: 60, left: 50 };
 
-interface DotLayout {
+export interface DotLayout {
   x: number;
   y: number;
   r: number;
@@ -27,18 +27,23 @@ interface DotLayout {
   index: number;
 }
 
-interface AreaPoint {
+export interface AreaPoint {
   x: number;
   y: number;
   density: number;
 }
 
-function layoutSignals(
+export interface SignalLayout {
+  areaPoints: AreaPoint[];
+  dots: DotLayout[];
+}
+
+export function layoutSignals(
   signals: TimelineSignal[],
   days: number,
   W: number,
   H: number,
-): { areaPoints: AreaPoint[]; dots: DotLayout[] } {
+): SignalLayout {
   const gW = W - PAD.left - PAD.right;
   const gH = H - PAD.top - PAD.bottom;
   const density = computeDensity(signals, days);
@@ -77,8 +82,9 @@ export function hitTestSignalTimeline(
   days: number,
   W: number,
   H: number,
+  cachedLayout?: SignalLayout,
 ): number | null {
-  const { dots } = layoutSignals(signals, days, W, H);
+  const { dots } = cachedLayout ?? layoutSignals(signals, days, W, H);
   for (let i = dots.length - 1; i >= 0; i--) {
     const d = dots[i];
     const dx = mx - d.x;
@@ -106,6 +112,7 @@ export function drawSignalTimeline(
   H: number,
   animProgress: number,
   hoveredIndex: number | null,
+  cachedLayout?: SignalLayout,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr;
@@ -159,7 +166,7 @@ export function drawSignalTimeline(
   }
 
   const prog = easeOutCubic(Math.min(1, animProgress));
-  const { areaPoints, dots } = layoutSignals(signals, days, W, H);
+  const { areaPoints, dots } = cachedLayout ?? layoutSignals(signals, days, W, H);
 
   // ── X Axis ────────────────────────────────────────────────────────
   c.strokeStyle = hexToRgba(T.border, 0.4);
