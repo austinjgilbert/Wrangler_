@@ -123,17 +123,46 @@ function groupByCompany(people: PersonDoc[]): CompanyGroup[] {
   return groups;
 }
 
+// ── Clipboard fallback ──────────────────────────────────────────────
+
+/** execCommand fallback for contexts where navigator.clipboard is restricted */
+function fallbackCopy(text: string): boolean {
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 // ── Contact action components ───────────────────────────────────────
 
-/** UX-30: Copy email button with feedback */
+/** UX-30: Copy email button with feedback + fallback for restricted contexts */
 function CopyEmailButton({ email }: { email: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(email).then(() => {
+    const onSuccess = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    };
+
+    // Clipboard API may be unavailable in Sanity plugin iframe context
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(email).then(onSuccess).catch(() => {
+        // Fallback: execCommand for restricted contexts
+        fallbackCopy(email) && onSuccess();
+      });
+    } else {
+      fallbackCopy(email) && onSuccess();
+    }
   }, [email]);
 
   return (
