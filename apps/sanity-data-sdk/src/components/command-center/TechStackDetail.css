@@ -1,0 +1,196 @@
+/* TechStackDetail — matches ResearchDetail.css conventions */
+
+.techstack-detail__loading,
+.techstack-detail__empty {
+  padding: 24px;
+  text-align: center;
+  color: #808088;
+  font-size: 13px;
+}
+
+.techstack-detail__error {
+  padding: 16px;
+  margin: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.techstack-detail__banner {
+  padding: 12px 16px;
+  margin: 0 0 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.techstack-detail__results {
+  padding: 16px;
+}
+
+/* ── Summary Stats ─────────────────────────────────────────────────── */
+
+.techstack-detail__summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.techstack-detail__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.techstack-detail__stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.techstack-detail__stat-value--maturity {
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.techstack-detail__stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  margin-top: 4px;
+}
+
+/* ── AI Summary + Opportunity ──────────────────────────────────────── */
+
+.techstack-detail__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 8px;
+}
+
+.techstack-detail__ai-summary {
+  margin-bottom: 16px;
+}
+
+.techstack-detail__summary-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #303038;
+  margin: 0;
+}
+
+.techstack-detail__opportunity {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.techstack-detail__opportunity-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #166534;
+  margin: 0;
+}
+
+/* ── Category Groups ───────────────────────────────────────────────── */
+
+.techstack-detail__categories {
+  margin-top: 16px;
+}
+
+.techstack-detail__category {
+  margin-bottom: 12px;
+}
+
+.techstack-detail__category-name {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.techstack-detail__category-count {
+  font-size: 11px;
+  font-weight: 400;
+  background: #eaeaea;
+  color: #606068;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.techstack-detail__tech-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.techstack-detail__tech-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.techstack-detail__tech-name {
+  flex: 1;
+  color: #303038;
+  font-weight: 500;
+}
+
+/* ── Status Badges ─────────────────────────────────────────────────── */
+
+.techstack-detail__badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.techstack-detail__badge--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.techstack-detail__badge--legacy {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.techstack-detail__badge--migration {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.techstack-detail__badge--unknown {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.techstack-detail__selling-angle {
+  cursor: help;
+  font-size: 14px;
+}
