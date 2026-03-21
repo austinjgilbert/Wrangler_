@@ -102,18 +102,7 @@ function getTechStatus(doc: TechnologyDoc, aiTech?: AiTechnology | null): TechSt
 
 /** Format raw category slug into display label. */
 function formatCategory(cat: string): string {
-  const LABELS: Record<string, string> = {
-    cms: 'CMS', dxp: 'DXP', cdp: 'CDP', crm: 'CRM', cdn: 'CDN',
-    dam: 'DAM', pim: 'PIM', lms: 'LMS',
-    'css-framework': 'CSS Framework',
-    'marketing-automation': 'Marketing Automation',
-    allDetected: 'Detected Technologies',
-    roiInsights: 'ROI Insights',
-    monitoring: 'Monitoring',
-    payments: 'Payments',
-    marketing: 'Marketing',
-  };
-  return LABELS[cat] || cat.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return CATEGORY_LABELS[cat] || cat.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Compute confidence score from available fields (0-100). */
@@ -135,6 +124,13 @@ function computeConfidence(doc: TechnologyDoc, aiTech?: AiTechnology | null): nu
   return Math.min(100, score);
 }
 
+/** Check if a string field has meaningful content (not a placeholder). */
+function hasValue(v: string | null | undefined): v is string {
+  if (!v) return false;
+  const trimmed = v.trim().toLowerCase();
+  return trimmed !== '' && !['n/a', 'none', 'unknown', '-', '—'].includes(trimmed);
+}
+
 /** Get color class for a progress value. */
 function progressColor(value: number): string {
   if (value < 40) return 'tech-bar--red';
@@ -142,7 +138,18 @@ function progressColor(value: number): string {
   return 'tech-bar--green';
 }
 
-// formatRelativeTime removed — using shared formatTimestamp from formatters.ts
+/** Display labels for category slugs (module-scope to avoid per-call recreation). */
+const CATEGORY_LABELS: Record<string, string> = {
+  cms: 'CMS', dxp: 'DXP', cdp: 'CDP', crm: 'CRM', cdn: 'CDN',
+  dam: 'DAM', pim: 'PIM', lms: 'LMS',
+  'css-framework': 'CSS Framework',
+  'marketing-automation': 'Marketing Automation',
+  allDetected: 'Detected Technologies',
+  roiInsights: 'ROI Insights',
+  monitoring: 'Monitoring',
+  payments: 'Payments',
+  marketing: 'Marketing',
+};
 
 // ─── Signal Badge Derivation ────────────────────────────────────────────
 
@@ -426,6 +433,9 @@ function TechnologiesInner() {
         {selectedAccount && insightsLoading && (
           <span className="tech-insights-loading">Loading AI insights…</span>
         )}
+        {!selectedAccount && (
+          <span className="tech-account-hint">Select an account to see AI-powered stack analysis and per-technology insights.</span>
+        )}
       </div>
 
       {/* ── Summary Bar ── */}
@@ -687,12 +697,12 @@ function TechnologiesInner() {
                                 {aiTech?.insights && (
                                   <div className="tech-card__ai-panel">
                                     <div className="tech-card__ai-header">✨ AI Analysis</div>
-                                    {aiTech.insights.sellingAngle && (
+                                    {hasValue(aiTech.insights.sellingAngle) && (
                                       <div className="tech-card__ai-body">
                                         <strong>💡 Selling Angle:</strong> {aiTech.insights.sellingAngle}
                                       </div>
                                     )}
-                                    {aiTech.insights.competitorUsage && (
+                                    {hasValue(aiTech.insights.competitorUsage) && (
                                       <div className="tech-card__ai-body">
                                         <strong>📊 Competitor Intel:</strong> {aiTech.insights.competitorUsage}
                                       </div>
