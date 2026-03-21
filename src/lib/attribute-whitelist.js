@@ -154,11 +154,14 @@ export const ATTRIBUTE_WHITELIST = {
   ]),
 
   technology: new Set([
-    'name', 'slug', 'category', 'subcategory', 'vendor',
-    'detectedAt', 'source', 'confidence',
-    'accountCount', 'firstDetectedAt', 'lastDetectedAt',
-    // Production fields
-    'isLegacy', 'isMigrationTarget', 'lastEnrichedAt',
+    // Core identity
+    'name', 'slug', 'category',
+    // Classification (populated by migration script)
+    'status', 'confidence', 'source',
+    // Flags
+    'isLegacy', 'isMigrationTarget',
+    // Timestamps
+    'lastEnrichedAt',
   ]),
 
   userPattern: new Set([
