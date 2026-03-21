@@ -111,6 +111,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // async response
     }
 
+    case 'wrangler:feedback': {
+      const promptId = String(message.promptId || '').trim();
+      const rating = message.rating;
+      if (!promptId || (rating !== 'positive' && rating !== 'negative')) {
+        sendResponse({ ok: false, error: 'promptId and valid rating required' });
+        return false;
+      }
+      handleFeedback({
+        promptId,
+        rating,
+        feedback: message.feedback ? String(message.feedback).slice(0, 500) : null,
+        context: message.context || null,
+      })
+        .then(() => sendResponse({ ok: true }))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true; // async response
+    }
+
     case 'wrangler:getState': {
       const tabId = sender?.tab?.id || message.tabId;
       Promise.all([
@@ -374,6 +392,35 @@ async function handleAsk(prompt, page) {
   }));
   if (!data.ok) {
     throw new Error(data?.error?.message || 'Ask failed');
+  }
+  return data.data || null;
+}
+
+// Phase C: Send feedback to Worker
+async function handleFeedback({ promptId, rating, feedback, context }) {
+  const settings = await getSettings();
+  if (!settings.apiKey) {
+    throw new Error('API key not configured.');
+  }
+  const workerUrl = normalizeWorkerUrl(settings.workerUrl);
+  const body = { promptId, rating };
+  if (feedback) body.feedback = feedback;
+  if (context) body.context = context;
+
+  const response = await fetch(`${workerUrl}/extension/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': settings.apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response from worker' },
+  }));
+  if (!data.ok) {
+    throw new Error(data?.error?.message || 'Feedback submission failed');
   }
   return data.data || null;
 }
