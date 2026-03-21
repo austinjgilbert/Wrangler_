@@ -6,6 +6,7 @@ import { getWorkerConfigMessage } from '../lib/app-env'
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe'
 import { humanizeCoverageStatus, formatTimestamp } from '../lib/formatters'
 import { fetchEnrichStatus, hasWorker, queueEnrichment } from '../lib/worker-api'
+import { fetchRecentSignals, countSignalsForAccount, type WorkerSignal } from '../lib/adapters/signals'
 
 type LinkedRecord = {
   _id: string
@@ -766,7 +767,7 @@ function AccountDetails({
         "leadership": count(coalesce(leadership, [])),
         "technologies": count(coalesce(technologies, [])),
         "competitors": count(coalesce(competitors, [])),
-        "signals": count(*[_type == "signal" && (account._ref == ^._id || companyRef._ref == ^._id)]),
+        "signals": 0, // Signal count comes from Worker snapshot, not Sanity (signal type has 0 docs)
         "interactions": count(*[_type == "interaction" && (accountKey == ^.accountKey || domain == coalesce(^.domain, ^.rootDomain))]),
         "actionCandidates": count(*[_type == "actionCandidate" && account._ref == ^._id]),
         "evidence": count(*[_type == "evidencePack" && relatedAccountKey == ^.accountKey]) + count(*[_type == "crawl.snapshot" && (accountRef._ref == ^._id || accountKey == ^.accountKey)]),
@@ -816,17 +817,7 @@ function AccountDetails({
         domain,
         industry
       },
-      "signals": *[_type == "signal" && (account._ref == ^._id || companyRef._ref == ^._id)] | order(coalesce(timestamp, observedAt, _updatedAt) desc)[0...10]{
-        _id,
-        signalType,
-        type,
-        source,
-        summary,
-        timestamp,
-        observedAt,
-        uncertaintyState,
-        strength
-      },
+      // signals: fetched from Worker snapshot, not Sanity (signal type has 0 docs — see AE-1)
       "interactions": *[_type == "interaction" && (accountKey == ^.accountKey || domain == coalesce(^.domain, ^.rootDomain))] | order(coalesce(updatedAt, _updatedAt, timestamp) desc)[0...10]{
         _id,
         title,
@@ -868,7 +859,39 @@ function AccountDetails({
     }`,
   })
 
-  const account = (data || null) as ProjectedAccount | null
+  const rawAccount = (data || null) as ProjectedAccount | null
+
+  // ── AE-1: Fetch signals from Worker snapshot instead of dead Sanity query ──
+  const [workerSignals, setWorkerSignals] = useState<WorkerSignal[]>([])
+  useEffect(() => {
+    fetchRecentSignals().then(setWorkerSignals).catch(() => setWorkerSignals([]))
+  }, [])
+
+  // Filter signals for this account and merge into projected account
+  const account = useMemo(() => {
+    if (!rawAccount) return null
+    const accountName = rawAccount.companyName || rawAccount.name || rawAccount.domain || ''
+    const filtered = accountName
+      ? workerSignals.filter(
+          (s) => s.accountName?.toLowerCase().trim() === accountName.toLowerCase().trim()
+        )
+      : []
+    // Map WorkerSignal → LinkedRecord shape for tree/graph compatibility
+    const signalRecords: LinkedRecord[] = filtered.map((s) => ({
+      _id: s.id,
+      signalType: s.signalType,
+      source: s.source,
+      summary: s.summary,
+      timestamp: s.timestamp,
+      uncertaintyState: s.uncertaintyState,
+    }))
+    return {
+      ...rawAccount,
+      signals: signalRecords,
+      counts: { ...rawAccount.counts, signals: filtered.length },
+    }
+  }, [rawAccount, workerSignals])
+
   const tree = useMemo(() => buildTree(account), [account])
   const coverageItems = useMemo(() => account ? getCoverageItems(account) : [], [account])
   const [mode, setMode] = useState<'tree' | 'graph'>('tree')
