@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { NAV, readViewFromSearch } from '../../apps/sanity-data-sdk/src/lib/view-state'
 
 describe('sdk view state', () => {
-  it('uses dashboard as the default view', () => {
-    expect(readViewFromSearch('')).toBe('dashboard')
+  it('uses command-center as the default view', () => {
+    expect(readViewFromSearch('')).toBe('command-center')
   })
 
   it('reads a valid view from the query string', () => {
@@ -12,7 +12,7 @@ describe('sdk view state', () => {
   })
 
   it('rejects invalid views from the query string', () => {
-    expect(readViewFromSearch('?view=unknown')).toBe('dashboard')
+    expect(readViewFromSearch('?view=unknown')).toBe('command-center')
   })
 
   it('keeps research as the enrichment tab label', () => {

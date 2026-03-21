@@ -41,7 +41,7 @@ function SignalList() {
       {loading ? (
         <p className="muted">Loading signals…</p>
       ) : signals.length === 0 ? (
-        <p className="muted">No buying signals detected yet — run enrichment to generate signals.</p>
+        <p className="muted">No buying signals detected yet — run research to generate signals.</p>
       ) : (
         signals.map((signal) => (
           <div className="activity-card" key={signal.id}>
@@ -85,7 +85,7 @@ function InteractionList() {
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No interactions yet.</p>
+        <p className="muted">No interactions yet. Interactions are logged when you engage with accounts.</p>
       ) : (
         list.map((doc) => (
           <div className="activity-card" key={doc.documentId}>

@@ -98,7 +98,7 @@ export function TechStackDetail({ accountKey }: TechStackDetailProps) {
       {/* Empty */}
       {!loading && !error && !data && (
         <div className="techstack-detail__empty">
-          No technology data yet. Run enrichment to detect the tech stack.
+          No technology data yet. Run research to detect the tech stack.
         </div>
       )}
 

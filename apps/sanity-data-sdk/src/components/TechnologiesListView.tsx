@@ -20,6 +20,7 @@
 import { useDocuments } from '@sanity/sdk-react';
 import { Suspense, useMemo, useState } from 'react';
 import type { Account } from '../lib/adapters';
+import { formatTimestamp } from '../lib/formatters';
 import { AccountSelector } from './command-center/AccountSelector';
 import { useTechInsights, type Technology as AiTechnology } from './useTechInsights';
 import './TechnologiesListView.css';
@@ -134,16 +135,7 @@ function progressColor(value: number): string {
   return 'tech-bar--green';
 }
 
-/** Format relative time. */
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return 'just now';
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
+// formatRelativeTime removed — using shared formatTimestamp from formatters.ts
 
 // ─── Signal Badge Derivation ────────────────────────────────────────────
 
@@ -383,7 +375,7 @@ function TechnologiesInner() {
       <div className="tech-empty">
         <div className="tech-empty-icon">🔧</div>
         <h3>No technologies detected yet</h3>
-        <p>Technologies are discovered during account enrichment. Run a research scan on an account to detect its tech stack.</p>
+        <p>Technologies are discovered during account research. Run a research scan on an account to detect its tech stack.</p>
       </div>
     );
   }
@@ -637,7 +629,7 @@ function TechnologiesInner() {
                               )}
                               {doc.lastEnrichedAt && (
                                 <span className="tech-card-enriched">
-                                  Last seen {formatRelativeTime(doc.lastEnrichedAt)}
+                                  Last seen {formatTimestamp(doc.lastEnrichedAt)}
                                 </span>
                               )}
                             </div>
@@ -686,7 +678,7 @@ function TechnologiesInner() {
                                 {/* Card metadata */}
                                 <div className="tech-card-meta">
                                   {doc.detectionSignals?.[0] && <span>Detection: {doc.detectionSignals[0]}</span>}
-                                  {doc.lastEnrichedAt && <span>Last seen: {formatRelativeTime(doc.lastEnrichedAt)}</span>}
+                                  {doc.lastEnrichedAt && <span>Last seen: {formatTimestamp(doc.lastEnrichedAt)}</span>}
                                   {doc.website && <a href={doc.website} target="_blank" rel="noopener noreferrer" className="tech-card-link">↗ Website</a>}
                                 </div>
 
