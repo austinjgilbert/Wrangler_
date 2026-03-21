@@ -190,7 +190,7 @@ function DashboardSignalSection() {
         {loading ? (
           <p className="muted">Loading signals…</p>
         ) : signals.length === 0 ? (
-          <p className="muted">No recent signals.</p>
+          <p className="muted">No buying signals detected yet — run enrichment to generate signals.</p>
         ) : (
           signals.slice(0, 10).map((signal) => (
             <div className="signal-card" key={signal.id}>

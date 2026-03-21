@@ -41,7 +41,7 @@ function SignalList() {
       {loading ? (
         <p className="muted">Loading signals…</p>
       ) : signals.length === 0 ? (
-        <p className="muted">No signals yet.</p>
+        <p className="muted">No buying signals detected yet — run enrichment to generate signals.</p>
       ) : (
         signals.map((signal) => (
           <div className="activity-card" key={signal.id}>
