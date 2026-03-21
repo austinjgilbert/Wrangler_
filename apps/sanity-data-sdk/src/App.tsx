@@ -1,6 +1,6 @@
 import { type SanityConfig } from '@sanity/sdk';
 import { SanityApp } from '@sanity/sdk-react';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { AccountExplorer } from './components/AccountExplorer';
 import { DashboardView } from './components/DashboardView';
 import { EnrichmentView } from './components/EnrichmentView';
@@ -9,6 +9,7 @@ import { PeopleListView } from './components/PeopleListView';
 import { TechnologiesListView } from './components/TechnologiesListView';
 import { CommandCenter } from './components/command-center';
 import { SANITY_DATASET, SANITY_PROJECT_ID } from './lib/app-env';
+import { NavigationProvider } from './lib/navigation';
 import { NAV, readViewFromSearch, type View } from './lib/view-state';
 import './App.css';
 
@@ -48,52 +49,59 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPopState)
   }, []);
 
+  const navContext = useMemo(
+    () => ({ navigateToView, currentView: view }),
+    [view]  // navigateToView is stable (closes over view via setView)
+  );
+
   return (
-    <div className="app-shell">
-      <div className="app-header">
-        <div>
-          <h1>⚡ Wrangler</h1>
-          <p className="lede">Sales intelligence command center</p>
+    <NavigationProvider value={navContext}>
+      <div className="app-shell">
+        <div className="app-header">
+          <div>
+            <h1>⚡ Wrangler</h1>
+            <p className="lede">Sales intelligence command center</p>
+          </div>
         </div>
-      </div>
 
-      <nav className="app-nav">
-        <button
-          type="button"
-          className={`nav-tab nav-tab--primary ${view === 'command-center' ? 'active' : ''}`}
-          onClick={() => navigateToView('command-center')}
-        >
-          ⚡ Command Center
-        </button>
-        <span className="nav-divider" />
-        {NAV.filter(item => item.id !== 'command-center').map((item) => (
+        <nav className="app-nav">
           <button
-            key={item.id}
             type="button"
-            className={`nav-tab nav-tab--secondary ${view === item.id ? 'active' : ''}`}
-            onClick={() => navigateToView(item.id)}
+            className={`nav-tab nav-tab--primary ${view === 'command-center' ? 'active' : ''}`}
+            onClick={() => navigateToView('command-center')}
           >
-            {item.label}
+            ⚡ Command Center
           </button>
-        ))}
-      </nav>
+          <span className="nav-divider" />
+          {NAV.filter(item => item.id !== 'command-center').map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-tab nav-tab--secondary ${view === item.id ? 'active' : ''}`}
+              onClick={() => navigateToView(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-      <main className="app-main">
-        <SanityApp
-          config={config}
-          fallback={<div className="loading-state">Connecting to Sanity…</div>}
-        >
-          <Suspense fallback={<div className="loading-state panel">Loading…</div>}>
-            {view === 'command-center' && <CommandCenter />}
-            {view === 'dashboard' && <DashboardView />}
-            {view === 'accounts' && <AccountExplorer />}
-            {view === 'enrichment' && <EnrichmentView />}
-            {view === 'activity' && <ActivityView />}
-            {view === 'people' && <PeopleListView />}
-            {view === 'technologies' && <TechnologiesListView />}
-          </Suspense>
-        </SanityApp>
-      </main>
-    </div>
+        <main className="app-main">
+          <SanityApp
+            config={config}
+            fallback={<div className="loading-state">Connecting to Sanity…</div>}
+          >
+            <Suspense fallback={<div className="loading-state panel">Loading…</div>}>
+              {view === 'command-center' && <CommandCenter />}
+              {view === 'dashboard' && <DashboardView />}
+              {view === 'accounts' && <AccountExplorer />}
+              {view === 'enrichment' && <EnrichmentView />}
+              {view === 'activity' && <ActivityView />}
+              {view === 'people' && <PeopleListView />}
+              {view === 'technologies' && <TechnologiesListView />}
+            </Suspense>
+          </SanityApp>
+        </main>
+      </div>
+    </NavigationProvider>
   );
 }

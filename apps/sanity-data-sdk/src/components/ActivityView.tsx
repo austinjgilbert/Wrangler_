@@ -1,31 +1,115 @@
 import { useDocuments } from '@sanity/sdk-react';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
 import { humanizeSignalType, formatTimestamp } from '../lib/formatters';
+import { useNavigation } from '../lib/navigation';
 
-type DocHandle = { documentId: string; documentType: string };
+// ── Types ───────────────────────────────────────────────────────────
+// SignalDoc removed — signals now come from Worker snapshot via WorkerSignal
+
+interface InteractionDoc {
+  documentId: string;
+  documentType: string;
+  title?: string;
+  companyName?: string;
+  domain?: string;
+  source?: string;
+  eventSummary?: string;
+  timestamp?: string;
+  accountName?: string;
+}
+
+// ── Components ──────────────────────────────────────────────────────
 
 function SignalList() {
-  const { data, hasMore, loadMore, isPending } = useDocuments({
-    documentType: 'signal',
-    batchSize: 50,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
-  });
-  const list = (data || []) as Array<DocHandle & { signalType?: string; type?: string; summary?: string; source?: string; timestamp?: string; accountName?: string }>;
+  const [signals, setSignals] = useState<WorkerSignal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { navigateToView } = useNavigation();
+
+  useEffect(() => {
+    fetchRecentSignals()
+      .then(setSignals)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="activity-list">
       <div className="section-header">
         <h3>Signals</h3>
+        <span className="section-meta">{signals.length} loaded</span>
+      </div>
+      {loading ? (
+        <p className="muted">Loading signals…</p>
+      ) : signals.length === 0 ? (
+        <p className="muted">No signals yet.</p>
+      ) : (
+        signals.map((signal) => (
+          <div className="activity-card" key={signal.id}>
+            <strong>{humanizeSignalType(signal.signalType)}</strong>
+            {signal.accountName ? (
+              <span
+                className="activity-account-link"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigateToView('accounts')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+              >
+                {signal.accountName}
+              </span>
+            ) : (
+              <span>{signal.summary ?? signal.source ?? signal.id}</span>
+            )}
+            <span className="activity-meta">
+              {[signal.source, formatTimestamp(signal.timestamp)].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function InteractionList() {
+  const { data, hasMore, loadMore, isPending } = useDocuments({
+    documentType: 'interaction',
+    batchSize: 50,
+    orderings: [{ field: '_updatedAt', direction: 'desc' }],
+  });
+  const { navigateToView } = useNavigation();
+  const list = (data || []) as InteractionDoc[];
+
+  return (
+    <div className="activity-list">
+      <div className="section-header">
+        <h3>Interactions</h3>
         <span className="section-meta">{list.length} loaded</span>
       </div>
       {list.length === 0 ? (
-        <p className="muted">No signals yet.</p>
+        <p className="muted">No interactions yet.</p>
       ) : (
         list.map((doc) => (
           <div className="activity-card" key={doc.documentId}>
-            <strong>{humanizeSignalType((doc as any).signalType ?? (doc as any).type)}</strong>
-            <span>{(doc as any).summary ?? (doc as any).source ?? doc.documentId}</span>
+            <strong>
+              {doc.companyName ? (
+                <span
+                  className="activity-account-link"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigateToView('accounts')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+                >
+                  {doc.companyName}
+                </span>
+              ) : (
+                doc.title ?? doc.documentId
+              )}
+            </strong>
+            <span>{doc.domain ?? doc.source ?? ''}</span>
+            {doc.eventSummary && (
+              <p className="activity-summary">{doc.eventSummary}</p>
+            )}
             <span className="activity-meta">
-              {[(doc as any).source, formatTimestamp((doc as any).timestamp)].filter(Boolean).join(' · ')}
+              {formatTimestamp(doc.timestamp)}
             </span>
           </div>
         ))
@@ -39,36 +123,6 @@ function SignalList() {
         >
           {isPending ? 'Loading…' : 'Load more'}
         </button>
-      )}
-    </div>
-  );
-}
-
-function InteractionList() {
-  const { data } = useDocuments({
-    documentType: 'interaction',
-    batchSize: 50,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
-  });
-  const list = (data || []) as Array<DocHandle & { title?: string; companyName?: string; domain?: string; source?: string; eventSummary?: string }>;
-  return (
-    <div className="activity-list">
-      <div className="section-header">
-        <h3>Interactions</h3>
-        <span className="section-meta">{list.length} loaded</span>
-      </div>
-      {list.length === 0 ? (
-        <p className="muted">No interactions yet.</p>
-      ) : (
-        list.map((doc) => (
-          <div className="activity-card" key={doc.documentId}>
-            <strong>{(doc as any).title ?? (doc as any).companyName ?? doc.documentId}</strong>
-            <span>{(doc as any).domain ?? (doc as any).source ?? ''}</span>
-            {(doc as any).eventSummary && (
-              <p className="activity-summary">{(doc as any).eventSummary}</p>
-            )}
-          </div>
-        ))
       )}
     </div>
   );
