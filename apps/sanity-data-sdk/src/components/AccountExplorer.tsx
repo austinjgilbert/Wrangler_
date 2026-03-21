@@ -542,9 +542,27 @@ function EnrichmentActionBar({
 }
 
 function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
+  const hasChildren = node.children && node.children.length > 0;
+  // Categories (depth 1) start collapsed; root (depth 0) and leaves always open
+  const [expanded, setExpanded] = useState(depth === 0);
+
   return (
     <li className={`tree-node depth-${depth}`}>
-      <div className="tree-card">
+      <div
+        className={`tree-card${hasChildren && depth > 0 ? ' tree-card--collapsible' : ''}`}
+        onClick={hasChildren && depth > 0 ? () => setExpanded((v) => !v) : undefined}
+        style={hasChildren && depth > 0 ? { cursor: 'pointer' } : undefined}
+      >
+        {hasChildren && depth > 0 ? (
+          <span className="tree-chevron" style={{
+            display: 'inline-block',
+            width: 16,
+            fontSize: 10,
+            color: '#94a3b8',
+            transition: 'transform 0.15s ease',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          }}>▶</span>
+        ) : null}
         <div className="tree-copy">
           <div className="tree-title">{node.title}</div>
           {node.meta ? <div className="tree-meta">{node.meta}</div> : null}
@@ -557,9 +575,9 @@ function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
           </div>
         ) : null}
       </div>
-      {node.children && node.children.length > 0 ? (
+      {hasChildren && expanded ? (
         <ul className="tree-list">
-          {node.children.map((child) => (
+          {node.children!.map((child) => (
             <TreeNodeView key={child.id} node={child} depth={depth + 1} />
           ))}
         </ul>

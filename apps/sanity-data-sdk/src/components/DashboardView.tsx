@@ -62,6 +62,12 @@ function getStageLabel(stage: string | number | null | undefined): string | null
 // Deduplicated — uses shared humanizeJobStatus from formatters.ts
 const getJobStatusLabel = humanizeJobStatus;
 
+/** Terminal statuses where stage label is redundant with status badge */
+function isTerminalJobStatus(status: string | undefined): boolean {
+  if (!status) return false;
+  return ['complete', 'completed', 'done', 'failed'].includes(status);
+}
+
 function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc>): string {
   const accountId = typeof job.targetEntity === 'string' && job.targetEntity.startsWith('account')
     ? job.targetEntity
@@ -156,16 +162,11 @@ function DashboardJobSection() {
           jobs.slice(0, 12).map((job) => (
             <div className="job-card" key={job.documentId}>
               <strong>{getJobIntentLabel(job, accountMap)}</strong>
-              <span>
-                {job.currentStage != null
-                  ? getStageLabel(job.currentStage)
-                  : 'Waiting to start'}
-              </span>
               <span className={`job-status status-${jobStatusCssClass(job.status)}`}>
                 {getJobStatusLabel(job.status)}
               </span>
-              {job.currentStage != null && (
-                <span className="job-stage">Now: {getStageLabel(job.currentStage)}</span>
+              {job.currentStage != null && !isTerminalJobStatus(job.status) && (
+                <span className="job-stage">{getStageLabel(job.currentStage)}</span>
               )}
               {job.error && <span className="job-error">{job.error}</span>}
             </div>
