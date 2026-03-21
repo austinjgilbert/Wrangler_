@@ -153,6 +153,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
+    case 'wrangler:setCaptureRule': {
+      // D1: Per-site capture rules — 'always' | 'never' | null (clear rule)
+      const ruleDomain = String(message.domain || '').trim().toLowerCase();
+      const ruleValue = message.rule; // 'always' | 'never' | null
+      if (!ruleDomain) {
+        sendResponse({ ok: false, error: 'domain is required' });
+        return false;
+      }
+      if (ruleValue && ruleValue !== 'always' && ruleValue !== 'never') {
+        sendResponse({ ok: false, error: 'rule must be always, never, or null' });
+        return false;
+      }
+      chrome.storage.local.get(['captureRules'], (result) => {
+        const rules = result.captureRules || {};
+        if (ruleValue) {
+          rules[ruleDomain] = ruleValue;
+        } else {
+          delete rules[ruleDomain];
+        }
+        chrome.storage.local.set({ captureRules: rules }, () => {
+          sendResponse({ ok: true, rules });
+        });
+      });
+      return true; // async response
+    }
+
+    case 'wrangler:getCaptureRules': {
+      chrome.storage.local.get(['captureRules'], (result) => {
+        sendResponse({ ok: true, rules: result.captureRules || {} });
+      });
+      return true; // async response
+    }
+
     default:
       return false;
   }
@@ -164,8 +197,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function scheduleAnalysis(tabId, payload) {
   const settings = await getSettings();
-  if (!settings.apiKey || !settings.captureEnabled) {
-    return { skipped: true, reason: 'Capture disabled or API key missing' };
+  if (!settings.apiKey) {
+    return { skipped: true, reason: 'API key missing' };
+  }
+
+  // D1: Per-site capture rules override global toggle
+  const domain = payload.domain || '';
+  const siteRule = getCaptureRule(settings, domain);
+  if (siteRule === 'never') {
+    return { skipped: true, reason: `Capture disabled for ${domain}` };
+  }
+  if (!settings.captureEnabled && siteRule !== 'always') {
+    return { skipped: true, reason: 'Capture disabled' };
   }
 
   if (analysisTimers.has(tabId)) {
@@ -540,7 +583,25 @@ async function getSettings() {
     'captureEnabled',
     'overlayEnabled',
     'storeImportant',
+    'captureRules',
   ]);
+}
+
+/**
+ * D1: Check per-site capture rule for a domain.
+ * Returns 'always' | 'never' | null (follow global toggle).
+ */
+function getCaptureRule(settings, domain) {
+  const rules = settings.captureRules || {};
+  if (!domain) return null;
+  // Exact domain match first, then check parent domain (e.g., www.linkedin.com → linkedin.com)
+  if (rules[domain]) return rules[domain];
+  const parts = domain.split('.');
+  if (parts.length > 2) {
+    const parent = parts.slice(1).join('.');
+    if (rules[parent]) return rules[parent];
+  }
+  return null;
 }
 
 function normalizeWorkerUrl(workerUrl) {
