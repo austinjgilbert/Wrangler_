@@ -1087,6 +1087,119 @@ input {
   color: #808088;
 }
 
+/* ── UX-9: Hot accounts accent ──────────────────────────────────── */
+
+.summary-card--hot {
+  border-color: rgba(217, 119, 6, 0.3);
+  background: rgba(217, 119, 6, 0.04);
+}
+
+.summary-card--hot:hover {
+  border-color: #d97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.12);
+}
+
+.summary-card--hot strong {
+  color: #d97706;
+}
+
+/* ── UX-29/30: People page grouping + contact actions ───────────── */
+
+.company-group {
+  margin-bottom: 24px;
+}
+
+.company-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.company-group-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.company-group-count {
+  font-size: 12px;
+  color: #808088;
+  background: #f0f1f3;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.company-group-link {
+  margin-left: auto;
+  font-size: 12px;
+  color: #4060e0;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.company-group-link:hover {
+  background: rgba(64, 96, 224, 0.08);
+}
+
+.decision-maker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.08);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.contact-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #eaeaea;
+  background: #fff;
+  color: #303038;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.contact-action-btn:hover {
+  border-color: #4060e0;
+  background: rgba(64, 96, 224, 0.04);
+}
+
+.contact-action-btn--copied {
+  border-color: #408020;
+  color: #408020;
+  background: rgba(64, 128, 32, 0.04);
+}
+
+.contact-action-btn a {
+  color: inherit;
+  text-decoration: none;
+}
+
 @media (max-width: 1100px) {
   .explorer-layout {
     grid-template-columns: 1fr;
