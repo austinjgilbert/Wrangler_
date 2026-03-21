@@ -24,14 +24,19 @@ import {
 
 // ─── Props ──────────────────────────────────────────────────────────────
 
+/** Modules that are Phase 2 stubs — get muted styling + "Coming soon" badge. */
+const STUB_MODULE_KEYS = new Set(['outreach']);
+
 export interface ModuleGridProps {
   glanceContext: GlanceContext;
   onModuleAction: (moduleKey: string, actionKey: string) => void;
+  /** UX-4: Module key to highlight (from briefing bestNextAction). */
+  highlightedModule?: string | null;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
 
-export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
+export function ModuleGrid({ glanceContext, onModuleAction, highlightedModule }: ModuleGridProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   // Derive all glance props in a single pass — O(1) lookup via Map
@@ -155,6 +160,7 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
       {MODULE_CONFIGS.map(config => {
         const glance = glanceMap.get(config.key);
         if (!glance) return null;
+        const isStub = STUB_MODULE_KEYS.has(config.key);
         return (
           <ModuleShell
             key={config.key}
@@ -171,6 +177,8 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
             onExpand={() => handleExpand(config.key)}
             onCollapse={handleCollapse}
             onAction={onModuleAction}
+            isStub={isStub}
+            isHighlighted={highlightedModule === config.key}
           />
         );
       })}

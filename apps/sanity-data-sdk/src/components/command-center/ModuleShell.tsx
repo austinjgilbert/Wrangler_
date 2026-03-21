@@ -30,6 +30,10 @@ export interface ModuleShellProps {
   onAction: (moduleKey: string, actionKey: string) => void;
   detailContent?: React.ReactNode;
   actions?: ActionButton[];
+  /** UX-5: Phase 2 stub — muted styling + "Coming soon" badge. */
+  isStub?: boolean;
+  /** UX-4: Highlighted by briefing bestNextAction. */
+  isHighlighted?: boolean;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -50,6 +54,8 @@ export function ModuleShell({
   onAction,
   detailContent,
   actions,
+  isStub,
+  isHighlighted,
 }: ModuleShellProps) {
   // ── Mini State ────────────────────────────────────────────────────────
 
@@ -75,10 +81,17 @@ export function ModuleShell({
   // ── Glance State ──────────────────────────────────────────────────────
 
   if (state === 'glance') {
+    const glanceClasses = [
+      'module-shell',
+      'module-shell--glance',
+      isStub ? 'module-shell--stub' : '',
+      isHighlighted ? 'module-shell--highlighted' : '',
+    ].filter(Boolean).join(' ');
+
     return (
       <div
-        className="module-shell module-shell--glance"
-        onClick={onExpand}
+        className={glanceClasses}
+        onClick={isStub ? undefined : onExpand}
         style={{ borderTopColor: color }}
         data-module={moduleKey}
       >
@@ -86,6 +99,7 @@ export function ModuleShell({
         <div className="module-shell__header">
           <span className="module-shell__icon">{icon}</span>
           <span className="module-shell__label">{label}</span>
+          {isStub && <span className="module-shell__stub-badge">Coming soon</span>}
         </div>
 
         {/* Insight */}

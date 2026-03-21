@@ -53,6 +53,24 @@ function extractDomain(url?: string): string {
 }
 
 /**
+ * UX-4: Map briefing bestNextAction text to a module key for urgency highlighting.
+ * The briefing AI generates free-text actions — we fuzzy-match to module keys.
+ */
+function actionToModuleKey(action: string): string | null {
+  const lower = action.toLowerCase();
+  if (lower.includes('research') || lower.includes('investigate')) return 'research';
+  if (lower.includes('enrich') || lower.includes('profile') || lower.includes('advance')) return 'profile';
+  if (lower.includes('competitor')) return 'competitors';
+  if (lower.includes('people') || lower.includes('contact') || lower.includes('decision')) return 'people';
+  if (lower.includes('tech') || lower.includes('stack') || lower.includes('scan')) return 'techstack';
+  if (lower.includes('signal') || lower.includes('intent')) return 'signals';
+  if (lower.includes('score') || lower.includes('opportunity') || lower.includes('qualify')) return 'opportunity';
+  if (lower.includes('approach') || lower.includes('strategy') || lower.includes('angle')) return 'approach';
+  if (lower.includes('outreach') || lower.includes('email') || lower.includes('call')) return 'outreach';
+  return null;
+}
+
+/**
  * Stub modules — Phase 2 features that show a toast when clicked.
  * Uses CANONICAL module keys (post-rename).
  */
@@ -85,6 +103,10 @@ export function CommandCenter() {
     toastTimer.current = setTimeout(() => setToastMessage(null), 2500);
   }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+  // UX-3: Store briefing context when user clicks a briefing account card.
+  // Shows "🎯 whyNow → bestNextAction" banner above module grid.
+  const [briefingContext, setBriefingContext] = useState<BriefingAccount | null>(null);
 
   // ── Job Polling (FIX #2: hook wired, replaces placeholder Map) ──────
   // Polls for active enrichment jobs. Adaptive intervals (3-30s),
@@ -219,8 +241,11 @@ export function CommandCenter() {
 
   // ── Account Selection ─────────────────────────────────────────────────
 
-  const handleSelectAccount = useCallback((account: Account) => {
+  const handleSelectAccount = useCallback((account: Account, briefingItem?: BriefingAccount) => {
     setSelectedAccount(account);
+    // UX-3: Store briefing context if account was selected from briefing card.
+    // Clear it if selected from AccountSelector dropdown (no briefing context).
+    setBriefingContext(briefingItem ?? null);
     // B2: Don't clearCache() here — briefing and accounts are system-wide data
     // that shouldn't be nuked on account switch. Account-specific data (pipeline,
     // signals, jobs) lives in React state and resets via useEffect dependencies.
@@ -228,6 +253,7 @@ export function CommandCenter() {
 
   const handleBackToBriefing = useCallback(() => {
     setSelectedAccount(null);
+    setBriefingContext(null);
   }, []);
 
   // ── Module Actions ────────────────────────────────────────────────────
@@ -390,10 +416,29 @@ export function CommandCenter() {
       {/* Main content: Briefing Landing or Module Grid */}
       <div className="command-center__content">
         {selectedAccount ? (
-          <ModuleGrid
-            glanceContext={glanceContext}
-            onModuleAction={handleModuleAction}
-          />
+          <>
+            {/* UX-3: Briefing context banner — shows why this account was selected */}
+            {briefingContext && (
+              <div className="briefing-context-banner">
+                <span className="briefing-context-banner__icon">🎯</span>
+                <span className="briefing-context-banner__text">
+                  {briefingContext.whyNow} → <strong>{briefingContext.bestNextAction}</strong>
+                </span>
+                <button
+                  className="briefing-context-banner__dismiss"
+                  onClick={() => setBriefingContext(null)}
+                  title="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <ModuleGrid
+              glanceContext={glanceContext}
+              onModuleAction={handleModuleAction}
+              highlightedModule={briefingContext ? actionToModuleKey(briefingContext.bestNextAction) : null}
+            />
+          </>
         ) : (
           <MorningBriefingLanding
             briefing={briefing}
@@ -429,7 +474,7 @@ interface MorningBriefingLandingProps {
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  onSelectAccount: (account: Account) => void;
+  onSelectAccount: (account: Account, briefingItem?: BriefingAccount) => void;
 }
 
 function MorningBriefingLanding({
@@ -508,6 +553,7 @@ function MorningBriefingLanding({
                   rootDomain: extractDomain(item.canonicalUrl),
                   canonicalUrl: item.canonicalUrl ?? '',
                 },
+                item, // UX-3: Pass briefing context for banner display
               );
             }}
           >
