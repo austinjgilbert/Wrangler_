@@ -40,6 +40,7 @@ type LinkedRecord = {
   isDecisionMaker?: boolean
   isLegacy?: boolean
   isMigrationTarget?: boolean
+  currentTitle?: string
   linkedinUrl?: string
   opportunityScore?: number
   strength?: number
@@ -308,7 +309,7 @@ function buildTree(account: ProjectedAccount | null): TreeNode | null {
             meta: [snapshot.snapshotClass, snapshot.fetchedAt].filter(Boolean).join(' · '),
             badges: compactStrings([
               snapshot.source || null,
-              snapshot.status != null ? `status ${snapshot.status}` : null,
+              snapshot.status != null ? String(snapshot.status) : null,
             ]),
           })),
         ],
@@ -487,10 +488,10 @@ function EnrichmentActionBar({
 
       setMessage(
         mode === 'deep'
-          ? 'Deep research queued. The worker will try retries, gap fill, and broader evidence collection.'
+          ? 'Deep research queued — retries, gap fill, and broader evidence collection will run automatically.'
           : mode === 'restart'
-            ? 'A fresh enrichment run was queued. The worker will try to self-heal unresolved steps.'
-            : 'Research queued. The worker will try to self-heal unresolved steps.'
+            ? 'Fresh research queued — unresolved steps will be retried automatically.'
+            : 'Research queued — unresolved steps will be retried automatically.'
       )
     } catch (error) {
       setMessage((error as Error).message)

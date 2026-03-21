@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { PipelineBar } from './PipelineBar';
 import { workerGet } from '../../lib/adapters';
 import type { PipelineStage } from '../../lib/adapters';
+import { formatTimestamp } from '../../lib/formatters';
 
 import './ResearchDetail.css';
 
@@ -159,7 +160,7 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
           {/* Completion timestamp */}
           {results.completedAt && (
             <div className="research-detail__meta">
-              Completed {new Date(results.completedAt).toLocaleDateString()} · Status: {results.status}
+              Completed {formatTimestamp(results.completedAt)}
             </div>
           )}
         </div>

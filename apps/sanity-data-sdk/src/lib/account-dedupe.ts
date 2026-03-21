@@ -64,7 +64,7 @@ function getFieldRichnessScore(account: AccountLike) {
 }
 
 function getCountScore(account: AccountLike) {
-  return Object.values(account.counts || {}).reduce((sum, value) => sum + Number(value || 0), 0)
+  return Object.values(account.counts || {}).reduce<number>((sum, value) => sum + Number(value || 0), 0)
 }
 
 function getTimestampScore(account: AccountLike) {

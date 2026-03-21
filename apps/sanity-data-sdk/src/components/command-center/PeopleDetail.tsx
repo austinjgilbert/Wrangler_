@@ -127,7 +127,7 @@ function PeopleDetailInner({ accountKey }: PeopleDetailProps) {
   if (people.length === 0) {
     return (
       <div className="people-detail__empty">
-        No contacts found for this account. Run LinkedIn enrichment to discover people.
+        No contacts found for this account. Run LinkedIn research to discover people.
       </div>
     );
   }

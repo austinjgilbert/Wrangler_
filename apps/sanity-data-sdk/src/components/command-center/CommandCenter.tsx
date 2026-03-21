@@ -399,7 +399,7 @@ export function CommandCenter() {
     <div className="command-center">
       {/* Header with Account Selector */}
       <div className="command-center__header">
-        <span className="command-center__title">⚡ Command Center</span>
+        <span className="command-center__title">Select an account to explore</span>
         <AccountSelector
           selectedAccount={selectedAccount}
           onSelect={handleSelectAccount}
