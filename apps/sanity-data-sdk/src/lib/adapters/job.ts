@@ -78,6 +78,16 @@ function deriveModuleKey(job: BackendJob): string {
       return 'people';       // ← FIX #5: was 'linkedin'
     case 'gap-fill':
       return 'approach';     // ← FIX #5: was 'gaps'
+    case 'scan':
+    case 'initial_scan':
+    case 'tech_scan':
+      return 'techstack';
+    case 'score':
+    case 'opportunity':
+      return 'opportunity';
+    case 'outreach':
+    case 'sequence':
+      return 'outreach';
     default:
       return 'research';
   }

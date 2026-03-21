@@ -62,10 +62,7 @@ function extractDomain(url?: string): string {
 const STAGE_ORDER = ['initial_scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'] as const;
 
 const STUB_MODULES: Record<string, string> = {
-  techstack: 'Deep tech scan coming in Phase 2 — will map full technology stack',
-  opportunity: 'Opportunity scoring coming in Phase 2 — will rank deal likelihood',       // FIX #1: was 'pipeline'
-  approach: 'Approach generation coming in Phase 2 — will build personalized outreach strategy', // FIX #1: was 'gaps'
-  outreach: 'Sequence generation coming in Phase 2 — will create multi-channel outreach',  // FIX #1: was 'brief'
+  outreach: 'Outreach queues are generated during morning briefing — use Command Center refresh to update',
 };
 
 function showToast(message: string) {
@@ -288,11 +285,14 @@ export function CommandCenter() {
       }
 
       // Real action endpoints — uses CANONICAL module keys.
-      // Endpoint contracts verified against handler source (L4 smoke test):
+      // Endpoint contracts verified against handler source:
       //   /research/complete: `input` auto-detects accountKey (16 hex chars)
       //   /enrich/advance: needs `accountKey` only
       //   /competitors/research: needs `accountKey` + `canonicalUrl`
       //   /person/brief: needs `accountKey` + `canonicalUrl`
+      //   /scan: reads `url` from QUERY PARAMS, not body (index.js L4690)
+      //   /enrich/queue: POST body with accountKey, canonicalUrl, mode, stages
+      //   /research/complete (approach): same endpoint, mode:'fast', no competitors
       const actionMap: Record<string, { endpoint: string; body: object }> = {
         research: {
           endpoint: '/research/complete',
@@ -322,6 +322,33 @@ export function CommandCenter() {
           body: {
             accountKey: selectedAccount.accountKey,
             canonicalUrl: selectedAccount.canonicalUrl,
+          },
+        },
+        techstack: {
+          // /scan reads url from query params, not POST body (index.js L4690)
+          endpoint: `/scan?url=${encodeURIComponent(selectedAccount.canonicalUrl)}`,
+          body: {},
+        },
+        opportunity: {
+          endpoint: '/enrich/queue',
+          body: {
+            accountKey: selectedAccount.accountKey,
+            canonicalUrl: selectedAccount.canonicalUrl,
+            mode: 'standard',
+            stages: ['initial_scan'],
+            selfHeal: true,
+          },
+        },
+        approach: {
+          // Same endpoint as research but lightweight — no competitors, no auto-enrich
+          // Job tracker will show both as "research" (deriveModuleKey collision) — acceptable for MVP
+          endpoint: '/research/complete',
+          body: {
+            input: selectedAccount.accountKey,
+            inputType: 'accountKey',
+            mode: 'fast',
+            includeCompetitors: false,
+            autoEnrich: false,
           },
         },
       };
