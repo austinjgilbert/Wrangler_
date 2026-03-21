@@ -69,10 +69,9 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
       `/enrich/research?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        // Double-nesting: workerGet returns { ok, data: WorkerJSON, status }
-        // WorkerJSON is { ok, data: { researchSet: {...} } }
-        // TODO: type workerGet response properly when adapter types are cleaned up
-        const researchSet = (res.data as any)?.data?.researchSet ?? null;
+        // workerGet wraps Worker JSON in { ok, data: T, status }
+        // T here is { data: { researchSet: {...} } }, so res.data.data.researchSet
+        const researchSet = res.data?.data?.researchSet ?? null;
         setResults(researchSet);
       })
       .catch((err) => {
