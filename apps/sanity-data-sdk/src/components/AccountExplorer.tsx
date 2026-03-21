@@ -4,7 +4,7 @@ import type React from 'react'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { getWorkerConfigMessage } from '../lib/app-env'
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe'
-import { humanizeCoverageStatus, formatTimestamp } from '../lib/formatters'
+import { humanizeCoverageStatus, formatTimestamp, humanizeFieldName } from '../lib/formatters'
 import { fetchEnrichStatus, hasWorker, queueEnrichment } from '../lib/worker-api'
 import { fetchRecentSignals, countSignalsForAccount, type WorkerSignal } from '../lib/adapters/signals'
 
@@ -226,7 +226,7 @@ function buildTree(account: ProjectedAccount | null): TreeNode | null {
         children: (account.crmContacts || account.leadership || []).map((person) => ({
           id: person._id,
           title: person.name || person.currentTitle || person.title || person._id,
-          meta: [person.currentTitle || person.title, person.roleCategory, person.seniorityLevel].filter(Boolean).join(' · '),
+          meta: [person.currentTitle || person.title, humanizeFieldName(person.roleCategory), humanizeFieldName(person.seniorityLevel)].filter(Boolean).join(' · '),
           badges: compactStrings([
             person.isDecisionMaker ? 'decision-maker' : null,
             person.email ? 'email' : null,
@@ -255,7 +255,7 @@ function buildTree(account: ProjectedAccount | null): TreeNode | null {
         children: (account.signals || []).map((signal) => ({
           id: signal._id,
           title: signal.signalType || signal.type || signal.summary || signal._id,
-          meta: [signal.source, signal.timestamp || signal.observedAt].filter(Boolean).join(' · '),
+          meta: [signal.source, formatTimestamp(signal.timestamp || signal.observedAt)].filter(Boolean).join(' · '),
           badges: compactStrings([
             signal.uncertaintyState || null,
             signal.strength != null ? `strength ${signal.strength}` : null,
@@ -915,7 +915,7 @@ function AccountDetails({
         </div>
         <div className="mode-row">
           <button className={`mode-button ${mode === 'tree' ? 'active' : ''}`} onClick={() => setMode('tree')} type="button">Tree</button>
-          <button className={`mode-button ${mode === 'graph' ? 'active' : ''}`} onClick={() => setMode('graph')} type="button">Graph</button>
+          <button className={`mode-button ${mode === 'graph' ? 'active' : ''}`} onClick={() => setMode('graph')} type="button">Overview</button>
         </div>
       </div>
 
@@ -1048,7 +1048,7 @@ function AccountDetails({
                 <div className="interaction-head">
                   <strong>{ix.title || ix.companyName || ix._id}</strong>
                   <span className="interaction-meta">
-                    {[ix.source, ix.pageSource, ix.timestamp].filter(Boolean).join(' · ')}
+                    {[ix.source, ix.pageSource, formatTimestamp(ix.timestamp)].filter(Boolean).join(' · ')}
                   </span>
                   {ix.userId ? <span className="interaction-user">By {ix.userId}</span> : null}
                 </div>
@@ -1087,8 +1087,8 @@ function AccountDetails({
                 <strong>{contact.name || contact.currentTitle || contact._id}</strong>
                 <p>{[contact.currentTitle || contact.title, contact.currentCompany].filter(Boolean).join(' · ') || 'Role not captured yet'}</p>
                 <div className="chip-row">
-                  {contact.roleCategory ? <span className="chip">{contact.roleCategory}</span> : null}
-                  {contact.seniorityLevel ? <span className="chip">{contact.seniorityLevel}</span> : null}
+                  {contact.roleCategory ? <span className="chip">{humanizeFieldName(contact.roleCategory)}</span> : null}
+                  {contact.seniorityLevel ? <span className="chip">{humanizeFieldName(contact.seniorityLevel)}</span> : null}
                   {contact.isDecisionMaker ? <span className="chip chip-covered">decision-maker</span> : null}
                   {(contact.sourceSystems || []).map((sourceSystem) => (
                     <span className="chip chip-stage" key={`${contact._id}-${sourceSystem}`}>{sourceSystem}</span>
@@ -1123,9 +1123,9 @@ function AccountDetails({
           </div>
 
           <div className="graph-columns">
-            <GraphColumn title="People" items={account.crmContacts || account.leadership || []} renderMeta={(item) => [item.currentTitle || item.title, item.roleCategory].filter(Boolean).join(' · ')} />
+            <GraphColumn title="People" items={account.crmContacts || account.leadership || []} renderMeta={(item) => [item.currentTitle || item.title, humanizeFieldName(item.roleCategory)].filter(Boolean).join(' · ')} />
             <GraphColumn title="Technologies" items={account.technologies || []} renderMeta={(item) => [item.category, item.vendor].filter(Boolean).join(' · ')} />
-            <GraphColumn title="Signals" items={account.signals || []} renderMeta={(item) => [item.source, item.timestamp || item.observedAt].filter(Boolean).join(' · ')} />
+            <GraphColumn title="Signals" items={account.signals || []} renderMeta={(item) => [item.source, formatTimestamp(item.timestamp || item.observedAt)].filter(Boolean).join(' · ')} />
             <GraphColumn title="Actions" items={account.actionCandidates || []} renderMeta={(item) => [item.actionType, item.urgency].filter(Boolean).join(' · ')} />
             <GraphColumn
               title="Related Accounts"
