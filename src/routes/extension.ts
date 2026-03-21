@@ -843,6 +843,10 @@ export async function handleExtensionFeedback(request: Request, requestId: strin
       return createErrorResponse('VALIDATION_ERROR', 'feedback or rating is required', {}, 400, requestId);
     }
 
+    // SECURITY: context flows into eventData blob in Sanity. Currently the extension
+    // sends { prompt, answerPreview, url, domain } — all bounded, non-sensitive.
+    // If future extension code adds fields to context, they'll be stored. Only add
+    // bounded, non-sensitive fields at the extension construction site (content.js).
     const context = (body.context && typeof body.context === 'object' && !Array.isArray(body.context))
       ? body.context as Record<string, unknown>
       : null;
