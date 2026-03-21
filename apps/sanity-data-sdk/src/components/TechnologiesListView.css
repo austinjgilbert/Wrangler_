@@ -834,3 +834,26 @@
     flex-direction: column;
   }
 }
+
+/* ── Toast (rendered in component tree) ── */
+
+.tech-toast {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #303038;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: tech-toast-in 200ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes tech-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

@@ -18,8 +18,8 @@
  */
 
 import { useDocuments } from '@sanity/sdk-react';
-import { Suspense, useMemo, useState } from 'react';
-import type { Account } from '../lib/adapters';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { workerGet, type Account } from '../lib/adapters';
 import { formatTimestamp } from '../lib/formatters';
 import { AccountSelector } from './command-center/AccountSelector';
 import { useTechInsights, type Technology as AiTechnology } from './useTechInsights';
@@ -59,9 +59,10 @@ interface CategoryGroup {
 
 /** Fixed category display order — CMS first (selling surface). */
 const CATEGORY_ORDER = [
-  'cms', 'dxp', 'framework', 'analytics', 'cdp', 'crm', 'ecommerce',
-  'dam', 'pim', 'lms', 'hosting', 'cdn', 'marketing-automation',
-  'legacy', 'other', 'detected', 'uncategorized',
+  'cms', 'dxp', 'framework', 'css-framework', 'analytics', 'cdp', 'crm',
+  'ecommerce', 'payments', 'dam', 'pim', 'lms', 'hosting', 'cdn',
+  'marketing-automation', 'marketing', 'monitoring',
+  'legacy', 'other', 'roiInsights', 'allDetected', 'detected', 'uncategorized',
 ];
 
 /** Categories auto-expanded on load. */
@@ -104,7 +105,13 @@ function formatCategory(cat: string): string {
   const LABELS: Record<string, string> = {
     cms: 'CMS', dxp: 'DXP', cdp: 'CDP', crm: 'CRM', cdn: 'CDN',
     dam: 'DAM', pim: 'PIM', lms: 'LMS',
+    'css-framework': 'CSS Framework',
     'marketing-automation': 'Marketing Automation',
+    allDetected: 'Detected Technologies',
+    roiInsights: 'ROI Insights',
+    monitoring: 'Monitoring',
+    payments: 'Payments',
+    marketing: 'Marketing',
   };
   return LABELS[cat] || cat.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -220,16 +227,48 @@ function TechnologiesInner() {
   const [statusFilter, setStatusFilter] = useState<TechStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('category');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
-    // Auto-collapse everything except CMS, DXP, Framework
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const collapsedInitialized = useRef(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  // Initialize collapsed categories once data loads (useState initializer runs with empty list)
+  useEffect(() => {
+    if (collapsedInitialized.current || list.length === 0) return;
+    collapsedInitialized.current = true;
     const allCats = new Set(list.map((d) => d.category || 'uncategorized'));
     const collapsed = new Set<string>();
     for (const cat of allCats) {
       if (!AUTO_EXPAND_CATEGORIES.has(cat)) collapsed.add(cat);
     }
-    return collapsed;
-  });
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+    setCollapsedCategories(collapsed);
+  }, [list]);
+
+  // ── Toast (React state-driven, no DOM manipulation) ──
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMessage(message);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2500);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+  // ── Rescan handler ──
+  const [rescanning, setRescanning] = useState(false);
+  const handleRescan = useCallback(async () => {
+    if (!selectedAccount) return;
+    const url = selectedAccount.canonicalUrl || selectedAccount.rootDomain;
+    if (!url) { showToast('No URL available for this account'); return; }
+    setRescanning(true);
+    try {
+      await workerGet(`/scan?url=${encodeURIComponent(url)}`);
+      showToast('Rescan started — results will appear after processing');
+    } catch {
+      showToast('Rescan failed — try again later');
+    } finally {
+      setRescanning(false);
+    }
+  }, [selectedAccount, showToast]);
 
   // ── Derived data ──
 
@@ -262,15 +301,6 @@ function TechnologiesInner() {
     }
     return counts;
   }, [list, aiTechMap]);
-
-  // Stack maturity (from AI or derived)
-  const stackMaturity = useMemo(() => {
-    if (insights?.summary?.stackMaturity) return insights.summary;
-    // Derive from doc data
-    const activeTechs = list.filter((d) => !d.isLegacy).length;
-    const maturityPct = list.length > 0 ? (activeTechs / list.length) * 100 : 0;
-    return { maturityPct, activeTechs, totalTechs: list.length };
-  }, [list, insights]);
 
   // Signal badges
   const signalBadges = useMemo(() => deriveSignalBadges(list), [list]);
@@ -409,14 +439,24 @@ function TechnologiesInner() {
           </div>
           <div className="tech-summary-actions">
             {selectedAccount && (
-              <button
-                type="button"
-                className="tech-action-btn tech-action-btn--secondary"
-                onClick={() => analyze()}
-                disabled={analyzing}
-              >
-                {analyzing ? 'Analyzing…' : '🔬 Analyze Stack'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="tech-action-btn tech-action-btn--secondary"
+                  onClick={handleRescan}
+                  disabled={rescanning}
+                >
+                  {rescanning ? 'Scanning…' : '⟳ Rescan'}
+                </button>
+                <button
+                  type="button"
+                  className="tech-action-btn tech-action-btn--secondary"
+                  onClick={() => analyze()}
+                  disabled={analyzing}
+                >
+                  {analyzing ? 'Analyzing…' : '🔬 Analyze Stack'}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -714,34 +754,13 @@ function TechnologiesInner() {
           {isPending ? 'Loading…' : 'Load more technologies'}
         </button>
       )}
+
+      {/* ── Toast (rendered in component tree, not document.body) ── */}
+      {toastMessage && (
+        <div className="tech-toast">{toastMessage}</div>
+      )}
     </div>
   );
-}
-
-// ─── Toast Helper ────────────────────────────────────────────────────────
-
-function showToast(message: string) {
-  const el = document.createElement('div');
-  el.textContent = message;
-  Object.assign(el.style, {
-    position: 'fixed',
-    bottom: '60px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: '#303038',
-    color: '#ffffff',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    zIndex: '200',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    transition: 'opacity 200ms',
-  });
-  document.body.appendChild(el);
-  setTimeout(() => {
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 200);
-  }, 2500);
 }
 
 // ─── Outer Wrapper ──────────────────────────────────────────────────────
