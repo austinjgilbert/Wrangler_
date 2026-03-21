@@ -1,8 +1,7 @@
 /**
  * PipelineFlow.tsx — React wrapper for the pipeline flow chart.
  *
- * Handles: canvas ref, 1.2s entry animation, mousemove hit testing,
- * click → onStageClick(stageName). Stops animation after completion.
+ * Phase B: rAF→ref refactor — zero React re-renders during animation.
  *
  * Integration: rendered inside ResearchDetail module below PipelineBar.
  */
@@ -32,31 +31,25 @@ export function PipelineFlow({
 }: PipelineFlowProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
-  const startRef = useRef(performance.now());
+  const startRef = useRef(0);
+  const progressRef = useRef(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [animDone, setAnimDone] = useState(false);
 
   const healthMessage = pipelineSummary(pipelineStages);
 
-  const draw = useCallback(
-    (progress: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      drawPipelineFlow(canvas, stages, healthMessage, width, height, progress, hoveredIndex);
-    },
-    [stages, healthMessage, width, height, hoveredIndex],
-  );
-
   useEffect(() => {
     startRef.current = performance.now();
+    progressRef.current = 0;
     setAnimDone(false);
     setHoveredIndex(null);
 
     function tick() {
       const elapsed = performance.now() - startRef.current;
-      const progress = Math.min(1, elapsed / ANIM_MS);
-      draw(progress);
-      if (progress < 1) {
+      progressRef.current = Math.min(1, elapsed / ANIM_MS);
+      const canvas = canvasRef.current;
+      if (canvas) drawPipelineFlow(canvas, stages, healthMessage, width, height, progressRef.current, null);
+      if (progressRef.current < 1) {
         animRef.current = requestAnimationFrame(tick);
       } else {
         setAnimDone(true);
@@ -71,11 +64,13 @@ export function PipelineFlow({
         animRef.current = null;
       }
     };
-  }, [stages, width, height]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stages, healthMessage, width, height]);
 
   useEffect(() => {
-    if (animDone) draw(1);
-  }, [hoveredIndex, animDone, draw]);
+    if (animDone && canvasRef.current) {
+      drawPipelineFlow(canvasRef.current, stages, healthMessage, width, height, 1, hoveredIndex);
+    }
+  }, [hoveredIndex, animDone, stages, healthMessage, width, height]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
