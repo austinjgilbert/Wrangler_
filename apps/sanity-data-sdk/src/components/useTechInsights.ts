@@ -103,7 +103,7 @@ export function useTechInsights(accountKey: string | null): UseTechInsightsResul
       const response = await workerGet<{ ok: boolean; data: TechInsightsResponse }>(
         `/technologies/insights?accountKey=${encodeURIComponent(accountKey)}`,
       );
-      setData(response.data.data);
+      setData(response.data?.data ?? null);
     } catch (err) {
       if (err instanceof WorkerApiError && err.status === 404) {
         setData(null);
