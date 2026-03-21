@@ -1,0 +1,364 @@
+/* ActivityFeed — Activity event feed styles
+ *
+ * Follows ResearchDetail.css / TechnologiesListView.css patterns:
+ * BEM naming, light theme, same color palette.
+ *
+ * @see activity-system-ux-spec v1.0 Section 9
+ */
+
+/* ── Summary bar ─────────────────────────────────────────────────── */
+
+.activity-feed__summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #606068;
+  margin-bottom: 12px;
+}
+
+.activity-feed__summary--alert {
+  border-left: 3px solid #dc2626;
+}
+
+.activity-feed__summary-sep {
+  color: #c0c0c8;
+}
+
+.activity-feed__summary-failed {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* ── Filter bar ──────────────────────────────────────────────────── */
+
+.activity-feed__filters {
+  margin-bottom: 16px;
+}
+
+.activity-feed__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-feed__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #606068;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.activity-feed__tab:hover {
+  background: #f0f0f8;
+  border-color: #d0d0d8;
+}
+
+.activity-feed__tab--active {
+  background: #4060e0;
+  border-color: #4060e0;
+  color: #ffffff;
+}
+
+.activity-feed__tab--active:hover {
+  background: #3050d0;
+}
+
+.activity-feed__tab-icon {
+  font-size: 13px;
+}
+
+.activity-feed__secondary-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.activity-feed__select {
+  padding: 5px 8px;
+  border: 1px solid #eaeaea;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #303038;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.activity-feed__select:focus {
+  outline: none;
+  border-color: #4060e0;
+}
+
+.activity-feed__clear-filters {
+  padding: 5px 10px;
+  border: 1px solid #eaeaea;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #4060e0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.activity-feed__clear-filters:hover {
+  background: #f0f0f8;
+  border-color: #4060e0;
+}
+
+/* ── Event list ──────────────────────────────────────────────────── */
+
+.activity-feed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Activity card ───────────────────────────────────────────────── */
+
+.activity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: background 0.15s;
+}
+
+.activity-card:hover {
+  background: #f8f9fa;
+}
+
+/* Border-left accents per event type */
+.activity-card--prompt     { border-left-color: #4060e0; }
+.activity-card--job        { border-left-color: #d97706; }
+.activity-card--job[data-status="completed"] { border-left-color: #408020; }
+.activity-card--job[data-status="failed"]    { border-left-color: #dc2626; }
+.activity-card--data_write { border-left-color: #408020; }
+.activity-card--system     { border-left-color: #e0e0e0; }
+.activity-card--capture    { border-left-color: #7c3aed; }
+
+/* System cards: muted weight */
+.activity-card--system .activity-card__message {
+  color: #808088;
+}
+
+.activity-card__icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.activity-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activity-card__message {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303038;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.activity-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #808088;
+}
+
+.activity-card__meta-sep {
+  color: #c0c0c8;
+}
+
+.activity-card__error {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fef2f2;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #dc2626;
+  line-height: 1.4;
+}
+
+.activity-card__detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #606068;
+}
+
+/* ── Status badge ────────────────────────────────────────────────── */
+
+.activity-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.activity-status__icon {
+  font-size: 10px;
+}
+
+.activity-status--queued     { background: #f0f0f0; color: #808088; }
+.activity-status--processing { background: #fffbeb; color: #d97706; }
+.activity-status--completed  { background: #f0fdf4; color: #408020; }
+.activity-status--failed     { background: #fef2f2; color: #dc2626; }
+.activity-status--unknown    { background: #f0f0f0; color: #808088; }
+
+/* Processing pulse animation */
+.activity-status--processing::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d97706;
+  animation: activity-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes activity-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Source badge ─────────────────────────────────────────────────── */
+
+.activity-source {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.activity-source--gpt       { background: #eff2fe; color: #4060e0; }
+.activity-source--extension  { background: #f3f0ff; color: #7c3aed; }
+.activity-source--worker     { background: #f0f0f0; color: #808088; }
+.activity-source--cron       { background: #f0f0f0; color: #808088; }
+.activity-source--app        { background: #eff2fe; color: #4060e0; }
+
+/* ── Action buttons ──────────────────────────────────────────────── */
+
+.activity-card__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Hide actions border when no buttons */
+.activity-card__actions:empty {
+  display: none;
+}
+
+.activity-action {
+  padding: 4px 10px;
+  border: 1px solid #eaeaea;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #4060e0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.activity-action:hover {
+  background: #f0f0f8;
+  border-color: #4060e0;
+}
+
+/* ── Empty states ────────────────────────────────────────────────── */
+
+.activity-feed__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #808088;
+}
+
+.activity-feed__empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.activity-feed__empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 6px;
+}
+
+.activity-feed__empty-desc {
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+/* ── Loading / Load more ─────────────────────────────────────────── */
+
+.activity-feed__loading {
+  text-align: center;
+  padding: 24px;
+  color: #808088;
+  font-size: 13px;
+}
+
+.activity-feed__load-more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4060e0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.activity-feed__load-more:hover {
+  background: #f0f0f8;
+  border-color: #4060e0;
+}
+
+.activity-feed__load-more:disabled {
+  color: #808088;
+  cursor: not-allowed;
+}

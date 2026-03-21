@@ -170,3 +170,67 @@ function humanizeCamelOrSnake(value: string): string {
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+// ── Activity event humanizers ───────────────────────────────────────
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  prompt: 'Prompt',
+  job: 'Job',
+  data_write: 'Data Write',
+  system: 'System',
+  capture: 'Capture',
+};
+
+/** Humanize an activity event type for display */
+export function humanizeEventType(raw: string | null | undefined): string {
+  if (!raw) return 'Unknown';
+  return EVENT_TYPE_LABELS[raw] || humanizeSnakeCase(raw);
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  enrichment: 'Enrichment',
+  interaction: 'Interaction',
+  capture: 'Capture',
+  research: 'Research',
+  system: 'System',
+};
+
+/** Humanize an activity category for display */
+export function humanizeEventCategory(raw: string | null | undefined): string {
+  if (!raw) return 'Unknown';
+  return CATEGORY_LABELS[raw] || humanizeSnakeCase(raw);
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  gpt: 'GPT',
+  extension: 'Extension',
+  worker: 'Worker',
+  cron: 'Scheduled',
+  app: 'App',
+};
+
+/** Humanize an activity source for display */
+export function humanizeEventSource(raw: string | null | undefined): string {
+  if (!raw) return 'Unknown';
+  return SOURCE_LABELS[raw] || humanizeSnakeCase(raw);
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  queued: 'Queued',
+  processing: 'Processing',
+  completed: 'Done',
+  failed: 'Failed',
+};
+
+/** Humanize an activity status for display */
+export function humanizeEventStatus(raw: string | null | undefined): string {
+  if (!raw) return 'Unknown';
+  return STATUS_LABELS[raw] || humanizeSnakeCase(raw);
+}
+
+/** Get CSS class suffix for activity event status */
+export function eventStatusCssClass(status: string | null | undefined): string {
+  if (!status) return 'unknown';
+  const valid = ['queued', 'processing', 'completed', 'failed'];
+  return valid.includes(status) ? status : 'unknown';
+}

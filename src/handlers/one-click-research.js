@@ -219,6 +219,28 @@ export async function handleOneClickResearch(
       },
     };
 
+    // ── Activity event: research complete ───────────────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'system',
+      status: 'completed',
+      source: 'worker',
+      accountKey: orchestration.accountKey || null,
+      category: 'research',
+      message: `Research completed for ${orchestration.accountKey || input}`,
+      data: {
+        input,
+        inputType: detectedType,
+        mode,
+        includeCompetitors,
+        enrichmentTriggered: enrichmentResult?.triggered || false,
+        opportunityCount: orchestration.opportunities?.length || 0,
+      },
+      idempotencyKey: `research.complete.${orchestration.accountKey || input}.${Date.now()}`,
+    }).catch((err) => {
+      console.error('[RESEARCH_COMPLETE] Activity event failed (non-blocking):', err?.message);
+    });
+
     return createSuccessResponse(result, requestId);
 
   } catch (error) {
