@@ -164,13 +164,12 @@ export const ATTRIBUTE_WHITELIST = {
   ]),
 
   technology: new Set([
-    // Core identity
-    'name', 'slug', 'category', 'subcategory', 'vendor',
+    // Core identity (9 fields — matches production data from 75 technology docs)
+    'name', 'slug', 'category',
     // Classification (populated by migration script + AI analysis)
     'status', 'confidence', 'source',
-    // Discovery timestamps
-    'detectedAt', 'firstDetectedAt', 'lastDetectedAt', 'lastEnrichedAt',
-    'accountCount',
+    // Timestamps
+    'lastEnrichedAt',
     // Flags
     'isLegacy', 'isMigrationTarget',
   ]),
