@@ -122,6 +122,14 @@ export const ATTRIBUTE_WHITELIST = {
 
     // Meta
     'meta', 'meta.*', // meta.storedBy, meta.autoSaved, meta.requestId, etc.
+
+    // Tech Analysis (WS1a schema — 5 index + 1 blob = 6 paths)
+    'techAnalysisIndex.hasTechAnalysis',
+    'techAnalysisIndex.lastAnalyzedAt',
+    'techAnalysisIndex.stackMaturity',
+    'techAnalysisIndex.legacyCount',
+    'techAnalysisIndex.totalTechnologies',
+    'techAnalysisData', // JSON string blob — AI analysis output
   ]),
 
   person: new Set([
