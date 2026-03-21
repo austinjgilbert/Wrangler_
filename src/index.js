@@ -1921,7 +1921,7 @@ function rankAndDeduplicateResults(rawResults, query, recencyDays) {
 }
 
 // Response utilities imported from utils/response.js
-import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil, setRequestContext } from './utils/response.js';
+import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil, setRequestContext, sanitizeErrorMessage } from './utils/response.js';
 
 // Use imported utilities
 const createErrorResponse = createErrorResponseUtil;
@@ -2019,10 +2019,11 @@ async function handleSearch(request, requestId, env) {
       requestId
     );
   } catch (error) {
+    console.error('[handleSearch] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -2094,10 +2095,11 @@ async function handleDiscover(request, requestId) {
       requestId
     );
   } catch (error) {
+    console.error('[handleDiscover] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -2297,10 +2299,11 @@ async function handleCrawl(request, requestId) {
       requestId
     );
   } catch (error) {
+    console.error('[handleCrawl] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -2510,10 +2513,11 @@ async function handleExtract(request, requestId, env) {
     
     return createSuccessResponse(responseData, requestId);
   } catch (error) {
+    console.error('[handleExtract] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -2802,10 +2806,11 @@ async function handleVerify(request, requestId, env) {
       requestId
     );
   } catch (error) {
+    console.error('[handleVerify] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -3184,10 +3189,11 @@ async function handleBrief(request, requestId, env) {
     
     return createSuccessResponse(responseData, requestId);
   } catch (error) {
+    console.error('[handleBrief] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -3936,10 +3942,11 @@ async function handleLinkedInProfile(request, requestId, env) {
 
     return await finalizeProfile(profile, html, 'direct');
   } catch (error) {
+    console.error('[handleLinkedInProfile] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -4009,10 +4016,11 @@ async function handleCacheStatus(request, requestId, env) {
       requestId
     );
   } catch (error) {
+    console.error('[handleCacheStatus] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -5157,10 +5165,11 @@ async function handleScan(request, requestId, env) {
 
     return createSuccessResponse(result, requestId);
   } catch (error) {
+    console.error('[handleScan] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -5329,10 +5338,11 @@ async function handleBatchScan(request, requestId) {
       requestId
     );
   } catch (error) {
+    console.error('[handleBatchScan] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -5788,7 +5798,7 @@ async function handleStore(request, requestId, env) {
     } catch (error) {
       return createErrorResponse(
         'CONFIG_ERROR',
-        error.message,
+        sanitizeErrorMessage(error, 'store/config'),
         {},
         500,
         requestId
@@ -5886,7 +5896,7 @@ async function handleStore(request, requestId, env) {
         return createErrorResponse(
           'SANITY_ERROR',
           'Failed to store brief document',
-          { error: error.message },
+          {},
           500,
           requestId
         );
@@ -6281,10 +6291,11 @@ async function handleStore(request, requestId, env) {
       backgroundEnrichment: true,
     }, requestId);
   } catch (error) {
+    console.error('[handleStore] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -6329,7 +6340,7 @@ async function handleQuery(request, requestId, env) {
     } catch (error) {
       return createErrorResponse(
         'CONFIG_ERROR',
-        error.message,
+        sanitizeErrorMessage(error, 'query/config'),
         {},
         500,
         requestId
@@ -6532,10 +6543,11 @@ async function handleQuery(request, requestId, env) {
       }
     }
   } catch (error) {
+    console.error('[handleQuery] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -6573,7 +6585,7 @@ async function handleUpdate(request, requestId, env) {
     } catch (error) {
       return createErrorResponse(
         'CONFIG_ERROR',
-        error.message,
+        sanitizeErrorMessage(error, 'update/config'),
         {},
         500,
         requestId
@@ -6590,16 +6602,17 @@ async function handleUpdate(request, requestId, env) {
       return createErrorResponse(
         'SANITY_ERROR',
         'Failed to update document',
-        { error: error.message, id: docId },
+        {},
         500,
         requestId
       );
     }
   } catch (error) {
+    console.error('[update] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -6634,7 +6647,7 @@ async function handleDelete(request, requestId, env) {
     } catch (error) {
       return createErrorResponse(
         'CONFIG_ERROR',
-        error.message,
+        sanitizeErrorMessage(error, 'delete/config'),
         {},
         500,
         requestId
@@ -6666,16 +6679,17 @@ async function handleDelete(request, requestId, env) {
       return createErrorResponse(
         'SANITY_ERROR',
         'Failed to delete document',
-        { error: error.message, id: docId },
+        {},
         500,
         requestId
       );
     }
   } catch (error) {
+    console.error('[delete] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
@@ -6910,10 +6924,11 @@ const workerHandler = {
       if (limitCheck) return limitCheck;
       response = await routeRequest(request, url, requestId, env, rateLimiter, null, ctx);
     } catch (error) {
+      console.error('[handleDelete] Error:', error.message);
       response = createErrorResponse(
         'INTERNAL_ERROR',
         'Internal server error',
-        { message: error.message },
+        {},
         500,
         requestId
       );
@@ -7352,9 +7367,10 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       try {
         assertBaseEnv(env);
       } catch (error) {
+        console.error('[routeRequest/env] Error:', error.message);
         return createErrorResponse(
           'CONFIGURATION_ERROR',
-          error.message || 'Missing required environment variables',
+          'Missing required environment variables',
           { missing: error.details?.missing || [] },
           503,
           requestId
@@ -8302,7 +8318,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       return createErrorResponse(
         'INTERNAL_ERROR',
         'Internal server error',
-        { hint: error.message },
+        { hint: 'An unexpected error occurred. Check server logs for details.' },
         500,
         requestId
       );
