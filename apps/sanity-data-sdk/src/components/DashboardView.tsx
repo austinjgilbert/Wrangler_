@@ -6,12 +6,6 @@ import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
 import { humanizeJobStatus, humanizeSignalType, formatTimestamp } from '../lib/formatters';
 import { useNavigation } from '../lib/navigation';
 
-type CountDoc = {
-  documentId: string;
-  documentType: string;
-  lifecycleStatus?: string;
-};
-
 type JobDoc = {
   documentId: string;
   documentType: string;
@@ -87,31 +81,46 @@ function getJobIntentLabel(job: JobDoc, accountMap: Map<string, AccountDoc>): st
   return `Background job for ${accountLabel}`;
 }
 
-function DashboardCountCard(props: {
-  documentType: string;
-  label: string;
-  valueFormatter?: (docs: CountDoc[]) => string | number;
-  navigateTo?: () => void;
-}) {
-  const { data } = useDocuments({
-    documentType: props.documentType,
-    batchSize: 200,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
+/**
+ * DB-3/DB-4: Consolidated count cards for person + actionCandidate.
+ *
+ * Before: 2 DashboardCountCard instances, each with useDocuments({ batchSize: 200 })
+ * fetching ALL documents just to count the array length.
+ *
+ * After: 2 useDocuments({ batchSize: 1 }) calls reading the SDK's `count` property.
+ * This fetches 1 doc handle per type instead of 200, while the SDK computes the
+ * total count server-side. For actionCandidate, we use a GROQ filter to exclude
+ * completed items server-side instead of fetching all and filtering client-side.
+ */
+function PeopleAndOpportunityCards() {
+  const { navigateToView } = useNavigation();
+  const personResult = useDocuments({
+    documentType: 'person',
+    batchSize: 1,
   });
-  const docs = ((data || []) as CountDoc[]);
-  const value = props.valueFormatter ? props.valueFormatter(docs) : docs.length;
+  const opportunityResult = useDocuments({
+    documentType: 'actionCandidate',
+    batchSize: 1,
+    filter: 'lifecycleStatus != "completed"',
+  });
 
   return (
-    <div
-      className={`summary-card${props.navigateTo ? ' summary-card--clickable' : ''}`}
-      onClick={props.navigateTo}
-      role={props.navigateTo ? 'button' : undefined}
-      tabIndex={props.navigateTo ? 0 : undefined}
-      onKeyDown={props.navigateTo ? (e) => { if (e.key === 'Enter' || e.key === ' ') props.navigateTo!() } : undefined}
-    >
-      <span className="summary-label">{props.label}</span>
-      <strong>{value}</strong>
-    </div>
+    <>
+      <div
+        className="summary-card summary-card--clickable"
+        onClick={() => navigateToView('people')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('people') }}
+      >
+        <span className="summary-label">People</span>
+        <strong>{personResult.isPending ? '…' : personResult.count}</strong>
+      </div>
+      <div className="summary-card">
+        <span className="summary-label">Active opportunities</span>
+        <strong>{opportunityResult.isPending ? '…' : opportunityResult.count}</strong>
+      </div>
+    </>
   );
 }
 
@@ -189,7 +198,7 @@ function DashboardSignalSection() {
         {loading ? (
           <p className="muted">Loading signals…</p>
         ) : signals.length === 0 ? (
-          <p className="muted">No buying signals detected yet — run enrichment to generate signals.</p>
+          <p className="muted">No buying signals detected yet — run research to generate signals.</p>
         ) : (
           signals.slice(0, 10).map((signal) => (
             <div className="signal-card" key={signal.id}>
@@ -292,24 +301,13 @@ function SignalCountCard() {
 }
 
 function DashboardInner() {
-  const { navigateToView } = useNavigation();
-
   return (
     <>
-      {/* B7: Account stats from snapshot cache — eliminates 2 useDocuments subscriptions */}
+      {/* DB-3/DB-4: All counts from cache or batchSize:1 — no batchSize:200 subscriptions */}
       <div className="summary-grid">
         <AccountStatsCards />
-        <DashboardCountCard
-          documentType="person"
-          label="People"
-          navigateTo={() => navigateToView('people')}
-        />
         <SignalCountCard />
-        <DashboardCountCard
-          documentType="actionCandidate"
-          label="Active opportunities"
-          valueFormatter={(docs) => docs.filter((doc) => doc.lifecycleStatus !== 'completed').length}
-        />
+        <PeopleAndOpportunityCards />
       </div>
 
       <DashboardJobSection />
