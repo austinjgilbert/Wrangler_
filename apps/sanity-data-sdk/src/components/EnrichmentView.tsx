@@ -7,7 +7,7 @@ import {
   getResearchSetUrl,
   hasWorker,
   queueEnrichment,
-} from '../lib/worker-api';
+} from '../lib/adapters';
 import { getWorkerConfigMessage } from '../lib/app-env';
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe';
 import { humanizeJobStatus, jobStatusCssClass } from '../lib/formatters';
