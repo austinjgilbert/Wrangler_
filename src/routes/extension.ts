@@ -830,18 +830,18 @@ export async function handleExtensionFeedback(request: Request, requestId: strin
     const promptId = typeof body.promptId === 'string' ? body.promptId.trim() : '';
     const feedback = typeof body.feedback === 'string' ? stripHtmlTags(body.feedback).trim() : '';
 
-    if (!promptId) {
-      return createErrorResponse('VALIDATION_ERROR', 'promptId is required', {}, 400, requestId);
-    }
-    if (!feedback) {
-      return createErrorResponse('VALIDATION_ERROR', 'feedback is required', {}, 400, requestId);
-    }
-
     // ── Validate optional fields ────────────────────────────────────
     const ratingRaw = typeof body.rating === 'string' ? body.rating.trim().toLowerCase() : null;
     const rating: FeedbackRating | null = ratingRaw && (VALID_RATINGS as readonly string[]).includes(ratingRaw)
       ? ratingRaw as FeedbackRating
       : null;
+
+    if (!promptId) {
+      return createErrorResponse('VALIDATION_ERROR', 'promptId is required', {}, 400, requestId);
+    }
+    if (!feedback && !rating) {
+      return createErrorResponse('VALIDATION_ERROR', 'feedback or rating is required', {}, 400, requestId);
+    }
 
     const context = (body.context && typeof body.context === 'object' && !Array.isArray(body.context))
       ? body.context as Record<string, unknown>

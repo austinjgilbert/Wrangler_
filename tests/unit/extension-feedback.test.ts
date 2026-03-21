@@ -107,7 +107,7 @@ describe('POST /extension/feedback', () => {
     expect(body.error.message).toContain('promptId');
   });
 
-  it('rejects missing feedback (400)', async () => {
+  it('rejects missing feedback AND rating (400)', async () => {
     const res = await handleExtensionFeedback(
       makeRequest({ promptId: 'prompt-123' }),
       'req-3',
@@ -116,7 +116,7 @@ describe('POST /extension/feedback', () => {
     expect(res.status).toBe(400);
     const body = await parseResponse(res);
     expect(body.error.code).toBe('VALIDATION_ERROR');
-    expect(body.error.message).toContain('feedback');
+    expect(body.error.message).toContain('feedback or rating');
   });
 
   it('rejects empty string promptId (400)', async () => {
@@ -128,12 +128,30 @@ describe('POST /extension/feedback', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects empty string feedback (400)', async () => {
+  it('accepts rating-only (no feedback text) — thumbs-up flow', async () => {
     const res = await handleExtensionFeedback(
-      makeRequest({ promptId: 'p-1', feedback: '  ' }),
-      'req-5',
+      makeRequest({ promptId: 'prompt-thumbsup', rating: 'positive' }),
+      'req-5a',
       env,
     );
+    expect(res.status).toBe(200);
+    const body = await parseResponse(res);
+    expect(body.data.stored).toBe(true);
+    expect(body.data.rating).toBe('positive');
+
+    const [, emitInput] = mockEmitActivityEvent.mock.calls[0];
+    expect(emitInput.data.feedback).toBe('');
+    expect(emitInput.data.rating).toBe('positive');
+    expect(emitInput.message).toBe('Feedback on prompt: positive');
+  });
+
+  it('rejects empty feedback with invalid rating (400)', async () => {
+    const res = await handleExtensionFeedback(
+      makeRequest({ promptId: 'p-1', rating: 'five-stars' }),
+      'req-5b',
+      env,
+    );
+    // Invalid rating → null, no feedback text → neither present → 400
     expect(res.status).toBe(400);
   });
 
