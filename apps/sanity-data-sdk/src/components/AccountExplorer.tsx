@@ -6,7 +6,7 @@ import { getWorkerConfigMessage } from '../lib/app-env'
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe'
 import { humanizeCoverageStatus, formatTimestamp, humanizeFieldName } from '../lib/formatters'
 import { fetchEnrichStatus, hasWorker, queueEnrichment } from '../lib/worker-api'
-import { fetchRecentSignals, countSignalsForAccount, type WorkerSignal } from '../lib/adapters/signals'
+import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals'
 
 type LinkedRecord = {
   _id: string
