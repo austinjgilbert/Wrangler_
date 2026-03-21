@@ -122,7 +122,14 @@ function PeopleAndOpportunityCards() {
         <span className="summary-label">People</span>
         <strong>{personResult.isPending ? '…' : personResult.count}</strong>
       </div>
-      <div className="summary-card">
+      {/* UX-8: Opportunities card now clickable — navigates to accounts where opportunities surface */}
+      <div
+        className="summary-card summary-card--clickable"
+        onClick={() => navigateToView('accounts')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+      >
         <span className="summary-label">Active opportunities</span>
         <strong>{opportunityResult.isPending ? '…' : opportunityResult.count}</strong>
       </div>
@@ -250,12 +257,19 @@ function AccountStatsCards() {
   }, []);
 
   const accountCount = accounts.length;
-  const avgCompletion = useMemo(() => {
-    const scores = accounts
-      .map((a) => a.completeness ?? 0)
-      .filter((s) => s > 0);
-    if (scores.length === 0) return '—';
-    return `${Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)}%`;
+
+  /**
+   * UX-9: Replace "System completion" (non-actionable %) with "Hot accounts"
+   * (accounts with opportunityScore >= 70). This tells the user where to focus
+   * their selling effort — much more actionable than an average completeness %.
+   */
+  const hotCount = useMemo(() => {
+    return accounts.filter((a) => a.hot === true || (a.opportunityScore != null && a.opportunityScore >= 70)).length;
+  }, [accounts]);
+
+  /** Accounts with low completeness — need more research */
+  const needsResearchCount = useMemo(() => {
+    return accounts.filter((a) => (a.completeness ?? 0) < 30).length;
   }, [accounts]);
 
   return (
@@ -270,10 +284,29 @@ function AccountStatsCards() {
         <span className="summary-label">Accounts</span>
         <strong>{accountCount}</strong>
       </div>
-      <div className="summary-card">
-        <span className="summary-label">System completion</span>
-        <strong>{avgCompletion}</strong>
+      {/* UX-9: Hot accounts — actionable metric replacing "System completion" */}
+      <div
+        className="summary-card summary-card--clickable summary-card--hot"
+        onClick={() => navigateToView('accounts')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+      >
+        <span className="summary-label">Hot accounts</span>
+        <strong>{hotCount}</strong>
       </div>
+      {needsResearchCount > 0 && (
+        <div
+          className="summary-card summary-card--clickable"
+          onClick={() => navigateToView('enrichment')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('enrichment') }}
+        >
+          <span className="summary-label">Need research</span>
+          <strong>{needsResearchCount}</strong>
+        </div>
+      )}
     </>
   );
 }
