@@ -183,6 +183,43 @@ describe('checkPathsAgainstWhitelist', () => {
     expect(result.allowed).toBe(true);
   });
 
+  // ── NEW: molt.event paths ──
+
+  it('allows molt.event existing + new index fields', () => {
+    const result = checkPathsAgainstWhitelist('molt.event', [
+      // Existing fields (dual-write backward compat)
+      'type', 'actor', 'channel', 'timestamp', 'traceId',
+      'idempotencyKey', 'outcome', 'tags',
+      'payload', 'payload.text',
+      'entities',
+      // New index fields
+      'eventType', 'status', 'source', 'accountKey', 'category',
+      // Blob
+      'eventData',
+    ]);
+    expect(result.allowed).toBe(true);
+    expect(result.unknownPaths).toEqual([]);
+  });
+
+  it('allows molt.event entities.* nested paths', () => {
+    const result = checkPathsAgainstWhitelist('molt.event', [
+      'entities', 'entities.entityType', 'entities.entityRef',
+      'entities.entityRef._ref', 'entities.entityRef._type',
+    ]);
+    // Note: _ref and _type are Sanity internals, stripped by extractFieldPaths
+    // But entities.entityType and entities.entityRef are covered by entities.*
+    expect(result.allowed).toBe(true);
+  });
+
+  it('rejects unknown molt.event paths', () => {
+    const result = checkPathsAgainstWhitelist('molt.event', [
+      'eventType', 'status', 'sneakyField', 'deeply.nested.thing',
+    ]);
+    expect(result.allowed).toBe(false);
+    expect(result.unknownPaths).toContain('sneakyField');
+    expect(result.unknownPaths).toContain('deeply.nested.thing');
+  });
+
   it('allows orchestrationJob data.* and options.* paths', () => {
     const result = checkPathsAgainstWhitelist('orchestrationJob', [
       'jobId', 'status', 'data', 'data.scanResult',
@@ -233,6 +270,14 @@ describe('inferTypeFromId', () => {
     expect(inferTypeFromId('gmailDraft-abc123')).toBe('gmailDraft');
   });
 
+  // ── NEW: molt.event type ──
+
+  it('infers molt.event type from ID prefix', () => {
+    expect(inferTypeFromId('molt.event.self-heal.2026-03-21T13')).toBe('molt.event');
+    expect(inferTypeFromId('molt.event.enrich.applied.enrich.proposal.xyz')).toBe('molt.event');
+    expect(inferTypeFromId('molt.event.1711036800.abc123')).toBe('molt.event');
+  });
+
   it('returns null for unknown ID patterns', () => {
     expect(inferTypeFromId('random-id-123')).toBeNull();
     expect(inferTypeFromId(null)).toBeNull();
@@ -241,11 +286,12 @@ describe('inferTypeFromId', () => {
 });
 
 describe('ATTRIBUTE_WHITELIST structure', () => {
-  it('has whitelists for all 12 active types', () => {
+  it('has whitelists for all 13 active types', () => {
     const expectedTypes = [
       'account', 'accountPack', 'person', 'technology',
       'userPattern', 'usageLog', 'actionCandidate', 'orchestrationJob',
       'interaction', 'brief', 'competitorResearch', 'gmailDraft',
+      'molt.event',
     ];
     for (const type of expectedTypes) {
       expect(ATTRIBUTE_WHITELIST[type]).toBeInstanceOf(Set);
@@ -306,5 +352,33 @@ describe('ATTRIBUTE_WHITELIST structure', () => {
   it('competitorResearch uses comparison.* wildcard', () => {
     const cr = ATTRIBUTE_WHITELIST.competitorResearch;
     expect(cr.has('comparison.*')).toBe(true);
+  });
+
+  // ── NEW: molt.event whitelist ──
+
+  it('molt.event whitelist includes existing production fields', () => {
+    const me = ATTRIBUTE_WHITELIST['molt.event'];
+    expect(me.has('type')).toBe(true);
+    expect(me.has('actor')).toBe(true);
+    expect(me.has('channel')).toBe(true);
+    expect(me.has('timestamp')).toBe(true);
+    expect(me.has('traceId')).toBe(true);
+    expect(me.has('idempotencyKey')).toBe(true);
+    expect(me.has('outcome')).toBe(true);
+    expect(me.has('tags')).toBe(true);
+    expect(me.has('payload')).toBe(true);
+    expect(me.has('payload.text')).toBe(true);
+    expect(me.has('entities')).toBe(true);
+    expect(me.has('entities.*')).toBe(true);
+  });
+
+  it('molt.event whitelist includes new Index+Blob fields', () => {
+    const me = ATTRIBUTE_WHITELIST['molt.event'];
+    expect(me.has('eventType')).toBe(true);
+    expect(me.has('status')).toBe(true);
+    expect(me.has('source')).toBe(true);
+    expect(me.has('accountKey')).toBe(true);
+    expect(me.has('category')).toBe(true);
+    expect(me.has('eventData')).toBe(true);
   });
 });
