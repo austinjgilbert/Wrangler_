@@ -1255,6 +1255,75 @@
       font-style: italic;
     }
 
+    /* ─── Phase C: Feedback ───────────────────────────────────── */
+
+    .wrangler-feedback-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      padding: 4px 0;
+    }
+    .wrangler-feedback-label {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .wrangler-feedback-btn {
+      background: none;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .wrangler-feedback-btn:hover {
+      background: rgba(148, 163, 184, 0.1);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+    .wrangler-feedback-btn[data-selected="true"] {
+      border-color: rgba(96, 165, 250, 0.5);
+      background: rgba(96, 165, 250, 0.1);
+    }
+    .wrangler-feedback-text {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .wrangler-feedback-input {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      color: #f1f5f9;
+      outline: none;
+      min-width: 0;
+    }
+    .wrangler-feedback-input::placeholder { color: #64748b; }
+    .wrangler-feedback-input:focus { border-color: rgba(96, 165, 250, 0.5); }
+    .wrangler-feedback-send {
+      background: rgba(96, 165, 250, 0.15);
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      border-radius: 6px;
+      color: #93c5fd;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: inherit;
+    }
+    .wrangler-feedback-send:hover { background: rgba(96, 165, 250, 0.25); }
+    .wrangler-feedback-sent {
+      font-size: 11px;
+      color: #22c55e;
+      font-style: italic;
+    }
+
     /* ─── Buttons ──────────────────────────────────────────────── */
 
     .wrangler-btn {
@@ -1768,14 +1837,21 @@
           responseArea.textContent = 'Thinking\u2026';
 
           const page = buildPageContext();
+          const promptId = generatePromptId(prompt);
           chrome.runtime.sendMessage(
             { type: 'wrangler:ask', prompt, page },
             (response) => {
               submitBtn.disabled = false;
               submitBtn.textContent = 'Ask';
               if (response?.ok && response.data) {
+                const answerText = response.data.answer || 'No answer returned.';
                 responseArea.className = 'wrangler-ask-response';
-                responseArea.textContent = response.data.answer || 'No answer returned.';
+                responseArea.textContent = answerText;
+
+                // Phase C: Show feedback bar after successful response
+                const existingFeedback = el.querySelector('.wrangler-feedback-bar');
+                if (existingFeedback) existingFeedback.parentElement.remove();
+                el.appendChild(buildFeedbackBar(promptId, prompt, answerText));
               } else {
                 responseArea.className = 'wrangler-ask-response wrangler-ask-error';
                 responseArea.textContent = response?.error || 'Failed to get answer.';
@@ -1856,6 +1932,113 @@
       'director': 'Dir',
     };
     return labels[level] || null;
+  }
+
+  /** Phase C: Generate a client-side prompt ID for feedback correlation. */
+  function generatePromptId(prompt) {
+    // Simple hash: timestamp + first 40 chars of prompt (enough for uniqueness)
+    const ts = Date.now();
+    const slug = (prompt || '').slice(0, 40).replace(/\s+/g, '-').toLowerCase();
+    return `ext-${ts}-${slug}`;
+  }
+
+  /** Phase C: Build feedback bar (thumbs up/down + optional text). */
+  function buildFeedbackBar(promptId, prompt, answer) {
+    const bar = document.createElement('div');
+
+    const thumbsRow = document.createElement('div');
+    thumbsRow.className = 'wrangler-feedback-bar';
+
+    const label = document.createElement('span');
+    label.className = 'wrangler-feedback-label';
+    label.textContent = 'Helpful?';
+
+    const thumbUp = document.createElement('button');
+    thumbUp.className = 'wrangler-feedback-btn';
+    thumbUp.textContent = '\uD83D\uDC4D';
+    thumbUp.title = 'Helpful';
+
+    const thumbDown = document.createElement('button');
+    thumbDown.className = 'wrangler-feedback-btn';
+    thumbDown.textContent = '\uD83D\uDC4E';
+    thumbDown.title = 'Not helpful';
+
+    thumbsRow.appendChild(label);
+    thumbsRow.appendChild(thumbUp);
+    thumbsRow.appendChild(thumbDown);
+    bar.appendChild(thumbsRow);
+
+    let feedbackSent = false;
+
+    function sendFeedback(rating, feedbackText) {
+      if (feedbackSent) return;
+      feedbackSent = true;
+
+      chrome.runtime.sendMessage({
+        type: 'wrangler:feedback',
+        promptId,
+        rating,
+        feedback: feedbackText || null,
+        context: {
+          prompt: (prompt || '').slice(0, 200),
+          answerPreview: (answer || '').slice(0, 200),
+          url: location.href,
+          domain: location.hostname,
+        },
+      }); // Fire-and-forget — no callback needed
+
+      // Replace bar with confirmation
+      bar.innerHTML = '';
+      const sent = document.createElement('span');
+      sent.className = 'wrangler-feedback-sent';
+      sent.textContent = '\u2713 Thanks for the feedback';
+      bar.appendChild(sent);
+    }
+
+    thumbUp.addEventListener('click', () => {
+      sendFeedback('positive', null);
+    });
+
+    thumbDown.addEventListener('click', () => {
+      thumbUp.setAttribute('data-selected', 'false');
+      thumbDown.setAttribute('data-selected', 'true');
+
+      // Show text input for negative feedback
+      if (bar.querySelector('.wrangler-feedback-text')) return; // already shown
+
+      const textRow = document.createElement('div');
+      textRow.className = 'wrangler-feedback-text';
+
+      const textInput = document.createElement('input');
+      textInput.className = 'wrangler-feedback-input';
+      textInput.type = 'text';
+      textInput.maxLength = 500;
+      textInput.placeholder = 'What was wrong? (optional)';
+      textInput.setAttribute('autocomplete', 'off');
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'wrangler-feedback-send';
+      sendBtn.textContent = 'Send';
+
+      function submitNegative() {
+        sendFeedback('negative', textInput.value.trim() || null);
+      }
+
+      sendBtn.addEventListener('click', submitNegative);
+      textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitNegative();
+        }
+      });
+
+      textRow.appendChild(textInput);
+      textRow.appendChild(sendBtn);
+      bar.appendChild(textRow);
+      textInput.focus();
+    });
+
+    return bar;
   }
 
   // ─── Actions ───────────────────────────────────────────────────────────
