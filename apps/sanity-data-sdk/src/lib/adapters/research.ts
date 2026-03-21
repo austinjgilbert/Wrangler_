@@ -76,12 +76,13 @@ export async function fetchWorkerHealth(): Promise<boolean> {
 export async function fetchEnrichStatus(accountKey: string): Promise<EnrichStatus> {
   if (!hasWorkerConfig()) return {};
   try {
-    const response = await workerGet<{ ok: boolean; data: { status?: EnrichStatus } }>(
+    const response = await workerGet<{ data: { status?: EnrichStatus }; status?: EnrichStatus }>(
       `/enrich/status?accountKey=${encodeURIComponent(accountKey)}`,
     );
-    // Double-nesting: workerGet returns { ok, data: { ok, data: { status } } }
+    // workerGet wraps Worker JSON in { ok, data: T, status }
+    // T.data.status is the nested path; T.status is the flat fallback
     const inner = response.data;
-    const status = (inner as any)?.data?.status ?? (inner as any)?.status;
+    const status = inner?.data?.status ?? inner?.status;
     return typeof status === 'object' && status !== null ? status : { status: status as string | undefined };
   } catch {
     return {};
@@ -94,12 +95,12 @@ export async function fetchEnrichStatus(accountKey: string): Promise<EnrichStatu
 export async function advanceEnrichment(accountKey: string): Promise<EnrichStatus> {
   if (!hasWorkerConfig()) return {};
   try {
-    const response = await workerPost<{ ok: boolean; data: { status?: EnrichStatus } }>(
+    const response = await workerPost<{ data: { status?: EnrichStatus }; status?: EnrichStatus }>(
       '/enrich/advance',
       { accountKey },
     );
     const inner = response.data;
-    const status = (inner as any)?.data?.status ?? (inner as any)?.status;
+    const status = inner?.data?.status ?? inner?.status;
     return typeof status === 'object' && status !== null ? status : { status: status as string | undefined };
   } catch {
     return {};
@@ -127,9 +128,9 @@ export async function queueEnrichment(params: QueueEnrichmentParams): Promise<Qu
     });
     const inner = response.data;
     return {
-      ok: response.ok && ((inner as any)?.ok === true || (inner as any)?.data?.queued === true),
-      jobId: (inner as any)?.data?.jobId ?? (inner as any)?.jobId,
-      message: (inner as any)?.data?.message ?? (inner as any)?.message,
+      ok: response.ok && (inner?.ok === true || inner?.data?.queued === true),
+      jobId: inner?.data?.jobId ?? inner?.jobId,
+      message: inner?.data?.message ?? inner?.message,
     };
   } catch (err) {
     return {
