@@ -35,7 +35,6 @@ import {
   workerPost,
   getCached,
   setCache,
-  clearCache,
   type RawGoodMorningResponse,
   type Signal,
   buildPipelineStages,
@@ -242,7 +241,9 @@ export function CommandCenter() {
 
   const handleSelectAccount = useCallback((account: Account) => {
     setSelectedAccount(account);
-    clearCache();
+    // B2: Don't clearCache() here — briefing and accounts are system-wide data
+    // that shouldn't be nuked on account switch. Account-specific data (pipeline,
+    // signals, jobs) lives in React state and resets via useEffect dependencies.
   }, []);
 
   const handleBackToBriefing = useCallback(() => {
@@ -505,20 +506,25 @@ function MorningBriefingLanding({
           <div
             key={item.accountKey}
             className={`briefing-landing__account-card briefing-landing__account-card--${item.urgency}`}
-            // TODO: Phase 2 — check AccountSelector cache for full Account object
-            // before constructing a partial. This partial is missing opportunityScore,
-            // hot, technologyStack, lastScannedAt — Glance derivers will show gap/muted
-            // state for ~200ms until real data loads. Acceptable skeleton-to-content
-            // transition for Phase 1, but eliminable if we pull from cache.
-            onClick={() =>
-              onSelectAccount({
-                _id: `account.${item.accountKey}`,
-                accountKey: item.accountKey,
-                companyName: item.account,
-                rootDomain: extractDomain(item.canonicalUrl),
-                canonicalUrl: item.canonicalUrl ?? '',
-              })
-            }
+            // B1: Look up full Account from AccountSelector's snapshot cache.
+            // This gives us opportunityScore, hot, technologyStack, completeness,
+            // lastScannedAt — fields the partial construction was missing.
+            // Falls back to partial if cache miss (rare — AccountSelector fetches on mount).
+            onClick={() => {
+              const cached = getCached<Account[]>('accounts');
+              const fullAccount = cached?.data.find(
+                (a: Account) => a.accountKey === item.accountKey,
+              );
+              onSelectAccount(
+                fullAccount ?? {
+                  _id: `account.${item.accountKey}`,
+                  accountKey: item.accountKey,
+                  companyName: item.account,
+                  rootDomain: extractDomain(item.canonicalUrl),
+                  canonicalUrl: item.canonicalUrl ?? '',
+                },
+              );
+            }}
           >
             <div className="briefing-landing__account-header">
               <span className="briefing-landing__account-name">{item.account}</span>
