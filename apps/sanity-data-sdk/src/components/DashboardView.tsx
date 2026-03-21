@@ -1,7 +1,9 @@
 import { useDocuments } from '@sanity/sdk-react';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { dedupeAccounts, getAccountDisplayName } from '../lib/account-dedupe';
+import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
 import { humanizeJobStatus, humanizeSignalType, formatTimestamp } from '../lib/formatters';
+import { useNavigation } from '../lib/navigation';
 
 type CountDoc = {
   documentId: string;
@@ -29,16 +31,7 @@ type AccountDoc = {
   domain?: string | null;
 };
 
-type SignalDoc = {
-  documentId: string;
-  documentType: string;
-  signalType?: string;
-  type?: string;
-  source?: string;
-  timestamp?: string;
-  accountName?: string;
-  summary?: string;
-};
+// SignalDoc removed — signals now come from Worker snapshot via WorkerSignal
 
 function getAccountKeyFromId(id: string | null | undefined): string | null {
   if (!id) return null;
@@ -98,6 +91,7 @@ function DashboardCountCard(props: {
   documentType: string;
   label: string;
   valueFormatter?: (docs: CountDoc[]) => string | number;
+  navigateTo?: () => void;
 }) {
   const { data } = useDocuments({
     documentType: props.documentType,
@@ -108,7 +102,13 @@ function DashboardCountCard(props: {
   const value = props.valueFormatter ? props.valueFormatter(docs) : docs.length;
 
   return (
-    <div className="summary-card">
+    <div
+      className={`summary-card${props.navigateTo ? ' summary-card--clickable' : ''}`}
+      onClick={props.navigateTo}
+      role={props.navigateTo ? 'button' : undefined}
+      tabIndex={props.navigateTo ? 0 : undefined}
+      onKeyDown={props.navigateTo ? (e) => { if (e.key === 'Enter' || e.key === ' ') props.navigateTo!() } : undefined}
+    >
       <span className="summary-label">{props.label}</span>
       <strong>{value}</strong>
     </div>
@@ -169,27 +169,41 @@ function DashboardJobSection() {
 }
 
 function DashboardSignalSection() {
-  const { data } = useDocuments({
-    documentType: 'signal',
-    batchSize: 24,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
-  });
-  const signals = ((data || []) as SignalDoc[]);
+  const [signals, setSignals] = useState<WorkerSignal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { navigateToView } = useNavigation();
+
+  useEffect(() => {
+    fetchRecentSignals()
+      .then(setSignals)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="insight-section">
       <div className="section-header">
         <p className="eyebrow">Activity</p>
         <h3>Recent signals</h3>
+        <span className="section-meta">{signals.length} signals</span>
       </div>
       <div className="signal-list">
-        {signals.length === 0 ? (
+        {loading ? (
+          <p className="muted">Loading signals…</p>
+        ) : signals.length === 0 ? (
           <p className="muted">No recent signals.</p>
         ) : (
           signals.slice(0, 10).map((signal) => (
-            <div className="signal-card" key={signal.documentId}>
-              <strong>{humanizeSignalType(signal.signalType ?? signal.type)}</strong>
-              <span>{signal.accountName ?? signal.summary ?? 'Unknown'}</span>
+            <div className="signal-card" key={signal.id}>
+              <strong>{humanizeSignalType(signal.signalType)}</strong>
+              <span
+                className="activity-account-link"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigateToView('accounts')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+              >
+                {signal.accountName ?? signal.summary ?? 'Unknown'}
+              </span>
               <span className="signal-meta">
                 {[signal.source, formatTimestamp(signal.timestamp)].filter(Boolean).join(' · ')}
               </span>
@@ -201,7 +215,32 @@ function DashboardSignalSection() {
   );
 }
 
+/** Signal count card — fetches from Worker snapshot, not dead Sanity type */
+function SignalCountCard() {
+  const [count, setCount] = useState<number | null>(null);
+  const { navigateToView } = useNavigation();
+
+  useEffect(() => {
+    fetchRecentSignals().then((signals) => setCount(signals.length));
+  }, []);
+
+  return (
+    <div
+      className="summary-card summary-card--clickable"
+      onClick={() => navigateToView('activity')}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('activity') }}
+    >
+      <span className="summary-label">Signals</span>
+      <strong>{count ?? '…'}</strong>
+    </div>
+  );
+}
+
 function DashboardInner() {
+  const { navigateToView } = useNavigation();
+
   return (
     <>
       <div className="summary-grid">
@@ -209,9 +248,14 @@ function DashboardInner() {
           documentType="account"
           label="Accounts"
           valueFormatter={(docs) => dedupeAccounts(docs).length}
+          navigateTo={() => navigateToView('accounts')}
         />
-        <DashboardCountCard documentType="person" label="People" />
-        <DashboardCountCard documentType="signal" label="Signals today" />
+        <DashboardCountCard
+          documentType="person"
+          label="People"
+          navigateTo={() => navigateToView('people')}
+        />
+        <SignalCountCard />
         <DashboardCountCard
           documentType="actionCandidate"
           label="Active opportunities"
