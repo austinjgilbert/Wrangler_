@@ -182,6 +182,7 @@ export interface Signal {
   accountName: string;
   timestamp: string;            // ISO datetime
   source?: string;
+  summary?: string;             // Human-readable signal description (Phase 2)
   uncertaintyState: string;     // 'likely' | 'confirmed' | 'uncertain'
 }
 

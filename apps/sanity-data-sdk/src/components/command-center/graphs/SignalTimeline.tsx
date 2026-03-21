@@ -38,13 +38,15 @@ export function SignalTimeline({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [animDone, setAnimDone] = useState(false);
 
-  // ── Spike Detection ─────────────────────────────────────────────
+  // ── Spike Detection (stable ref to avoid dep instability) ───────
+  const spikeCbRef = useRef(onSpikesDetected);
+  spikeCbRef.current = onSpikesDetected;
+
   useEffect(() => {
-    if (onSpikesDetected && signals.length > 0) {
-      const spikes = findSpikes(signals, days);
-      onSpikesDetected(spikes);
+    if (spikeCbRef.current && signals.length > 0) {
+      spikeCbRef.current(findSpikes(signals, days));
     }
-  }, [signals, days, onSpikesDetected]);
+  }, [signals, days]);
 
   // ── Draw ────────────────────────────────────────────────────────
   const draw = useCallback(
