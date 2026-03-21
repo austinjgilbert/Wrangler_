@@ -1,6 +1,7 @@
 import { useDocuments } from '@sanity/sdk-react';
-import { Suspense, useEffect, useState } from 'react';
-import { dedupeAccounts, getAccountDisplayName } from '../lib/account-dedupe';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { getAccountDisplayName } from '../lib/account-dedupe';
+import { getCached, type Account } from '../lib/adapters';
 import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
 import { humanizeJobStatus, humanizeSignalType, formatTimestamp } from '../lib/formatters';
 import { useNavigation } from '../lib/navigation';
@@ -9,7 +10,6 @@ type CountDoc = {
   documentId: string;
   documentType: string;
   lifecycleStatus?: string;
-  profileCompleteness?: { score?: number };
 };
 
 type JobDoc = {
@@ -121,14 +121,13 @@ function DashboardJobSection() {
     batchSize: 24,
     orderings: [{ field: '_updatedAt', direction: 'desc' }],
   });
-  const accountResult = useDocuments({
-    documentType: 'account',
-    batchSize: 200,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
-  });
+  // B7: Read accounts from snapshot cache instead of a 3rd useDocuments subscription.
+  // AccountSelector populates this cache on mount. We only need account names for job labels.
+  const cachedAccounts = getCached<Account[]>('accounts');
   const jobs = ((data || []) as JobDoc[]);
-  const accounts = dedupeAccounts((accountResult.data || []) as AccountDoc[]);
-  const accountMap = new Map(accounts.map((account) => [account.documentId, account]));
+  const accountMap = new Map(
+    (cachedAccounts?.data ?? []).map((a) => [a._id, { documentId: a._id, companyName: a.companyName, name: a.companyName, domain: a.rootDomain } as AccountDoc]),
+  );
   const running = jobs.filter((job) => job.status === 'in_progress').length;
   const queued = jobs.filter((job) => job.status === 'pending' || job.status === 'queued').length;
 
@@ -215,6 +214,60 @@ function DashboardSignalSection() {
   );
 }
 
+/**
+ * B7: Account stats from snapshot cache — no Sanity subscription needed.
+ * AccountSelector already fetches /operator/console/snapshot on mount and
+ * caches the result under key 'accounts'. We read from that cache instead
+ * of firing 2 separate useDocuments({ documentType: 'account' }) calls.
+ */
+function AccountStatsCards() {
+  const { navigateToView } = useNavigation();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    const cached = getCached<Account[]>('accounts');
+    if (cached) {
+      setAccounts(cached.data);
+    }
+    // If cache is empty (rare — AccountSelector fetches on mount), poll briefly
+    if (!cached) {
+      const timer = setTimeout(() => {
+        const retry = getCached<Account[]>('accounts');
+        if (retry) setAccounts(retry.data);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const accountCount = accounts.length;
+  const avgCompletion = useMemo(() => {
+    const scores = accounts
+      .map((a) => a.completeness ?? 0)
+      .filter((s) => s > 0);
+    if (scores.length === 0) return '—';
+    return `${Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)}%`;
+  }, [accounts]);
+
+  return (
+    <>
+      <div
+        className="summary-card summary-card--clickable"
+        onClick={() => navigateToView('accounts')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
+      >
+        <span className="summary-label">Accounts</span>
+        <strong>{accountCount}</strong>
+      </div>
+      <div className="summary-card">
+        <span className="summary-label">System completion</span>
+        <strong>{avgCompletion}</strong>
+      </div>
+    </>
+  );
+}
+
 /** Signal count card — fetches from Worker snapshot, not dead Sanity type */
 function SignalCountCard() {
   const [count, setCount] = useState<number | null>(null);
@@ -243,13 +296,9 @@ function DashboardInner() {
 
   return (
     <>
+      {/* B7: Account stats from snapshot cache — eliminates 2 useDocuments subscriptions */}
       <div className="summary-grid">
-        <DashboardCountCard
-          documentType="account"
-          label="Accounts"
-          valueFormatter={(docs) => dedupeAccounts(docs).length}
-          navigateTo={() => navigateToView('accounts')}
-        />
+        <AccountStatsCards />
         <DashboardCountCard
           documentType="person"
           label="People"
@@ -260,17 +309,6 @@ function DashboardInner() {
           documentType="actionCandidate"
           label="Active opportunities"
           valueFormatter={(docs) => docs.filter((doc) => doc.lifecycleStatus !== 'completed').length}
-        />
-        <DashboardCountCard
-          documentType="account"
-          label="System completion"
-          valueFormatter={(docs) => {
-            const scores = dedupeAccounts(docs)
-              .map((doc) => Number(doc.profileCompleteness?.score || 0))
-              .filter((score) => Number.isFinite(score));
-            if (scores.length === 0) return '—';
-            return `${Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)}%`;
-          }}
         />
       </div>
 
