@@ -3,7 +3,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { getAccountDisplayName } from '../lib/account-dedupe';
 import { getCached, type Account } from '../lib/adapters';
 import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
-import { humanizeJobStatus, humanizeSignalType, formatTimestamp } from '../lib/formatters';
+import { humanizeJobStatus, jobStatusCssClass, humanizeSignalType, formatTimestamp } from '../lib/formatters';
 import { useNavigation } from '../lib/navigation';
 
 type JobDoc = {
@@ -161,7 +161,7 @@ function DashboardJobSection() {
                   ? getStageLabel(job.currentStage)
                   : 'Waiting to start'}
               </span>
-              <span className={`job-status status-${job.status ?? 'queued'}`}>
+              <span className={`job-status status-${jobStatusCssClass(job.status)}`}>
                 {getJobStatusLabel(job.status)}
               </span>
               {job.currentStage != null && (

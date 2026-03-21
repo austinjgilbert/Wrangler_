@@ -10,7 +10,7 @@ import {
 } from '../lib/worker-api';
 import { getWorkerConfigMessage } from '../lib/app-env';
 import { dedupeAccounts, getAccountDisplayName, getAccountDomainLabel } from '../lib/account-dedupe';
-import { humanizeJobStatus } from '../lib/formatters';
+import { humanizeJobStatus, jobStatusCssClass } from '../lib/formatters';
 import {
   getAccountKeyFromId,
   getActiveJobAccountKeys,
@@ -145,7 +145,7 @@ export function EnrichmentView() {
             Run multi-stage research on target accounts — scanning, crawling, extraction, LinkedIn, and verification.
           </p>
           <p className="detail-meta worker-status" data-status={workerStatus}>
-            {workerStatus === 'checking' ? '⏳ Connecting to worker…' : workerStatus === 'ok' ? '🟢 Worker connected' : '🔴 Worker offline'}
+            {workerStatus === 'checking' ? '⏳ Connecting to research engine…' : workerStatus === 'ok' ? '🟢 Research engine online' : '🔴 Research engine offline'}
           </p>
         </div>
       </div>
@@ -290,7 +290,7 @@ function EnrichmentInner(props: {
                     <span className="job-stage-label">
                       {getStageDisplay(live?.currentStage, job.currentStage, live?.status, job.status)}
                     </span>
-                    <span className={`job-status status-${(live?.status ?? job.status) ?? 'queued'}`}>
+                    <span className={`job-status status-${jobStatusCssClass(live?.status ?? job.status)}`}>
                       {humanizeJobStatus(live?.status ?? job.status)}
                     </span>
                     {(live?.progress != null && live.progress > 0 && live.progress < 100) && (
@@ -374,7 +374,7 @@ function EnrichmentInner(props: {
         </p>
         <div className="queue-account-list">
           {accounts.length === 0 ? (
-            <p className="muted">No accounts found.</p>
+            <p className="muted">No accounts found. Add accounts to your portfolio to start research.</p>
           ) : (
             accounts.slice(0, 30).map((account) => {
               const accountId = account.documentId;

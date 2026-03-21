@@ -27,6 +27,31 @@ export function humanizeJobStatus(status: string | null | undefined): string {
   return JOB_STATUS_LABELS[status ?? ''] ?? status ?? 'Queued';
 }
 
+/**
+ * DB-5: Normalize raw job status to a CSS-safe class suffix.
+ *
+ * CSS defines 3 styled states: status-complete (green), status-in_progress (blue),
+ * status-failed (red). Everything else falls to the neutral base style (gray).
+ *
+ * Backend sends: in_progress, pending, queued, complete, done, failed, running, not_started.
+ * This maps them to the 3 styled values or 'queued' (neutral).
+ */
+export function jobStatusCssClass(status: string | null | undefined): string {
+  switch (status) {
+    case 'in_progress':
+    case 'running':
+      return 'in_progress';
+    case 'complete':
+    case 'completed':
+    case 'done':
+      return 'complete';
+    case 'failed':
+      return 'failed';
+    default:
+      return 'queued';
+  }
+}
+
 // ── Signal Types ────────────────────────────────────────────────────
 
 const SIGNAL_TYPE_LABELS: Record<string, string> = {
