@@ -308,6 +308,34 @@ export const ATTRIBUTE_WHITELIST = {
     'strategyVersion', 'uncertaintyState',
   ]),
 
+  // ── Activity System (molt.event) — Index+Blob refactor ──
+  // 853 existing docs. Refactored to add flat index fields for GROQ filtering
+  // + eventData blob for all metadata. Dual-write preserves backward compat.
+  // See: activity-system-architecture on the board.
+  'molt.event': new Set([
+    // Existing fields (already in production — 0 new attribute paths)
+    'type',              // e.g. 'system.self-heal', 'enrich.applied'
+    'actor',             // 'rabbit', 'moltbot', 'wrangler'
+    'channel',           // 'system', 'wrangler', 'extension'
+    'timestamp',         // ISO datetime
+    'traceId',           // request trace ID
+    'idempotencyKey',    // dedup key
+    'outcome',           // nullable string
+    'tags',              // string array
+    'payload', 'payload.text',  // nested text payload
+    'entities', 'entities.*',   // array of { entityType, entityRef: { _ref, _type } }
+
+    // New Index fields (queryable — ~6 new attribute paths)
+    'eventType',         // 'prompt' | 'job' | 'data_write' | 'system' | 'capture'
+    'status',            // 'queued' | 'processing' | 'completed' | 'failed'
+    'source',            // 'gpt' | 'extension' | 'worker' | 'cron' | 'app'
+    'accountKey',        // flat account reference for GROQ filtering
+    'category',          // 'enrichment' | 'interaction' | 'capture' | 'research' | 'system'
+
+    // Blob field (1 new attribute path — all metadata goes here)
+    'eventData',         // JSON.stringify of full event payload
+  ]),
+
   // ── Types that exist in production but should NOT receive new writes ──
   _blocked: new Set([
     'enrichmentJob',   // legacy duplicate of orchestrationJob
@@ -432,6 +460,7 @@ export function inferTypeFromId(id) {
   if (id.startsWith('tech-') || id.startsWith('technology-')) return 'technology';
   if (id.startsWith('userPattern-')) return 'userPattern';
   if (id.startsWith('interaction-')) return 'interaction';
+  if (id.startsWith('molt.event.')) return 'molt.event';
   if (id.startsWith('brief-')) return 'brief';
   if (id.startsWith('competitorResearch-')) return 'competitorResearch';
   if (id.startsWith('gmailDraft-')) return 'gmailDraft';
