@@ -194,7 +194,7 @@ function deriveSignalsGlance(ctx: GlanceContext): ModuleGlanceProps {
     gaps,
     insight: latest
       ? `${formatType(latest.signalType)} — ${latest.accountName}`
-      : account ? 'No signals yet — run a scan' : 'Select an account first',
+      : account ? 'No buying signals detected yet — run enrichment to generate signals' : 'Select an account first',
     activeJob: activeJobs.get('signals') ?? null,
   };
 }
