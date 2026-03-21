@@ -631,6 +631,7 @@
   let currentIntel = null;
   let captureEnabled = true;
   let overlayEnabled = true;
+  let lastSeenInterruptKey = null; // D3: Track which intel the user has seen
 
   function escapeHtml(value) {
     return String(value || '')
@@ -694,6 +695,14 @@
     if (!intel?.primaryAccount) return '';
     const score = intel.primaryAccount.opportunityScore;
     return score != null ? String(score) : '';
+  }
+
+  /** D3: Count actionable items for pill badge. */
+  function getBadgeCount(intel) {
+    if (!intel) return 0;
+    const opportunities = intel.opportunities?.length || 0;
+    const nextActions = intel.nextActions?.length || 0;
+    return opportunities + nextActions;
   }
 
   // ─── Overlay CSS ───────────────────────────────────────────────────────
@@ -771,6 +780,19 @@
       font-weight: 600;
       color: #f59e0b;
       margin-left: auto;
+    }
+    .wrangler-pill-badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      background: #ef4444;
+      border-radius: 8px;
+      min-width: 16px;
+      height: 16px;
+      line-height: 16px;
+      text-align: center;
+      padding: 0 4px;
+      margin-left: 4px;
     }
 
     /* ─── Compact ──────────────────────────────────────────────── */
@@ -1353,11 +1375,17 @@
     // ── Pill ──
     const pill = document.createElement('div');
     pill.className = 'wrangler-pill';
+
+    // D3: Badge count — show actionable items count when user hasn't expanded yet
+    const badgeCount = getBadgeCount(intel);
+    const showBadge = badgeCount > 0 && intel?.interruptKey !== lastSeenInterruptKey;
+
     pill.innerHTML = `
       <span class="wrangler-icon">\u26A1</span>
       <span class="wrangler-pill-name">${escapeHtml(pillText)}</span>
       <span class="wrangler-pill-dot" data-status="${escapeHtml(statusDot)}"></span>
       ${pillScore ? `<span class="wrangler-pill-score">${escapeHtml(pillScore)}</span>` : ''}
+      ${showBadge ? `<span class="wrangler-pill-badge">${escapeHtml(String(badgeCount))}</span>` : ''}
     `;
     pill.addEventListener('click', (e) => {
       if (isDragging) return;
@@ -1937,6 +1965,10 @@
   // ─── State management ──────────────────────────────────────────────────
 
   function setState(newState) {
+    // D3: Mark intel as "seen" when user expands overlay
+    if (newState === 'expanded' && currentIntel?.interruptKey) {
+      lastSeenInterruptKey = currentIntel.interruptKey;
+    }
     overlayState = newState;
     renderOverlay();
   }
