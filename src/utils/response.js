@@ -59,6 +59,21 @@ export function setRequestContext(request, env) {
 const SAFE_DETAIL_KEYS = new Set(['hint', 'path', 'method', 'maxSize', 'receivedSize', 'missing']);
 
 /**
+ * Sanitize error messages for client-facing responses.
+ * Logs the real error server-side, returns a static string to the client.
+ * Prevents leaking Sanity project IDs, GROQ syntax, API keys, and connection strings.
+ *
+ * @param {unknown} error - The caught error object
+ * @param {string} context - Handler name for server-side log correlation (e.g., 'scan', 'enrich/queue')
+ * @returns {string} A safe, static error message for the client
+ */
+export function sanitizeErrorMessage(error, context = 'unknown') {
+  const rawMessage = error instanceof Error ? error.message : String(error || '');
+  console.error(`[${context}] Error:`, rawMessage);
+  return 'An internal error occurred';
+}
+
+/**
  * Create error response with sanitized details
  * @param {string} code - Error code
  * @param {string} message - Error message
