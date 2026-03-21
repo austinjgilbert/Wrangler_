@@ -5,30 +5,32 @@
  * vs. other contacts. Each person shows name, title, seniority badge, and
  * LinkedIn link.
  *
- * Fetches from GET /operator/console/account/{accountId} on mount.
- * Uses the `people` array from the response.
+ * Queries Sanity directly via useDocuments filtered by relatedAccountKey.
+ * No worker endpoint needed — person data lives in Sanity.
  */
 
-import { useEffect, useState } from 'react';
-import { workerGet } from '../../lib/adapters';
+import { Suspense, useMemo } from 'react';
+import { useDocuments } from '@sanity/sdk-react';
 
 import './PeopleDetail.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-interface Person {
-  id: string;
-  name: string;
-  title?: string;
+interface PersonDoc {
+  documentId: string;
+  name?: string;
+  currentTitle?: string;
   linkedinUrl?: string;
-  seniority?: string;
+  seniorityLevel?: string;
+  roleCategory?: string;
+  email?: string;
+  currentCompany?: string;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────────
 
 export interface PeopleDetailProps {
   accountKey: string;
-  accountId: string; // e.g. "account.{accountKey}" — used for the endpoint path
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -59,18 +61,19 @@ function formatSeniority(seniority?: string): string {
 
 // ─── Sub-component ──────────────────────────────────────────────────────
 
-function PersonCard({ person }: { person: Person }) {
+function PersonCard({ person }: { person: PersonDoc }) {
+  const displayTitle = person.currentTitle;
   return (
     <div className="people-detail__card">
       <div className="people-detail__card-main">
-        <span className="people-detail__card-name">{person.name}</span>
-        {person.title && (
-          <span className="people-detail__card-title">{person.title}</span>
+        <span className="people-detail__card-name">{person.name ?? person.documentId}</span>
+        {displayTitle && (
+          <span className="people-detail__card-title">{displayTitle}</span>
         )}
       </div>
       <div className="people-detail__card-meta">
-        <span className={`people-detail__seniority ${seniorityBadgeClass(person.seniority)}`}>
-          {formatSeniority(person.seniority)}
+        <span className={`people-detail__seniority ${seniorityBadgeClass(person.seniorityLevel)}`}>
+          {formatSeniority(person.seniorityLevel)}
         </span>
         {person.linkedinUrl && (
           <a
@@ -88,112 +91,109 @@ function PersonCard({ person }: { person: Person }) {
   );
 }
 
-// ─── Component ──────────────────────────────────────────────────────────
+// ─── Inner component (Suspense boundary) ────────────────────────────────
 
-export function PeopleDetail({ accountKey, accountId }: PeopleDetailProps) {
-  const [people, setPeople] = useState<Person[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function PeopleDetailInner({ accountKey }: PeopleDetailProps) {
+  const { data, isPending } = useDocuments({
+    documentType: 'person',
+    filter: 'relatedAccountKey == $accountKey',
+    params: { accountKey },
+    batchSize: 100,
+    orderings: [{ field: '_updatedAt', direction: 'desc' }],
+  });
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    workerGet<{ data: { people: Person[] } }>(
-      `/operator/console/account/${encodeURIComponent(accountId)}`,
-    )
-      .then((res) => {
-        const payload = (res.data as any)?.data ?? res.data ?? null;
-        const peopleList = payload?.people ?? [];
-        setPeople(peopleList);
-      })
-      .catch((err) => {
-        if (err?.status === 404) {
-          setPeople([]);
-        } else {
-          setError(err instanceof Error ? err.message : 'Failed to load people');
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [accountId]);
+  const people = (data || []) as PersonDoc[];
 
   // Group by decision maker vs. other
-  const decisionMakers = people.filter((p) => isDecisionMaker(p.seniority));
-  const otherContacts = people.filter((p) => !isDecisionMaker(p.seniority));
+  const { decisionMakers, otherContacts } = useMemo(() => {
+    const dm: PersonDoc[] = [];
+    const other: PersonDoc[] = [];
+    for (const p of people) {
+      if (isDecisionMaker(p.seniorityLevel)) {
+        dm.push(p);
+      } else {
+        other.push(p);
+      }
+    }
+    return { decisionMakers: dm, otherContacts: other };
+  }, [people]);
 
+  // Loading state (initial load before Suspense resolves)
+  if (isPending && people.length === 0) {
+    return <div className="people-detail__loading">Loading people data...</div>;
+  }
+
+  // Empty state
+  if (people.length === 0) {
+    return (
+      <div className="people-detail__empty">
+        No contacts found for this account. Run LinkedIn enrichment to discover people.
+      </div>
+    );
+  }
+
+  // Results
+  return (
+    <div className="people-detail__results">
+      {/* Summary stats */}
+      <div className="people-detail__summary">
+        <div className="people-detail__stat">
+          <span className="people-detail__stat-value">{people.length}</span>
+          <span className="people-detail__stat-label">Total Contacts</span>
+        </div>
+        <div className="people-detail__stat">
+          <span className="people-detail__stat-value">{decisionMakers.length}</span>
+          <span className="people-detail__stat-label">Decision Makers</span>
+        </div>
+        <div className="people-detail__stat">
+          <span className="people-detail__stat-value">
+            {people.filter((p) => p.linkedinUrl).length}
+          </span>
+          <span className="people-detail__stat-label">LinkedIn Profiles</span>
+        </div>
+      </div>
+
+      {/* Decision makers */}
+      {decisionMakers.length > 0 && (
+        <div className="people-detail__group">
+          <h4 className="people-detail__group-title">
+            Decision Makers
+            <span className="people-detail__group-count">{decisionMakers.length}</span>
+          </h4>
+          <div className="people-detail__card-list">
+            {decisionMakers.map((person) => (
+              <PersonCard key={person.documentId} person={person} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Other contacts */}
+      {otherContacts.length > 0 && (
+        <div className="people-detail__group">
+          <h4 className="people-detail__group-title">
+            Other Contacts
+            <span className="people-detail__group-count">{otherContacts.length}</span>
+          </h4>
+          <div className="people-detail__card-list">
+            {otherContacts.map((person) => (
+              <PersonCard key={person.documentId} person={person} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Component ──────────────────────────────────────────────────────────
+
+export function PeopleDetail({ accountKey }: PeopleDetailProps) {
   return (
     <div className="people-detail">
-      {/* Loading */}
-      {loading && (
-        <div className="people-detail__loading">Loading people data...</div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="people-detail__error">{error}</div>
-      )}
-
-      {/* Empty */}
-      {!loading && !error && people.length === 0 && (
-        <div className="people-detail__empty">
-          No contacts found for this account. Run LinkedIn enrichment to discover people.
-        </div>
-      )}
-
-      {/* Results */}
-      {!loading && people.length > 0 && (
-        <div className="people-detail__results">
-          {/* Summary stats */}
-          <div className="people-detail__summary">
-            <div className="people-detail__stat">
-              <span className="people-detail__stat-value">{people.length}</span>
-              <span className="people-detail__stat-label">Total Contacts</span>
-            </div>
-            <div className="people-detail__stat">
-              <span className="people-detail__stat-value">{decisionMakers.length}</span>
-              <span className="people-detail__stat-label">Decision Makers</span>
-            </div>
-            <div className="people-detail__stat">
-              <span className="people-detail__stat-value">
-                {people.filter((p) => p.linkedinUrl).length}
-              </span>
-              <span className="people-detail__stat-label">LinkedIn Profiles</span>
-            </div>
-          </div>
-
-          {/* Decision makers */}
-          {decisionMakers.length > 0 && (
-            <div className="people-detail__group">
-              <h4 className="people-detail__group-title">
-                Decision Makers
-                <span className="people-detail__group-count">{decisionMakers.length}</span>
-              </h4>
-              <div className="people-detail__card-list">
-                {decisionMakers.map((person) => (
-                  <PersonCard key={person.id} person={person} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Other contacts */}
-          {otherContacts.length > 0 && (
-            <div className="people-detail__group">
-              <h4 className="people-detail__group-title">
-                Other Contacts
-                <span className="people-detail__group-count">{otherContacts.length}</span>
-              </h4>
-              <div className="people-detail__card-list">
-                {otherContacts.map((person) => (
-                  <PersonCard key={person.id} person={person} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <Suspense fallback={<div className="people-detail__loading">Loading people data...</div>}>
+        <PeopleDetailInner accountKey={accountKey} />
+      </Suspense>
     </div>
   );
 }
