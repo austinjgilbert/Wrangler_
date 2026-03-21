@@ -91,7 +91,7 @@ export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
       `/competitors/research?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        const payload = (res.data as any)?.data ?? res.data ?? null;
+        const payload = res.data?.data ?? null;
         setData(payload);
       })
       .catch((err) => {

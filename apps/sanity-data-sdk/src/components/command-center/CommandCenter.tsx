@@ -134,14 +134,13 @@ export function CommandCenter() {
       return;
     }
 
-    workerGet<{ ok: boolean; data: { status: Record<string, unknown> } }>(
+    workerGet<{ data: { status: Record<string, unknown> } }>(
       `/enrich/status?accountKey=${encodeURIComponent(selectedAccount.accountKey)}`,
     )
       .then((res) => {
-        // Double-nesting: workerGet returns { ok, data: WorkerJSON, status }
-        // WorkerJSON is { ok, data: { status: { status, currentStage, ... } } }
-        // TODO: type workerGet response properly when adapter types are cleaned up
-        const statusPayload = (res.data as any)?.data?.status ?? (res.data as any)?.status ?? {};
+        // workerGet wraps Worker JSON in { ok, data: T, status }
+        // T here is { data: { status: {...} } }, so res.data.data.status is the payload
+        const statusPayload = res.data?.data?.status ?? {};
         const enrichStatus = statusPayload.status as string | undefined;
         const currentStage = statusPayload.currentStage as string | undefined;
 
@@ -168,8 +167,7 @@ export function CommandCenter() {
   useEffect(() => {
     workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
       .then((res) => {
-        // TODO: type workerGet response properly when adapter types are cleaned up
-        const recent = (res.data as any)?.data?.signals?.recent ?? [];
+        const recent = res.data?.data?.signals?.recent ?? [];
         setSignals(recent);
       })
       .catch(() => {
@@ -190,7 +188,7 @@ export function CommandCenter() {
     setBriefingError(null);
 
     try {
-      const response = await workerPost<RawGoodMorningResponse>('/sdr/good-morning', {
+      const response = await workerPost<{ ok: boolean; data: RawGoodMorningResponse }>('/sdr/good-morning', {
         daysBack: 30,
         minCallScore: 6,
         maxCalls: 25,
@@ -200,15 +198,10 @@ export function CommandCenter() {
         trackPattern: true,
       });
 
-      // workerPost returns { ok, data: <Worker JSON>, status }
-      // Worker JSON is { ok, data: { top10Accounts, ... }, requestId }
+      // workerPost wraps Worker JSON in { ok, data: T, status }
+      // T here is { ok, data: RawGoodMorningResponse }
       // transformBriefingResponse expects { ok, data: RawGoodMorningResponse }
-      // So we need response.data.data (the inner data), not response.data
-      const workerBody = response.data as any;
-      const transformed = transformBriefingResponse({
-        ok: true,
-        data: workerBody.data ?? workerBody,  // prefer inner .data, fallback to whole body
-      });
+      const transformed = transformBriefingResponse(response.data);
 
       setBriefing(transformed);
       setCache('briefing', transformed);
@@ -257,7 +250,7 @@ export function CommandCenter() {
         showToast('Refreshing signals...');
         workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
           .then((res) => {
-            const recent = (res.data as any)?.data?.signals?.recent ?? [];
+            const recent = res.data?.data?.signals?.recent ?? [];
             setSignals(recent);
             const name = selectedAccount.companyName?.trim().toLowerCase() ?? '';
             const count = recent.filter((s: Signal) => s.accountName?.trim().toLowerCase() === name).length;

@@ -68,7 +68,7 @@ export function TechStackDetail({ accountKey }: TechStackDetailProps) {
       `/technologies/insights?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        const payload = (res.data as any)?.data ?? res.data ?? null;
+        const payload = res.data?.data ?? null;
         setData(payload);
       })
       .catch((err) => {
