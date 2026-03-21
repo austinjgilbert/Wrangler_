@@ -93,7 +93,6 @@ type ProjectedAccount = {
   signals?: LinkedRecord[]
   interactions?: LinkedRecord[]
   actionCandidates?: LinkedRecord[]
-  evidencePacks?: LinkedRecord[]
   crawlSnapshots?: LinkedRecord[]
 }
 
@@ -295,14 +294,8 @@ function buildTree(account: ProjectedAccount | null): TreeNode | null {
       {
         id: `${account._id}-evidence`,
         title: 'Evidence',
-        badges: [`${(account.evidencePacks?.length || 0) + (account.crawlSnapshots?.length || 0)}`],
+        badges: [`${account.crawlSnapshots?.length || 0}`],
         children: [
-          ...(account.evidencePacks || []).map((pack) => ({
-            id: pack._id,
-            title: pack.title || pack.name || pack._id,
-            meta: [pack.domain, pack.fetchedAt].filter(Boolean).join(' · '),
-            badges: ['evidence-pack'],
-          })),
           ...(account.crawlSnapshots || []).map((snapshot) => ({
             id: snapshot._id,
             title: snapshot.title || snapshot.name || snapshot._id,
@@ -789,7 +782,7 @@ function AccountDetails({
         "signals": 0, // Signal count comes from Worker snapshot, not Sanity (signal type has 0 docs)
         "interactions": count(*[_type == "interaction" && (accountKey == ^.accountKey || domain == coalesce(^.domain, ^.rootDomain))]),
         "actionCandidates": count(*[_type == "actionCandidate" && account._ref == ^._id]),
-        "evidence": count(*[_type == "evidencePack" && relatedAccountKey == ^.accountKey]) + count(*[_type == "crawl.snapshot" && (accountRef._ref == ^._id || accountKey == ^.accountKey)]),
+        "evidence": count(*[_type == "crawl.snapshot" && (accountRef._ref == ^._id || accountKey == ^.accountKey)]),
         "painPoints": count(coalesce(painPoints, [])),
         "benchmarks": select(
           defined(benchmarks.updatedAt) || defined(benchmarks.estimatedRevenue) || defined(benchmarks.estimatedEmployees) || defined(benchmarks.headquarters) => 1,
@@ -860,12 +853,6 @@ function AccountDetails({
         recommendedNextStep,
         lifecycleStatus,
         opportunityScore
-      },
-      "evidencePacks": *[_type == "evidencePack" && relatedAccountKey == ^.accountKey] | order(coalesce(fetchedAt, _updatedAt) desc)[0...8]{
-        _id,
-        title,
-        domain,
-        fetchedAt
       },
       "crawlSnapshots": *[_type == "crawl.snapshot" && (accountRef._ref == ^._id || accountKey == ^.accountKey)] | order(coalesce(fetchedAt, _updatedAt) desc)[0...8]{
         _id,
