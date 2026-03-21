@@ -845,6 +845,39 @@
       border-top: 1px solid rgba(148, 163, 184, 0.1);
     }
 
+    /* ─── D1: Per-site capture rule ─────────────────────────────── */
+
+    .wrangler-capture-rule {
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-top: 1px solid rgba(148, 163, 184, 0.08);
+      font-size: 11px;
+    }
+    .wrangler-capture-rule-label {
+      color: #64748b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+    .wrangler-capture-rule-select {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+    .wrangler-capture-rule-select:focus {
+      border-color: #f59e0b;
+    }
+
     /* ─── Expanded ─────────────────────────────────────────────── */
 
     .wrangler-expanded {
@@ -1415,6 +1448,41 @@
     }
     compactActions.addEventListener('click', handleActionClick);
     compact.appendChild(compactActions);
+
+    // D1: Per-site capture rule toggle
+    const captureRuleRow = document.createElement('div');
+    captureRuleRow.className = 'wrangler-capture-rule';
+    const currentDomain = location.hostname;
+    chrome.runtime.sendMessage({ type: 'wrangler:getCaptureRules' }, (res) => {
+      if (!res?.ok) return;
+      const rules = res.rules || {};
+      const currentRule = rules[currentDomain] || null;
+      const ruleLabel = currentRule === 'always' ? 'Always capture'
+        : currentRule === 'never' ? 'Never capture'
+        : 'Follow global';
+      captureRuleRow.innerHTML = `
+        <span class="wrangler-capture-rule-label">${escapeHtml(currentDomain)}</span>
+        <select class="wrangler-capture-rule-select" data-domain="${escapeHtml(currentDomain)}">
+          <option value=""${!currentRule ? ' selected' : ''}>Follow global</option>
+          <option value="always"${currentRule === 'always' ? ' selected' : ''}>Always capture</option>
+          <option value="never"${currentRule === 'never' ? ' selected' : ''}>Never capture</option>
+        </select>
+      `;
+      const select = captureRuleRow.querySelector('select');
+      if (select) {
+        select.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const rule = e.target.value || null;
+          chrome.runtime.sendMessage({
+            type: 'wrangler:setCaptureRule',
+            domain: currentDomain,
+            rule,
+          });
+        });
+      }
+    });
+    compact.appendChild(captureRuleRow);
+
     overlay.appendChild(compact);
 
     // ── Expanded ──
