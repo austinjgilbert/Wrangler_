@@ -6924,7 +6924,7 @@ const workerHandler = {
       if (limitCheck) return limitCheck;
       response = await routeRequest(request, url, requestId, env, rateLimiter, null, ctx);
     } catch (error) {
-      console.error('[handleDelete] Error:', error.message);
+      console.error('[workerHandler.fetch] Error:', error.message);
       response = createErrorResponse(
         'INTERNAL_ERROR',
         'Internal server error',
@@ -7638,71 +7638,41 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         return await handleQuickResearch(request, requestId, env, groqQuery, assertSanityConfigured);
       } else if (url.pathname === '/molt/run') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleMoltRun } = await import('./handlers/moltbot.js');
         return await handleMoltRun(request, requestId, env);
       } else if (url.pathname === '/molt/approve') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleMoltApprove } = await import('./handlers/moltbot.js');
         return await handleMoltApprove(request, requestId, env);
       } else if (url.pathname === '/wrangler/ingest') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleWranglerIngest } = await import('./routes/wrangler.ts');
         return await handleWranglerIngest(request, requestId, env);
       } else if (url.pathname === '/extension/check') {
         { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         return createSuccessResponse({ ok: true, message: 'Extension connected' }, requestId);
       } else if (url.pathname === '/extension/capture') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionCapture } = await import('./routes/extension.ts');
         return await handleExtensionCapture(request, requestId, env);
       } else if (url.pathname === '/extension/page-intel') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionPageIntel } = await import('./routes/extension.ts');
         return await handleExtensionPageIntel(request, requestId, env);
       } else if (url.pathname === '/extension/ask') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionAsk } = await import('./routes/extension.ts');
         return await handleExtensionAsk(request, requestId, env);
       } else if (url.pathname === '/extension/learn') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleExtensionLearn } = await import('./routes/extension.ts');
         return await handleExtensionLearn(request, requestId, env);
       } else if (url.pathname === '/extension/linkedin-capture') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleLinkedInCapture } = await import('./routes/linkedin-capture.ts');
         return await handleLinkedInCapture(request, requestId, env);
       } else if (url.pathname === '/system/self-heal') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleSystemSelfHeal } = await import('./handlers/system-self-heal.js');
         return await handleSystemSelfHeal(request, requestId, env);
       } else if (url.pathname === '/webhooks/sanity') {
@@ -7823,23 +7793,14 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         return await handleEnrichApplyUnified(request, requestId, env);
       } else if (url.pathname === '/molt/log') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleMoltLog } = await import('./routes/molt.ts');
         return await handleMoltLog(request, requestId, env);
       } else if (url.pathname === '/molt/jobs/run') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleMoltJobsRun } = await import('./routes/molt.ts');
         return await handleMoltJobsRun(request, requestId, env);
       } else if (url.pathname === '/molt/feedback') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkMoltApiKey(request, env, requestId);
-        if (!auth.allowed) return auth.errorResponse;
         const { handleMoltFeedback } = await import('./routes/molt.ts');
         return await handleMoltFeedback(request, requestId, env);
       } else if (url.pathname === '/calls/ingest') {
