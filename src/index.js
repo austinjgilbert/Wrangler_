@@ -7372,6 +7372,8 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       '/schema',
       '/openapi.yaml',
       '/molt/auth-status',
+      '/sanity/status',       // D-015: was in skipBaseEnv but missing here — returns 401 without this
+      '/sanity/verify-write', // D-015: was in skipBaseEnv but missing here — returns 401 without this
       '/webhooks/sanity',     // Auth: HMAC signature verification, fail-closed (P0-3)
       '/webhooks/telegram',   // Auth: X-Telegram-Bot-Api-Secret-Token validation (Finding 7)
     ]);
