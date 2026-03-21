@@ -1947,9 +1947,16 @@
           overlay.style.top = `${overlayY}px`;
           overlay.setAttribute('data-docked', dockedSide);
 
-          // Save position
-          chrome.storage.local.set({
-            overlayPosition: { y: overlayY, side: dockedSide, domain: location.hostname },
+          // D4: Save position per domain (multi-domain map)
+          chrome.storage.local.get(['overlayPositions'], (result) => {
+            const positions = result.overlayPositions || {};
+            positions[location.hostname] = { y: overlayY, side: dockedSide };
+            // LRU eviction: cap at 50 domains
+            const keys = Object.keys(positions);
+            if (keys.length > 50) {
+              delete positions[keys[0]];
+            }
+            chrome.storage.local.set({ overlayPositions: positions });
           });
         }
 
@@ -2099,13 +2106,25 @@
 
   // ─── Init ──────────────────────────────────────────────────────────────
 
-  // Restore position from storage
-  chrome.storage.local.get(['overlayPosition', 'overlayEnabled'], (result) => {
+  // D4: Restore position from per-domain map (with migration from old format)
+  chrome.storage.local.get(['overlayPositions', 'overlayPosition', 'overlayEnabled'], (result) => {
     if (result.overlayEnabled === false) {
       overlayEnabled = false;
     }
-    const pos = result.overlayPosition;
-    if (pos && pos.domain === location.hostname) {
+
+    // Migrate old single-position format to new map
+    let positions = result.overlayPositions || {};
+    if (!result.overlayPositions && result.overlayPosition) {
+      const old = result.overlayPosition;
+      if (old.domain) {
+        positions[old.domain] = { y: old.y, side: old.side };
+      }
+      chrome.storage.local.set({ overlayPositions: positions });
+      chrome.storage.local.remove('overlayPosition');
+    }
+
+    const pos = positions[location.hostname];
+    if (pos) {
       overlayY = pos.y || 16;
       dockedSide = pos.side || 'right';
     }
