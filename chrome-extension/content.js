@@ -2050,6 +2050,19 @@
       if (overlayState === 'expanded') setState('compact');
       else if (overlayState === 'compact') setState('pill');
     }
+
+    // D2: Ctrl+Shift+W — toggle overlay visibility
+    if (e.ctrlKey && e.shiftKey && e.key === 'W') {
+      e.preventDefault();
+      e.stopPropagation();
+      overlayEnabled = !overlayEnabled;
+      chrome.storage.local.set({ overlayEnabled });
+      chrome.runtime.sendMessage({
+        type: 'wrangler:setOverlayEnabled',
+        enabled: overlayEnabled,
+      }).catch(() => {});
+      renderOverlay();
+    }
   });
 
   // ─── Init ──────────────────────────────────────────────────────────────
