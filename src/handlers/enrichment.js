@@ -210,6 +210,25 @@ export async function handleQueueEnrichment(
           canonicalUrl,
         });
     
+    // ── Activity event: enrichment queued ──────────────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'job',
+      status: 'queued',
+      source: 'worker',
+      accountKey: finalAccountKey,
+      category: 'enrichment',
+      message: `Queued enrichment for ${finalAccountKey}`,
+      data: {
+        jobId: result.jobId,
+        mode: body.mode || 'standard',
+        canonicalUrl,
+      },
+      idempotencyKey: `enrich.queued.${finalAccountKey}.${Date.now()}`,
+    }).catch((err) => {
+      console.error('[ENRICH_QUEUE] Activity event failed (non-blocking):', err?.message);
+    });
+
     return createSuccessResponse({
       queued: result.success,
       jobId: result.jobId,
@@ -414,6 +433,33 @@ export async function handleAdvanceEnrichment(
     } else if (!status?.advanceError && !status?.selfHealingScheduled) {
       status = await getEnrichmentStatus(groqQuery, client, accountKey, env);
     }
+
+    // ── Activity event: enrichment stage advanced ──────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    const advanceStatus = status?.status === 'complete' ? 'completed'
+      : status?.status === 'failed' ? 'failed'
+      : 'processing';
+    emitActivityEvent(env, {
+      eventType: 'job',
+      status: advanceStatus,
+      source: 'worker',
+      accountKey,
+      category: 'enrichment',
+      message: advanceStatus === 'completed'
+        ? `Enrichment complete for ${accountKey}`
+        : advanceStatus === 'failed'
+        ? `Enrichment failed for ${accountKey}`
+        : `Enrichment stage ${status?.currentStage || 'unknown'} for ${accountKey}`,
+      data: {
+        jobId: status?.jobId || null,
+        stage: status?.currentStage || null,
+        progress: status?.progress || null,
+        error: status?.advanceError || null,
+      },
+      idempotencyKey: `enrich.advance.${accountKey}.${Date.now()}`,
+    }).catch((err) => {
+      console.error('[ENRICH_ADVANCE] Activity event failed (non-blocking):', err?.message);
+    });
 
     return createSuccessResponse({
       status,

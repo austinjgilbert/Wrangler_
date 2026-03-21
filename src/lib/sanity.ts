@@ -129,6 +129,22 @@ export async function createMoltEvent(env: any, doc: any): Promise<any> {
   return doc;
 }
 
+/**
+ * Emit an activity event using the new Index+Blob format.
+ * Thin wrapper around buildActivityEvent() + upsert.
+ * Used by new emission points. Cron handlers pass env directly (no HTTP auth).
+ */
+export async function emitActivityEvent(
+  env: any,
+  input: import('./events').ActivityEventInput
+): Promise<string> {
+  const { buildActivityEvent } = await import('./events.ts');
+  const doc = buildActivityEvent(input);
+  const client = getSanityClient(env);
+  await upsertDocument(client, doc);
+  return doc._id;
+}
+
 export async function fetchMoltEventById(env: any, eventId: string): Promise<any> {
   const client = getSanityClient(env);
   return await getDocument(client, eventId);

@@ -336,6 +336,27 @@ export async function handleLinkedInCapture(
       });
     }
 
+    // ── Activity event: LinkedIn capture ────────────────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'capture',
+      status: 'completed',
+      source: 'extension',
+      accountKey: relatedAccountKey || null,
+      category: 'capture',
+      message: `Captured LinkedIn: ${profile.name}${profile.headline ? ', ' + profile.headline.split(' at ')[0] : ''}`,
+      data: {
+        personName: profile.name,
+        personId,
+        personKey,
+        domain: profile.experience?.find((e: any) => e.isCurrent)?.company || null,
+        isNew: !existing,
+      },
+      idempotencyKey: `linkedin.capture.${personKey}`,
+    }).catch((err: any) => {
+      console.error('LinkedIn capture: activity event failed (non-blocking):', err?.message);
+    });
+
     return createSuccessResponse(
       {
         personKey,

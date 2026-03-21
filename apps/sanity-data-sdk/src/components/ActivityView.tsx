@@ -1,25 +1,10 @@
-import { useDocuments } from '@sanity/sdk-react';
 import { Suspense, useEffect, useState } from 'react';
 import { fetchRecentSignals, type WorkerSignal } from '../lib/adapters/signals';
 import { humanizeSignalType, formatTimestamp } from '../lib/formatters';
 import { useNavigation } from '../lib/navigation';
+import { ActivityFeed } from './ActivityFeed';
 
-// ── Types ───────────────────────────────────────────────────────────
-// SignalDoc removed — signals now come from Worker snapshot via WorkerSignal
-
-interface InteractionDoc {
-  documentId: string;
-  documentType: string;
-  title?: string;
-  companyName?: string;
-  domain?: string;
-  source?: string;
-  eventSummary?: string;
-  timestamp?: string;
-  accountName?: string;
-}
-
-// ── Components ──────────────────────────────────────────────────────
+// ── SignalList (kept from Batch A — reads Worker snapshot) ──────────
 
 function SignalList() {
   const [signals, setSignals] = useState<WorkerSignal[]>([]);
@@ -69,64 +54,7 @@ function SignalList() {
   );
 }
 
-function InteractionList() {
-  const { data, hasMore, loadMore, isPending } = useDocuments({
-    documentType: 'interaction',
-    batchSize: 50,
-    orderings: [{ field: '_updatedAt', direction: 'desc' }],
-  });
-  const { navigateToView } = useNavigation();
-  const list = (data || []) as InteractionDoc[];
-
-  return (
-    <div className="activity-list">
-      <div className="section-header">
-        <h3>Interactions</h3>
-        <span className="section-meta">{list.length} loaded</span>
-      </div>
-      {list.length === 0 ? (
-        <p className="muted">No interactions yet. Interactions are logged when you engage with accounts.</p>
-      ) : (
-        list.map((doc) => (
-          <div className="activity-card" key={doc.documentId}>
-            <strong>
-              {doc.companyName ? (
-                <span
-                  className="activity-account-link"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigateToView('accounts')}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToView('accounts') }}
-                >
-                  {doc.companyName}
-                </span>
-              ) : (
-                doc.title ?? doc.documentId
-              )}
-            </strong>
-            <span>{doc.domain ?? doc.source ?? ''}</span>
-            {doc.eventSummary && (
-              <p className="activity-summary">{doc.eventSummary}</p>
-            )}
-            <span className="activity-meta">
-              {formatTimestamp(doc.timestamp)}
-            </span>
-          </div>
-        ))
-      )}
-      {hasMore && (
-        <button
-          type="button"
-          className="sidebar-load-more"
-          disabled={isPending}
-          onClick={() => loadMore()}
-        >
-          {isPending ? 'Loading…' : 'Load more'}
-        </button>
-      )}
-    </div>
-  );
-}
+// ── ActivityView (main export) ──────────────────────────────────────
 
 export function ActivityView() {
   return (
@@ -134,16 +62,16 @@ export function ActivityView() {
       <div className="detail-header">
         <div>
           <p className="eyebrow">Activity &amp; Events</p>
-          <h2>Signals &amp; interactions</h2>
+          <h2>Activity Feed</h2>
           <p className="detail-meta">
-            Signals and interactions across your accounts.
+            Real-time events across your portfolio.
           </p>
         </div>
       </div>
       <Suspense fallback={<div className="loading-state">Loading activity…</div>}>
         <SignalList />
         <div style={{ marginTop: 24 }} />
-        <InteractionList />
+        <ActivityFeed />
       </Suspense>
     </section>
   );

@@ -608,6 +608,25 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
       console.error('Extension ask: interaction storage failed (non-blocking):', err?.message);
     });
 
+    // ── Activity event: extension prompt ───────────────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'prompt',
+      status: 'completed',
+      source: 'extension',
+      accountKey: intel?.primaryAccount?.accountKey || null,
+      category: 'interaction',
+      message: `Prompt: "${(prompt || '').slice(0, 80)}"`,
+      data: {
+        promptText: prompt,
+        domain: intel?.primaryAccount?.domain || null,
+        accountName: intel?.primaryAccount?.companyName || null,
+      },
+      idempotencyKey: `ext.ask.${requestId}`,
+    }).catch((err: any) => {
+      console.error('Extension ask: activity event failed (non-blocking):', err?.message);
+    });
+
     return createSuccessResponse({
       answer,
       nextActions: intel?.nextActions || [],
