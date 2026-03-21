@@ -6,8 +6,10 @@
  * Fetches from GET /competitors/research?accountKey=X on mount.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { workerGet } from '../../lib/adapters';
+import { CompetitorMap } from './graphs';
+import { deriveCompetitorMap } from './graphs/competitor-map-adapter';
 
 import './CompetitorsDetail.css';
 
@@ -110,6 +112,12 @@ export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
   const opportunities = data?.opportunities ?? [];
   const industry = data?.industryProfile;
 
+  // Derive graph data from competitor list
+  const mapCompetitors = useMemo(
+    () => deriveCompetitorMap(competitors),
+    [competitors],
+  );
+
   return (
     <div className="competitors-detail">
       {/* Loading */}
@@ -132,6 +140,21 @@ export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
       {/* Results */}
       {!loading && data && (
         <div className="competitors-detail__results">
+          {/* Competitor Map — bubble chart visualization */}
+          {mapCompetitors.length > 0 && (
+            <div className="competitors-detail__graph" style={{ marginBottom: 16 }}>
+              <CompetitorMap
+                competitors={mapCompetitors}
+                onCompetitorClick={(domain) => {
+                  // TODO: navigate to competitor deep dive when available
+                  console.log('Competitor click:', domain);
+                }}
+                width={680}
+                height={340}
+              />
+            </div>
+          )}
+
           {/* Summary stats */}
           <div className="competitors-detail__summary">
             <div className="competitors-detail__stat">
