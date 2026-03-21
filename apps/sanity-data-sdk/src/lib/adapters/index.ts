@@ -71,3 +71,17 @@ export {
   deriveAllModuleGlanceProps,
   type ModuleConfig,
 } from './module-glance';
+
+// Research / Enrichment
+export {
+  advanceEnrichment,
+  fetchEnrichStatus,
+  fetchWorkerHealth,
+  getResearchSetUrl,
+  hasWorker,
+  queueEnrichment,
+  type EnrichStatus,
+  type QueueEnrichmentParams,
+  type QueueEnrichmentResult,
+} from './research';
+
