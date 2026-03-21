@@ -70,12 +70,7 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
       case 'competitors':
         return <CompetitorsDetail accountKey={account.accountKey} />;
       case 'people':
-        return (
-          <PeopleDetail
-            accountKey={account.accountKey}
-            accountId={account._id}
-          />
-        );
+        return <PeopleDetail accountKey={account.accountKey} />;
       default:
         return undefined;
     }
