@@ -13,7 +13,7 @@ import { GRAPH_TOKENS as T, hexToRgba, drawRoundedRect } from './types';
 
 // ── Node Layout ─────────────────────────────────────────────────────
 
-interface NodeLayout {
+export interface NodeLayout {
   x: number;
   y: number;
   r: number;
@@ -23,7 +23,7 @@ interface NodeLayout {
 
 const PAD = { top: 50, right: 40, bottom: 50, left: 60 };
 
-function layoutNodes(
+export function layoutNodes(
   competitors: MapCompetitor[],
   W: number,
   H: number,
@@ -48,8 +48,9 @@ export function hitTestCompetitorMap(
   competitors: MapCompetitor[],
   W: number,
   H: number,
+  cachedLayout?: NodeLayout[],
 ): number | null {
-  const nodes = layoutNodes(competitors, W, H);
+  const nodes = cachedLayout ?? layoutNodes(competitors, W, H);
   // Reverse iterate — top-drawn nodes get priority
   for (let i = nodes.length - 1; i >= 0; i--) {
     const n = nodes[i];
@@ -85,6 +86,7 @@ export function drawCompetitorMap(
   H: number,
   animProgress: number,
   hoveredIndex: number | null,
+  cachedLayout?: NodeLayout[],
 ): void {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr;
@@ -119,7 +121,7 @@ export function drawCompetitorMap(
   const prog = Math.min(1, animProgress * 1.5); // Slightly faster than linear
   const gW = W - PAD.left - PAD.right;
   const gH = H - PAD.top - PAD.bottom;
-  const nodes = layoutNodes(competitors, W, H);
+  const nodes = cachedLayout ?? layoutNodes(competitors, W, H);
 
   // ── Title ───────────────────────────────────────────────────────
   c.font = `bold 14px ${T.font}`;

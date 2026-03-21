@@ -1,17 +1,17 @@
 /**
  * SignalTimeline.tsx — React wrapper for the signal timeline chart.
  *
- * Handles: canvas ref, animation loop (1.4s entry with eased dots),
- * mousemove hit testing, click → onSignalClick(signal).
- * Stops animation after completion. Exposes spike callouts via callback.
+ * Phase B: rAF→ref refactor + layout caching + stable onSpikesDetected.
+ * Zero React re-renders during animation. Layout computed once via useMemo,
+ * shared between hit test and draw.
  *
  * Integration: rendered inside Signals module Detail state.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TimelineSignal, SpikeCallout } from './signal-timeline-adapter';
 import { findSpikes } from './signal-timeline-adapter';
-import { drawSignalTimeline, hitTestSignalTimeline } from './signal-timeline-canvas';
+import { drawSignalTimeline, hitTestSignalTimeline, layoutSignals } from './signal-timeline-canvas';
 
 const ANIM_MS = 1400;
 
@@ -34,41 +34,41 @@ export function SignalTimeline({
 }: SignalTimelineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
-  const startRef = useRef(performance.now());
+  const startRef = useRef(0);
+  const progressRef = useRef(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [animDone, setAnimDone] = useState(false);
 
-  // ── Spike Detection (stable ref to avoid dep instability) ───────
+  // Stable callback ref (prevents dep instability)
   const spikeCbRef = useRef(onSpikesDetected);
   spikeCbRef.current = onSpikesDetected;
 
+  // Layout caching — computed once per data/dimension change
+  const cachedLayout = useMemo(
+    () => layoutSignals(signals, days, width, height),
+    [signals, days, width, height],
+  );
+
+  // Spike detection
   useEffect(() => {
     if (spikeCbRef.current && signals.length > 0) {
       spikeCbRef.current(findSpikes(signals, days));
     }
   }, [signals, days]);
 
-  // ── Draw ────────────────────────────────────────────────────────
-  const draw = useCallback(
-    (progress: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      drawSignalTimeline(canvas, signals, days, width, height, progress, hoveredIndex);
-    },
-    [signals, days, width, height, hoveredIndex],
-  );
-
-  // ── Animation Loop ──────────────────────────────────────────────
+  // Animation loop (ref-based, no setState during animation)
   useEffect(() => {
     startRef.current = performance.now();
+    progressRef.current = 0;
     setAnimDone(false);
     setHoveredIndex(null);
 
     function tick() {
       const elapsed = performance.now() - startRef.current;
-      const progress = Math.min(1, elapsed / ANIM_MS);
-      draw(progress);
-      if (progress < 1) {
+      progressRef.current = Math.min(1, elapsed / ANIM_MS);
+      const canvas = canvasRef.current;
+      if (canvas) drawSignalTimeline(canvas, signals, days, width, height, progressRef.current, null, cachedLayout);
+      if (progressRef.current < 1) {
         animRef.current = requestAnimationFrame(tick);
       } else {
         setAnimDone(true);
@@ -83,25 +83,23 @@ export function SignalTimeline({
         animRef.current = null;
       }
     };
-  }, [signals, days, width, height]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [signals, days, width, height, cachedLayout]);
 
-  // Redraw on hover change (only after animation completes)
   useEffect(() => {
-    if (animDone) draw(1);
-  }, [hoveredIndex, animDone, draw]);
+    if (animDone && canvasRef.current) {
+      drawSignalTimeline(canvasRef.current, signals, days, width, height, 1, hoveredIndex, cachedLayout);
+    }
+  }, [hoveredIndex, animDone, signals, days, width, height, cachedLayout]);
 
-  // ── Mouse Events ────────────────────────────────────────────────
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!animDone) return;
       const rect = e.currentTarget.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const hit = hitTestSignalTimeline(mx, my, signals, days, width, height);
+      const hit = hitTestSignalTimeline(e.clientX - rect.left, e.clientY - rect.top, signals, days, width, height, cachedLayout);
       setHoveredIndex(hit);
       e.currentTarget.style.cursor = hit !== null ? 'pointer' : 'default';
     },
-    [animDone, signals, days, width, height],
+    [animDone, signals, days, width, height, cachedLayout],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -112,14 +110,12 @@ export function SignalTimeline({
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!animDone) return;
       const rect = e.currentTarget.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const hit = hitTestSignalTimeline(mx, my, signals, days, width, height);
+      const hit = hitTestSignalTimeline(e.clientX - rect.left, e.clientY - rect.top, signals, days, width, height, cachedLayout);
       if (hit !== null && signals[hit]) {
         onSignalClick(signals[hit]);
       }
     },
-    [animDone, signals, days, width, height, onSignalClick],
+    [animDone, signals, days, width, height, cachedLayout, onSignalClick],
   );
 
   return (
