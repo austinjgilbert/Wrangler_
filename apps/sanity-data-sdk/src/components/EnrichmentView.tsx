@@ -80,6 +80,12 @@ function getStageDisplay(
   return 'Queued';
 }
 
+/** Terminal statuses where stage label is redundant with status badge */
+function isTerminalStatus(status: string | undefined | null): boolean {
+  if (!status) return false;
+  return ['complete', 'completed', 'done', 'failed'].includes(status);
+}
+
 type LiveStatus = {
   jobId?: string;
   status?: string;
@@ -180,6 +186,7 @@ function EnrichmentInner(props: {
 }) {
   const [liveStatusByKey, setLiveStatusByKey] = useState<Record<string, LiveStatus>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [accountSearch, setAccountSearch] = useState('');
 
   const jobsResult = useDocuments({
     documentType: 'enrich.job',
@@ -287,9 +294,11 @@ function EnrichmentInner(props: {
                 <div className="job-card job-card-with-diagnostic" key={job.documentId}>
                   <div className="job-card-summary">
                     <strong>{getJobIntentLabel(job, accountMap)}</strong>
-                    <span className="job-stage-label">
-                      {getStageDisplay(live?.currentStage, job.currentStage, live?.status, job.status)}
-                    </span>
+                    {!isTerminalStatus(live?.status ?? job.status) && (
+                      <span className="job-stage-label">
+                        {getStageDisplay(live?.currentStage, job.currentStage, live?.status, job.status)}
+                      </span>
+                    )}
                     <span className={`job-status status-${jobStatusCssClass(live?.status ?? job.status)}`}>
                       {humanizeJobStatus(live?.status ?? job.status)}
                     </span>
@@ -372,11 +381,35 @@ function EnrichmentInner(props: {
         <p className="muted" style={{ marginBottom: 12 }}>
           Pick an account to research. Standard runs the full pipeline; deep research adds extra crawling.
         </p>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search accounts…"
+          value={accountSearch}
+          onChange={(e) => setAccountSearch(e.target.value)}
+          style={{ marginBottom: 12, width: '100%', maxWidth: 400 }}
+        />
         <div className="queue-account-list">
           {accounts.length === 0 ? (
             <p className="muted">No accounts found. Add accounts to your portfolio to start research.</p>
           ) : (
-            accounts.slice(0, 30).map((account) => {
+            accounts
+              .filter((account) => {
+                if (!accountSearch.trim()) return true;
+                const q = accountSearch.trim().toLowerCase();
+                const label = getAccountLabel(account).toLowerCase();
+                const domain = getAccountDomainLabel(account)?.toLowerCase() ?? '';
+                return label.includes(q) || domain.includes(q);
+              })
+              .sort((a, b) => {
+                // Idle accounts first, active accounts last
+                const aKey = getAccountKeyFromId(a.documentId) || a.documentId;
+                const bKey = getAccountKeyFromId(b.documentId) || b.documentId;
+                const aActive = activeAccountKeys.includes(aKey) ? 1 : 0;
+                const bActive = activeAccountKeys.includes(bKey) ? 1 : 0;
+                return aActive - bActive;
+              })
+              .slice(0, 30).map((account) => {
               const accountId = account.documentId;
               const accountKey = getAccountKeyFromId(accountId) || accountId;
               const isActive = activeAccountKeys.includes(accountKey);
