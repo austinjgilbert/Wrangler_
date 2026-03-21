@@ -1120,7 +1120,7 @@ function AccountDetails({
         <div className="graph-shell">
           <div className="graph-center">
             <h3>{title}</h3>
-            <p>{[account.domain || account.rootDomain, account.accountKey, account.industry].filter(Boolean).join(' · ')}</p>
+            <p>{[account.domain || account.rootDomain, account.industry].filter(Boolean).join(' · ')}</p>
           </div>
 
           <div className="graph-columns">
