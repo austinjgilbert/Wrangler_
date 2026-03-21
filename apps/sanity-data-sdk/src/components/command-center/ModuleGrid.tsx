@@ -7,9 +7,13 @@
  * Glance metrics derived from deriveAllModuleGlanceProps() — NO independent subscriptions.
  */
 
+import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { ModuleShell } from './ModuleShell';
 import { ResearchDetail } from './ResearchDetail';
+import { TechStackDetail } from './TechStackDetail';
+import { CompetitorsDetail } from './CompetitorsDetail';
+import { PeopleDetail } from './PeopleDetail';
 import type { ActionButton, ModuleGlanceProps } from '../../lib/adapters';
 import {
   MODULE_CONFIGS,
@@ -45,6 +49,38 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
     variant: 'primary',
   });
 
+  // ── Detail Content Resolver ─────────────────────────────────────────
+  // Returns the detail view component for a given module key.
+  // Each detail view fetches its own data via workerGet on mount.
+
+  const renderDetailContent = useCallback((moduleKey: string): React.ReactNode | undefined => {
+    const account = glanceContext.account;
+    if (!account) return undefined;
+
+    switch (moduleKey) {
+      case 'research':
+        return (
+          <ResearchDetail
+            accountKey={account.accountKey}
+            pipelineStages={glanceContext.pipelineStages}
+          />
+        );
+      case 'techstack':
+        return <TechStackDetail accountKey={account.accountKey} />;
+      case 'competitors':
+        return <CompetitorsDetail accountKey={account.accountKey} />;
+      case 'people':
+        return (
+          <PeopleDetail
+            accountKey={account.accountKey}
+            accountId={account._id}
+          />
+        );
+      default:
+        return undefined;
+    }
+  }, [glanceContext.account, glanceContext.pipelineStages]);
+
   // ── Expanded Layout ─────────────────────────────────────────────────
 
   if (expandedKey) {
@@ -72,14 +108,7 @@ export function ModuleGrid({ glanceContext, onModuleAction }: ModuleGridProps) {
             onExpand={() => {}}
             onCollapse={handleCollapse}
             onAction={onModuleAction}
-            detailContent={
-              expandedConfig.key === 'research' && glanceContext.account
-                ? <ResearchDetail
-                    accountKey={glanceContext.account.accountKey}
-                    pipelineStages={glanceContext.pipelineStages}
-                  />
-                : undefined
-            }
+            detailContent={renderDetailContent(expandedConfig.key)}
             actions={[
               makeAction(expandedConfig.key, expandedGlance.primaryActionLabel),
             ]}

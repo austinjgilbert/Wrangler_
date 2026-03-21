@@ -1,0 +1,302 @@
+/* CompetitorsDetail — matches ResearchDetail.css conventions */
+
+.competitors-detail__loading,
+.competitors-detail__empty {
+  padding: 24px;
+  text-align: center;
+  color: #808088;
+  font-size: 13px;
+}
+
+.competitors-detail__error {
+  padding: 16px;
+  margin: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.competitors-detail__results {
+  padding: 16px;
+}
+
+/* ── Summary Stats ─────────────────────────────────────────────────── */
+
+.competitors-detail__summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.competitors-detail__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.competitors-detail__stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.competitors-detail__stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  margin-top: 4px;
+}
+
+/* ── Section Titles ────────────────────────────────────────────────── */
+
+.competitors-detail__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 8px;
+}
+
+/* ── Industry Profile ──────────────────────────────────────────────── */
+
+.competitors-detail__industry {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.competitors-detail__industry-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.competitors-detail__industry-segment {
+  font-size: 12px;
+  color: #808088;
+  margin-left: 8px;
+}
+
+.competitors-detail__industry-summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #303038;
+  margin: 8px 0 0;
+}
+
+/* ── Market Position ───────────────────────────────────────────────── */
+
+.competitors-detail__market {
+  margin-bottom: 16px;
+}
+
+.competitors-detail__market-summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #303038;
+  margin: 0 0 8px;
+}
+
+.competitors-detail__differentiators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Competitor Cards ──────────────────────────────────────────────── */
+
+.competitors-detail__competitors {
+  margin-bottom: 16px;
+}
+
+.competitors-detail__card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.competitors-detail__card {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.competitors-detail__card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.competitors-detail__card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.competitors-detail__card-domain {
+  font-size: 12px;
+  color: #808088;
+}
+
+.competitors-detail__overlap {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.competitors-detail__card-section {
+  margin-top: 6px;
+}
+
+.competitors-detail__card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ── Tags ──────────────────────────────────────────────────────────── */
+
+.competitors-detail__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.competitors-detail__tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.competitors-detail__tag--strength {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.competitors-detail__tag--weakness {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.competitors-detail__tag--gap {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.competitors-detail__tag--advantage {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* ── Tech Comparison ───────────────────────────────────────────────── */
+
+.competitors-detail__tech-comparison {
+  margin-bottom: 16px;
+}
+
+.competitors-detail__tech-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.competitors-detail__tech-group {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.competitors-detail__tech-group-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ── Opportunities ─────────────────────────────────────────────────── */
+
+.competitors-detail__opportunities {
+  margin-bottom: 16px;
+}
+
+.competitors-detail__opp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.competitors-detail__opp {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+.competitors-detail__opp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.competitors-detail__opp-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.competitors-detail__opp-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #303038;
+  margin: 0;
+}
+
+/* ── Priority Badges ───────────────────────────────────────────────── */
+
+.competitors-detail__priority {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.competitors-detail__priority--high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.competitors-detail__priority--medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.competitors-detail__priority--low {
+  background: #f3f4f6;
+  color: #6b7280;
+}
