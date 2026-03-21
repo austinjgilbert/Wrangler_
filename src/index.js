@@ -6908,7 +6908,7 @@ const workerHandler = {
       const rateLimiter = new RateLimiter(env);
       const limitCheck = await rateLimitMiddleware(request, url.pathname, rateLimiter, requestId);
       if (limitCheck) return limitCheck;
-      response = await routeRequest(request, url, requestId, env, rateLimiter, null);
+      response = await routeRequest(request, url, requestId, env, rateLimiter, null, ctx);
     } catch (error) {
       response = createErrorResponse(
         'INTERNAL_ERROR',
@@ -7110,7 +7110,7 @@ const workerHandler = {
               ]),
               body: r.body,
             });
-            return routeRequest(internalReq, new URL(internalReq.url), id, e);
+            return routeRequest(internalReq, new URL(internalReq.url), id, e, null, null, ctx);
           };
           const handlers = {
             handleScan: route,
@@ -7341,7 +7341,7 @@ function isKnownPath(pathname) {
   return KNOWN_PATH_PREFIXES.some(p => pathname === p || (p.endsWith('/') && pathname.startsWith(p)) || (!p.endsWith('/') && pathname.startsWith(p + '/')));
 }
 
-async function routeRequest(request, url, requestId, env, rateLimiter = null, metrics = null) {
+async function routeRequest(request, url, requestId, env, rateLimiter = null, metrics = null, ctx = null) {
   try {
     if (!isKnownPath(url.pathname)) {
       return createErrorResponse('NOT_FOUND', 'Endpoint not found', { path: url.pathname }, 404, requestId);
