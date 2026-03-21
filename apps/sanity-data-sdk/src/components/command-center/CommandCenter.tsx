@@ -545,6 +545,9 @@ function MorningBriefingLanding({
               const fullAccount = cached?.data.find(
                 (a: Account) => a.accountKey === item.accountKey,
               );
+              if (!fullAccount) {
+                console.warn('[CC] Briefing account cache miss:', item.accountKey);
+              }
               onSelectAccount(
                 fullAccount ?? {
                   _id: `account.${item.accountKey}`,
