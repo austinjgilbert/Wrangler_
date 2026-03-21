@@ -16,7 +16,7 @@
  * Auth: Requires MOLT_API_KEY (same as /wrangler/ingest)
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, sanitizeErrorMessage } from '../utils/response.js';
 import { buildEventDoc } from '../lib/events.ts';
 import { createMoltEvent } from '../lib/sanity.ts';
 import { buildDeterministicSnapshotId, buildExtensionCaptureBucketId } from '../../shared/accountStoragePolicy.ts';
@@ -514,7 +514,7 @@ export async function handleExtensionCapture(request: Request, requestId: string
       requestId,
     );
   } catch (error: any) {
-    return createErrorResponse('EXTENSION_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('EXTENSION_ERROR', sanitizeErrorMessage(error, 'extension/capture'), {}, 500, requestId);
   }
 }
 
@@ -535,7 +535,7 @@ export async function handleExtensionPageIntel(request: Request, requestId: stri
     const { groqQuery: _groqQuery, ...responseData } = intel;
     return createSuccessResponse(responseData, requestId);
   } catch (error: any) {
-    return createErrorResponse('EXTENSION_INTEL_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('EXTENSION_INTEL_ERROR', sanitizeErrorMessage(error, 'extension/page-intel'), {}, 500, requestId);
   }
 }
 
@@ -636,7 +636,7 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
       contextSummary,
     }, requestId);
   } catch (error: any) {
-    return createErrorResponse('EXTENSION_ASK_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('EXTENSION_ASK_ERROR', sanitizeErrorMessage(error, 'extension/ask'), {}, 500, requestId);
   }
 }
 
@@ -795,7 +795,127 @@ export async function handleExtensionLearn(request: Request, requestId: string, 
       consensusModel: mergedSession.consensusModel || {},
     }, requestId);
   } catch (error: any) {
-    return createErrorResponse('EXTENSION_LEARN_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('EXTENSION_LEARN_ERROR', sanitizeErrorMessage(error, 'extension/learn'), {}, 500, requestId);
+  }
+}
+
+// ─── Extension Feedback (Phase C: Human-in-the-Loop) ─────────────────────
+
+/**
+ * POST /extension/feedback
+ *
+ * Receives user feedback on AI responses shown in the extension overlay.
+ * Stores as a molt.event (Index+Blob) via emitActivityEvent() and optionally
+ * patches the original interaction document with the feedback signal.
+ *
+ * Body: { promptId: string, feedback: string, rating?: 'positive'|'negative', context?: object }
+ *
+ * Auth: MOLT_API_KEY (global middleware)
+ */
+
+const VALID_RATINGS = ['positive', 'negative'] as const;
+type FeedbackRating = typeof VALID_RATINGS[number];
+
+export async function handleExtensionFeedback(request: Request, requestId: string, env: any) {
+  try {
+    // ── Size gate ────────────────────────────────────────────────────
+    const { isBodyWithinSizeLimit, stripHtmlTags } = await import('../utils/extension-sanitize.js');
+    if (!isBodyWithinSizeLimit(request)) {
+      return createErrorResponse('PAYLOAD_TOO_LARGE', 'Request body exceeds 50KB limit', {}, 413, requestId);
+    }
+
+    const body: Record<string, unknown> = await request.json().catch(() => ({}));
+
+    // ── Validate required fields ────────────────────────────────────
+    const promptId = typeof body.promptId === 'string' ? body.promptId.trim() : '';
+    const feedback = typeof body.feedback === 'string' ? stripHtmlTags(body.feedback).trim() : '';
+
+    if (!promptId) {
+      return createErrorResponse('VALIDATION_ERROR', 'promptId is required', {}, 400, requestId);
+    }
+    if (!feedback) {
+      return createErrorResponse('VALIDATION_ERROR', 'feedback is required', {}, 400, requestId);
+    }
+
+    // ── Validate optional fields ────────────────────────────────────
+    const ratingRaw = typeof body.rating === 'string' ? body.rating.trim().toLowerCase() : null;
+    const rating: FeedbackRating | null = ratingRaw && (VALID_RATINGS as readonly string[]).includes(ratingRaw)
+      ? ratingRaw as FeedbackRating
+      : null;
+
+    const context = (body.context && typeof body.context === 'object' && !Array.isArray(body.context))
+      ? body.context as Record<string, unknown>
+      : null;
+
+    // Extract accountKey from context if provided (for activity event indexing)
+    const accountKey = typeof context?.accountKey === 'string' ? context.accountKey : null;
+    const domain = typeof context?.domain === 'string' ? context.domain : null;
+
+    // ── Truncate feedback to prevent abuse ───────────────────────────
+    const safeFeedback = feedback.slice(0, 2000);
+
+    // ── Store as activity event (Index+Blob) ────────────────────────
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    const eventId = await emitActivityEvent(env, {
+      eventType: 'prompt',
+      status: 'completed',
+      source: 'extension',
+      accountKey,
+      category: 'interaction',
+      message: `Feedback on prompt: ${rating || 'comment'}`,
+      data: {
+        promptId,
+        feedback: safeFeedback,
+        rating,
+        domain,
+        ...(context ? { context } : {}),
+      },
+      idempotencyKey: `ext.feedback.${promptId}.${requestId}`,
+    });
+
+    // ── Patch original interaction if promptId maps to one ──────────
+    // Fire-and-forget: don't block the response on patch success.
+    const { initSanityClient, patchDocument, getDocument } = await import('../sanity-client.js');
+    const client = initSanityClient(env);
+    if (client) {
+      // promptId may be a requestId from /extension/ask — interactions are stored
+      // with _id pattern `interaction.{sessionId}-{timestamp}`. Try direct lookup
+      // if promptId looks like an interaction ID, otherwise skip.
+      const interactionLookup = promptId.startsWith('interaction.')
+        ? promptId
+        : null;
+
+      if (interactionLookup) {
+        getDocument(client, interactionLookup).then(async (doc: any) => {
+          if (doc?._id) {
+            await patchDocument(client, doc._id, {
+              set: {
+                feedback: rating || (safeFeedback ? 'comment' : null),
+                feedbackText: safeFeedback || undefined,
+                updatedAt: new Date().toISOString(),
+              },
+            });
+          }
+        }).catch((err: any) => {
+          console.error('[extension/feedback] Interaction patch failed (non-blocking):', err?.message);
+        });
+      }
+    }
+
+    return createSuccessResponse({
+      stored: true,
+      eventId,
+      promptId,
+      rating,
+    }, requestId);
+  } catch (error: any) {
+    return createErrorResponse(
+      'EXTENSION_FEEDBACK_ERROR',
+      sanitizeErrorMessage(error, 'extension/feedback'),
+      {},
+      500,
+      requestId,
+    );
   }
 }
 
