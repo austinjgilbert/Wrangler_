@@ -559,7 +559,7 @@
         description: getMeta('description'), keywords: getMeta('keywords'),
         canonical: (document.querySelector('link[rel="canonical"]') || {}).href || '',
       },
-      rawText: (document.body?.innerText || '').substring(0, 15000),
+      rawText: (document.body?.innerText || '').substring(0, 10240), // F2: Match Worker's FIELD_LIMITS.rawText (was 15000)
     };
   }
 
@@ -1644,6 +1644,7 @@
         const input = document.createElement('input');
         input.className = 'wrangler-ask-input';
         input.type = 'text';
+        input.maxLength = 500; // F1: Match Worker's sanitizeExtensionPayload() prompt limit
         const askTarget = account?.companyName || account?.name || account?.domain || 'this page';
         input.placeholder = `What should I know about ${askTarget}?`;
         input.setAttribute('autocomplete', 'off');
