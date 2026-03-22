@@ -1864,7 +1864,7 @@ async function crawlWithConcurrency(urls, concurrency, fn, timeoutMs = 10000) {
         ]);
         results.push({ url, success: true, data: result });
       } catch (error) {
-        errors.push({ url, success: false, reason: error.message });
+        errors.push({ url, success: false, reason: 'Crawl failed' });
       }
     }
   }
@@ -2691,7 +2691,8 @@ async function handleVerify(request, requestId, env) {
           signals: evidencePack.signals || [],
         });
       } catch (error) {
-        sourceData.push({ url: sourceUrl, error: error.message, excerpts: [], signals: [] });
+        console.error('[VERIFY] Source fetch failed:', sourceUrl, error.message);
+        sourceData.push({ url: sourceUrl, excerpts: [], signals: [] });
       }
     }
     
@@ -3598,7 +3599,7 @@ async function handleLinkedInProfile(request, requestId, env) {
       return createErrorResponse(
         'VALIDATION_ERROR',
         'Invalid URL format',
-        { error: e.message, input: profileUrl },
+        { hint: 'Check URL format and try again' },
         400,
         requestId
       );
@@ -5352,7 +5353,7 @@ async function createSanityDocument(client, docType, data, id = null) {
     const result = await response.json();
     return { success: true, id: docId, result };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: 'Operation failed' };
   }
 }
 
@@ -5394,7 +5395,7 @@ async function updateSanityDocument(client, docId, data) {
     const result = await response.json();
     return { success: true, result };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: 'Operation failed' };
   }
 }
 
@@ -5422,7 +5423,7 @@ async function querySanityDocuments(client, query, params = {}) {
     const result = await response.json();
     return { success: true, documents: result.result || [] };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: 'Operation failed' };
   }
 }
 
@@ -5470,7 +5471,7 @@ async function deleteSanityDocument(client, docId) {
     const result = await response.json();
     return { success: true, result };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: 'Operation failed' };
   }
 }
 

@@ -3,7 +3,7 @@
  * Handles the daily prioritization and planning endpoint
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import { generateGoodMorningRouting } from '../services/sdr-good-morning-service.js';
 import { writeDailyLog, appendEODReminder } from '../services/sdr-logging-service.js';
 import { storeUserPattern } from '../services/user-pattern-metadata.js';
@@ -20,7 +20,9 @@ export async function handleGoodMorningRouting(
 ) {
   const startTime = Date.now();
   try {
-    const body = await request.json().catch(() => ({}));
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
+
     const {
       daysBack = 30,
       minCallScore = 6,
@@ -103,11 +105,11 @@ export async function handleGoodMorningRouting(
     return createSuccessResponse(plan, requestId);
 
   } catch (error) {
-    console.error('Error in handleGoodMorningRouting:', error);
+    console.error('[SDR_GOOD_MORNING] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to generate good morning routing',
-      { error: error.message, stack: error.stack },
+      {},
       500,
       requestId
     );

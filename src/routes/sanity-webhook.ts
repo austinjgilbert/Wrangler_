@@ -223,7 +223,7 @@ export async function handleSanityWebhook(request: Request, requestId: string, e
     if (!secret) {
       return createErrorResponse(
         'CONFIG_ERROR',
-        'SANITY_WEBHOOK_SECRET not configured — webhook endpoint disabled for security',
+        'Webhook secret not configured — endpoint disabled for security',
         {},
         503,
         requestId,
