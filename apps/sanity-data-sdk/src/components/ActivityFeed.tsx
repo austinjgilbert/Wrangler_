@@ -28,6 +28,7 @@ import {
   eventStatusCssClass,
 } from '../lib/formatters';
 import { useNavigation } from '../lib/navigation';
+import { isView } from '../lib/view-state';
 import './ActivityFeed.css';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ function ActivityFeedInner() {
   // ── Handlers ──────────────────────────────────────────────────
   const handleNavigate = useCallback(
     (view: string) => {
-      navigateToView(view as any);
+      if (isView(view)) navigateToView(view);
     },
     [navigateToView]
   );

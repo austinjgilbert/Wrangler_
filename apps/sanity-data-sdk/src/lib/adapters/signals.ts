@@ -50,7 +50,7 @@ export async function fetchRecentSignals(): Promise<WorkerSignal[]> {
   try {
     const res = await workerGet<SnapshotResponse>('/operator/console/snapshot');
     // Double-nested: workerGet wraps in { data: T }, Worker wraps in { data: { signals: ... } }
-    const recent = (res.data as any)?.data?.signals?.recent;
+    const recent = res.data?.data?.signals?.recent;
     if (!Array.isArray(recent)) return [];
     return recent;
   } catch {
