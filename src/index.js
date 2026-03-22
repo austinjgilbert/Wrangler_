@@ -7086,8 +7086,13 @@ const workerHandler = {
       return;
     }
 
+    const { createCircuitBreaker } = await import('./utils/circuit-breaker.js');
+    const breaker = createCircuitBreaker(3);
+
+    // runRoute executes a cron sub-task through the circuit breaker.
+    // If 3 consecutive tasks fail, remaining tasks are skipped.
     const runRoute = async (path, body = {}) => {
-      try {
+      return breaker.execute(async () => {
         const req = new Request(`http://internal${path}`, {
           method: 'POST',
           headers: {
@@ -7158,14 +7163,15 @@ const workerHandler = {
           const { handleOpportunitiesDaily } = await import('./routes/opportunities.ts');
           return await handleOpportunitiesDaily(req, requestId, env);
         }
-        return null;
-      } catch (error) {
-        console.error('[scheduled]', path, error?.message || error);
-        return null;
-      }
+        throw new Error(`Unknown cron route: ${path}`);
+      }, path);
     };
 
     // Assumption: free-tier scheduling uses coarse UTC cron windows.
+    // NOTE: ctx.waitUntil runs tasks concurrently — the circuit breaker
+    // tracks failures across the cron run but can't prevent already-started
+    // tasks. For sequential crons (6h window), the breaker is most effective
+    // on the inline tasks (stale-account sweep, auto-learning).
     if (cron === '*/15 * * * *') {
       ctx.waitUntil(runRoute('/molt/jobs/run', {}));
       ctx.waitUntil(runRoute('/enrich/process', {}));
@@ -7174,56 +7180,44 @@ const workerHandler = {
       ctx.waitUntil(runRoute('/enrich/run', {}));
       ctx.waitUntil(runRoute('/moltbook/crawl', {}));
       // Sweep for incomplete account profiles and trigger gap-fill
-      ctx.waitUntil((async () => {
-        try {
-          const { initSanityClient, groqQuery } = await import('./sanity-client.js');
-          const client = initSanityClient(env);
-          if (!client) return;
-          // Find accounts with low completeness or missing profileCompleteness
-          const staleAccounts = await groqQuery(client,
-            `*[_type == "account" && (!defined(profileCompleteness) || profileCompleteness.score < 70)] | order(opportunityScore desc)[0...20]{accountKey, canonicalUrl, domain}`,
-            {});
-          if (Array.isArray(staleAccounts) && staleAccounts.length) {
-            const { triggerGapFill } = await import('./services/gap-fill-orchestrator.js');
-            for (const acct of staleAccounts.slice(0, 10)) {
-              await triggerGapFill({
-                env,
-                accountKey: acct.accountKey,
-                canonicalUrl: acct.canonicalUrl,
-                domain: acct.domain,
-                trigger: 'cron_sweep',
-              }).catch(() => {});
-            }
+      ctx.waitUntil(breaker.execute(async () => {
+        const { initSanityClient, groqQuery } = await import('./sanity-client.js');
+        const client = initSanityClient(env);
+        if (!client) return;
+        // Find accounts with low completeness or missing profileCompleteness
+        const staleAccounts = await groqQuery(client,
+          `*[_type == "account" && (!defined(profileCompleteness) || profileCompleteness.score < 70)] | order(opportunityScore desc)[0...20]{accountKey, canonicalUrl, domain}`,
+          {});
+        if (Array.isArray(staleAccounts) && staleAccounts.length) {
+          const { triggerGapFill } = await import('./services/gap-fill-orchestrator.js');
+          for (const acct of staleAccounts.slice(0, 10)) {
+            await triggerGapFill({
+              env,
+              accountKey: acct.accountKey,
+              canonicalUrl: acct.canonicalUrl,
+              domain: acct.domain,
+              trigger: 'cron_sweep',
+            }).catch(() => {});
           }
-        } catch (err) {
-          console.error('[scheduled] stale-account sweep error:', err?.message);
         }
-      })());
+      }, 'stale-account-sweep'));
       // Auto-derive learnings from recent interactions
-      ctx.waitUntil((async () => {
-        try {
-          const { deriveAutomaticLearnings } = await import('./services/auto-learning.js');
-          const result = await deriveAutomaticLearnings(env);
-          if (result.derived > 0) {
-            console.log(`[scheduled] auto-learning: derived ${result.derived} learnings from ${result.interactionsReviewed} interactions`);
-          }
-        } catch (err) {
-          console.error('[scheduled] auto-learning error:', err?.message);
+      ctx.waitUntil(breaker.execute(async () => {
+        const { deriveAutomaticLearnings } = await import('./services/auto-learning.js');
+        const result = await deriveAutomaticLearnings(env);
+        if (result.derived > 0) {
+          console.log(`[scheduled] auto-learning: derived ${result.derived} learnings from ${result.interactionsReviewed} interactions`);
         }
-      })());
+      }, 'auto-learning'));
       ctx.waitUntil(runRoute('/system/self-heal', {}));
       // Attribute health monitoring — detect attribute sprawl before it becomes a crisis
-      ctx.waitUntil((async () => {
-        try {
-          const { checkAttributeHealth } = await import('./services/attribute-monitor.js');
-          const health = await checkAttributeHealth(env);
-          if (health && !health.error && (health.level === 'critical' || health.level === 'wall')) {
-            console.error(`[scheduled] ATTRIBUTE ALERT: ${health.used}/${health.limit} (${health.level})`);
-          }
-        } catch (err) {
-          console.error('[scheduled] attribute health check error:', err?.message);
+      ctx.waitUntil(breaker.execute(async () => {
+        const { checkAttributeHealth } = await import('./services/attribute-monitor.js');
+        const health = await checkAttributeHealth(env);
+        if (health && !health.error && (health.level === 'critical' || health.level === 'wall')) {
+          console.error(`[scheduled] ATTRIBUTE ALERT: ${health.used}/${health.limit} (${health.level})`);
         }
-      })());
+      }, 'attribute-health'));
     } else if (cron === '15 13 * * *') {
       // Consolidated daily intelligence pipeline (was 3 separate crons: 13:15, 13:30, 13:45)
       // Merged to stay within free-tier 3-cron limit. All tasks run concurrently via ctx.waitUntil.
