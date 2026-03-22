@@ -77,6 +77,7 @@ export function ModuleGrid({ glanceContext, onModuleAction, highlightedModule }:
         return (
           <SignalsDetail
             accountKey={account.accountKey}
+            accountId={account._id}
             accountName={account.companyName}
             signals={glanceContext.signals}
           />

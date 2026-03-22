@@ -24,7 +24,8 @@ import { workerGet } from './fetch-worker';
 export interface WorkerSignal {
   id: string;
   signalType: string;
-  accountName: string;
+  accountId: string | null;   // Sanity _ref (e.g., "account.abc123") — matches Account._id
+  accountName: string;        // Display only — do NOT use for matching (brittle)
   timestamp: string;
   source?: string;
   summary?: string;
@@ -60,8 +61,7 @@ export async function fetchRecentSignals(): Promise<WorkerSignal[]> {
 
 // ── Display Helpers ─────────────────────────────────────────────────
 
-/** Count signals for a specific account (case-insensitive name match) */
-export function countSignalsForAccount(signals: WorkerSignal[], accountName: string): number {
-  const normalized = accountName.toLowerCase().trim();
-  return signals.filter((s) => s.accountName?.toLowerCase().trim() === normalized).length;
+/** Count signals for a specific account by Sanity _id (exact match). */
+export function countSignalsForAccount(signals: WorkerSignal[], accountId: string): number {
+  return signals.filter((s) => s.accountId === accountId).length;
 }

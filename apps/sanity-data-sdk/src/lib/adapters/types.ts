@@ -179,7 +179,8 @@ export interface ModuleGlanceProps {
 export interface Signal {
   id: string;
   signalType: string;           // 'technology_change', 'leadership_change', 'funding', etc.
-  accountName: string;
+  accountId: string | null;     // Sanity _ref (e.g., "account.abc123") — matches Account._id
+  accountName: string;          // Display only — do NOT use for matching (brittle)
   timestamp: string;            // ISO datetime
   source?: string;
   summary?: string;             // Human-readable signal description (Phase 2)
