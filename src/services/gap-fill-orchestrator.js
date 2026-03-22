@@ -266,6 +266,39 @@ export async function onEnrichmentComplete(groqQuery, upsertDocument, patchDocum
 
     await patchDocument(client, updatedAccount._id, patch);
 
+    // ── Emit enrichment signal so Signal Timeline has real data ────────
+    try {
+      const { normalizeSignal } = await import('../lib/signalIngestion.ts');
+      const signal = normalizeSignal({
+        source: 'website_scan',
+        signalType: 'website_scan',
+        account: { _type: 'reference', _ref: updatedAccount._id },
+        strength: 0.65,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          summary: `Enrichment completed for ${updatedAccount.companyName || updatedAccount.domain || accountKey}`,
+          sourceUrl: updatedAccount.canonicalUrl || null,
+          trigger: 'enrichment_complete',
+        },
+      });
+      // Build doc with legacy compat fields (mirrors storeSignal internals)
+      const signalDoc = {
+        ...signal,
+        type: signal.signalType,
+        companyRef: signal.account ? { _type: 'reference', _ref: signal.account._ref } : null,
+        personRefs: [],
+        sourceUrl: signal.metadata?.sourceUrl || null,
+        date: signal.timestamp,
+        summary: `${signal.signalType} from ${signal.source} | Enrichment completed | strength ${signal.strength.toFixed(2)}`,
+        keywords: [],
+        citations: [],
+      };
+      await upsertDocument(client, signalDoc);
+    } catch (signalErr) {
+      // Signal creation is supplementary — never break enrichment
+      console.warn('[SIGNAL] Enrichment signal creation failed:', String(signalErr?.message || signalErr));
+    }
+
     // ── Trigger competitor research if not done ────────────────────────
 
     if (!completeness.dimensionFlags.competitors) {
