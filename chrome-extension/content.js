@@ -632,6 +632,7 @@
   let captureEnabled = true;
   let overlayEnabled = true;
   let lastSeenInterruptKey = null; // D3: Track which intel the user has seen
+  let lastCapturedProfile = null; // E2: Last captured LinkedIn profile for reconstruction card
 
   function escapeHtml(value) {
     return String(value || '')
@@ -1427,6 +1428,9 @@
     const signals = intel?.signals || [];
     const opportunities = intel?.opportunities || [];
 
+    // E1: LinkedIn-aware overlay — detect profile pages for specialized capture
+    const isLinkedInProfile = detectSource() === 'linkedin' && location.pathname.startsWith('/in/');
+
     const state = overlayEnabled ? overlayState : 'hidden';
 
     shadow.innerHTML = '';
@@ -1532,11 +1536,15 @@
     if (account) {
       compactActions.innerHTML = `
         <button class="wrangler-btn wrangler-btn--primary" data-action="view">\uD83D\uDCCA View in Wrangler</button>
-        <button class="wrangler-btn" data-action="capture">\uD83D\uDCE5 Capture</button>
+        ${isLinkedInProfile
+          ? '<button class="wrangler-btn" data-action="captureProfile">\uD83D\uDC64 Capture Profile</button>'
+          : '<button class="wrangler-btn" data-action="capture">\uD83D\uDCE5 Capture</button>'}
       `;
     } else if (intel && !intel.error) {
       compactActions.innerHTML = `
-        <button class="wrangler-btn wrangler-btn--primary" data-action="capture" style="flex:1">\uD83D\uDCE5 Capture to Wrangler</button>
+        ${isLinkedInProfile
+          ? '<button class="wrangler-btn wrangler-btn--primary" data-action="captureProfile" style="flex:1">\uD83D\uDC64 Capture Profile</button>'
+          : '<button class="wrangler-btn wrangler-btn--primary" data-action="capture" style="flex:1">\uD83D\uDCE5 Capture to Wrangler</button>'}
       `;
     } else if (intel?.error) {
       compactActions.innerHTML = `
@@ -1670,7 +1678,9 @@
         el.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
         el.innerHTML = `
           <button class="wrangler-btn wrangler-btn--primary" data-action="view">\uD83D\uDCCA View in Command Center</button>
-          <button class="wrangler-btn" data-action="capture">\uD83D\uDCE5 Capture This Page</button>
+          ${isLinkedInProfile
+            ? '<button class="wrangler-btn" data-action="captureProfile">\uD83D\uDC64 Capture Profile</button>'
+            : '<button class="wrangler-btn" data-action="capture">\uD83D\uDCE5 Capture This Page</button>'}
         `;
         el.addEventListener('click', handleActionClick);
         return el;
@@ -2064,6 +2074,52 @@
           btn.style.color = '#86efac';
           setTimeout(() => renderOverlay(), 2000);
         }
+        break;
+      }
+      case 'captureProfile': {
+        // E2: LinkedIn-specific capture — uses rich DOM extraction + dedicated endpoint
+        const extracted = extractLinkedIn();
+        const person = extracted?.people?.[0];
+        if (!person?.name) {
+          btn.textContent = '⚠ No profile data found';
+          btn.style.color = '#fbbf24';
+          setTimeout(() => renderOverlay(), 2000);
+          break;
+        }
+        const profileUrl = location.href.split('?')[0].split('#')[0];
+        chrome.runtime.sendMessage({
+          type: 'wrangler:linkedinCapture',
+          profileUrl,
+          profile: {
+            name: person.name,
+            headline: person.headline || undefined,
+            location: person.location || undefined,
+            about: person.about || undefined,
+            experience: person.experience?.length ? person.experience : undefined,
+            education: person.education?.length ? person.education : undefined,
+            skills: person.skills?.length ? person.skills : undefined,
+            certifications: person.certifications?.length ? person.certifications : undefined,
+            publications: person.publications?.length ? person.publications : undefined,
+            languages: person.languages?.length ? person.languages : undefined,
+            volunteer: person.volunteer?.length ? person.volunteer : undefined,
+            profileImage: person.profileImage || undefined,
+            connections: person.connections || undefined,
+            followers: person.followers || undefined,
+            openToWork: person.openToWork || undefined,
+          },
+        }, (res) => {
+          if (res?.ok) {
+            // Store captured profile for E3 reconstruction card
+            lastCapturedProfile = { name: person.name, headline: person.headline, ...person, profileUrl, capturedAt: new Date().toISOString() };
+            btn.textContent = '✓ Profile Captured';
+            btn.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+            btn.style.color = '#86efac';
+          } else {
+            btn.textContent = '✗ Capture failed';
+            btn.style.color = '#f87171';
+          }
+          setTimeout(() => renderOverlay(), 2000);
+        });
         break;
       }
       case 'settings': {
