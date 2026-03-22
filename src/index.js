@@ -7338,7 +7338,7 @@ const MOLT_WRANGLER_PATHS = ['/molt/run', '/molt/approve', '/molt/log', '/molt/j
 const KNOWN_PATH_PREFIXES = [
   '/health', '/schema', '/openapi.yaml', '/sanity/status', '/sanity/verify-write', '/molt', '/wrangler', '/extension', '/search', '/discover', '/crawl', '/extract',
   '/track', '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
-  '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/dq/', '/enrich/', '/calls/', '/gmail/',
+  '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/drafting/', '/dq/', '/enrich/', '/calls/', '/gmail/',
   '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/technologies/', '/webhooks', '/orchestrate', '/person/',
   '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
   '/operator/console',
@@ -8108,6 +8108,26 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           return await handleNightlyIntelligence(request, requestId, env);
         } else {
           return createErrorResponse('NOT_FOUND', 'Analytics endpoint not found', { path: url.pathname }, 404, requestId);
+        }
+      } else if (url.pathname === '/opportunities/score') {
+        // Opportunity scoring — expose opportunityEngine via public API
+        // Uses groqQueryCached (historical/analytical data, CDN-safe)
+        { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+        const { handleOpportunityScore } = await import('./handlers/opportunity-scoring.js');
+        return await handleOpportunityScore(request, requestId, env, groqQueryCached, assertSanityConfigured);
+      } else if (url.pathname.startsWith('/drafting/')) {
+        // Drafting endpoints — expose draftingEngine via public API
+        // Uses fresh groqQuery (data may have just been created)
+        if (url.pathname === '/drafting/generate') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { handleGenerateDraft } = await import('./handlers/drafting.js');
+          return await handleGenerateDraft(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else if (url.pathname === '/drafting/regenerate') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { handleRegenerateDraft } = await import('./handlers/drafting.js');
+          return await handleRegenerateDraft(request, requestId, env, groqQuery, assertSanityConfigured);
+        } else {
+          return createErrorResponse('NOT_FOUND', 'Drafting endpoint not found', { path: url.pathname }, 404, requestId);
         }
       } else if (url.pathname === '/webhooks' || url.pathname.startsWith('/webhooks/')) {
         if (url.pathname === '/webhooks/register') {
