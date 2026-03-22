@@ -1,4 +1,4 @@
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import {
   fetchAccounts,
   fetchActionCandidateById,
@@ -661,7 +661,7 @@ export async function handleOperatorConsoleSnapshot(request: Request, requestId:
     if (isSanityQuotaError(error)) {
       return createSuccessResponse(buildQuotaLimitedSnapshot(error), requestId);
     }
-    return createErrorResponse('OPERATOR_CONSOLE_SNAPSHOT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_CONSOLE_SNAPSHOT_ERROR', sanitizeErrorMessage(error, 'console/snapshot'), {}, 500, requestId);
   }
 }
 
@@ -759,13 +759,14 @@ export async function handleOperatorConsoleAccount(request: Request, requestId: 
     if (isSanityQuotaError(error)) {
       return createSuccessResponse(buildQuotaLimitedAccountState(accountId, error), requestId);
     }
-    return createErrorResponse('OPERATOR_CONSOLE_ACCOUNT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_CONSOLE_ACCOUNT_ERROR', sanitizeErrorMessage(error, 'console/account'), {}, 500, requestId);
   }
 }
 
 export async function handleOperatorConsoleCommand(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const raw = String(body.command || '').trim();
     if (!raw) {
       return createErrorResponse('VALIDATION_ERROR', 'command is required', {}, 400, requestId);
@@ -881,13 +882,14 @@ export async function handleOperatorConsoleCommand(request: Request, requestId: 
       },
     }, requestId);
   } catch (error: any) {
-    return createErrorResponse('OPERATOR_CONSOLE_COMMAND_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_CONSOLE_COMMAND_ERROR', sanitizeErrorMessage(error, 'console/command'), {}, 500, requestId);
   }
 }
 
 export async function handleOperatorConsoleSimulate(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const fixtureId = typeof body.fixtureId === 'string' ? body.fixtureId : '';
     if (fixtureId) {
       const fixture = scenarioFixtures.find((item) => item.id === fixtureId);
@@ -1006,7 +1008,8 @@ export async function handleOperatorConsoleSimulate(request: Request, requestId:
 
 export async function handleOperatorConsoleDiagnostics(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const diagnosticId = String(body.diagnosticId || '').trim();
     const supported = new Set([
       'test_signal_pipeline',

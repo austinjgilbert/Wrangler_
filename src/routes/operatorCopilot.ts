@@ -1,4 +1,4 @@
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { generateInsights } from '../lib/insightEngine.ts';
 import { executeOperatorQuery, explainActionCandidate, explainPatternById, safeAssistAction } from '../lib/operatorQueryEngine.ts';
 import { buildSuggestionPreview, generateOperatorSuggestions } from '../lib/operatorSuggestionService.ts';
@@ -78,13 +78,14 @@ export async function handleOperatorCopilotState(request: Request, requestId: st
       }),
     }, requestId);
   } catch (error: any) {
-    return createErrorResponse('OPERATOR_COPILOT_STATE_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_COPILOT_STATE_ERROR', sanitizeErrorMessage(error, 'copilot/state'), {}, 500, requestId);
   }
 }
 
 export async function handleOperatorCopilotQuery(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const prompt = String(body.prompt || '').trim();
     if (!prompt) {
       return createErrorResponse('VALIDATION_ERROR', 'prompt is required', {}, 400, requestId);
@@ -96,13 +97,14 @@ export async function handleOperatorCopilotQuery(request: Request, requestId: st
     });
     return createSuccessResponse(result, requestId);
   } catch (error: any) {
-    return createErrorResponse('OPERATOR_COPILOT_QUERY_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_COPILOT_QUERY_ERROR', sanitizeErrorMessage(error, 'copilot/query'), {}, 500, requestId);
   }
 }
 
 export async function handleOperatorCopilotExplain(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const explainType = String(body.explainType || '').trim();
     if (!explainType) {
       return createErrorResponse('VALIDATION_ERROR', 'explainType is required', {}, 400, requestId);
@@ -134,13 +136,14 @@ export async function handleOperatorCopilotExplain(request: Request, requestId: 
 
     return createErrorResponse('VALIDATION_ERROR', `Unsupported explainType: ${explainType}`, {}, 400, requestId);
   } catch (error: any) {
-    return createErrorResponse('OPERATOR_COPILOT_EXPLAIN_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_COPILOT_EXPLAIN_ERROR', sanitizeErrorMessage(error, 'copilot/explain'), {}, 500, requestId);
   }
 }
 
 export async function handleOperatorCopilotAction(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const command = String(body.command || '').trim();
     if (!command) {
       return createErrorResponse('VALIDATION_ERROR', 'command is required', {}, 400, requestId);
@@ -149,7 +152,7 @@ export async function handleOperatorCopilotAction(request: Request, requestId: s
     const result = await safeAssistAction(env, command, confirmed);
     return createSuccessResponse(result, requestId);
   } catch (error: any) {
-    return createErrorResponse('OPERATOR_COPILOT_ACTION_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPERATOR_COPILOT_ACTION_ERROR', sanitizeErrorMessage(error, 'copilot/action'), {}, 500, requestId);
   }
 }
 
