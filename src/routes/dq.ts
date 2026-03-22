@@ -92,7 +92,8 @@ export async function handleDqScan(request: Request, requestId: string, env: any
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('DQ_SCAN_ERROR', error.message, {}, 500, requestId);
+    console.error('[DQ_SCAN] Error:', error.message);
+    return createErrorResponse('DQ_SCAN_ERROR', 'Failed to run DQ scan', {}, 500, requestId);
   }
 }
 
@@ -130,7 +131,8 @@ export async function handleEnrichQueue(request: Request, requestId: string, env
 
     return createSuccessResponse({ queued: jobs.length, jobIds: jobs }, requestId);
   } catch (error: any) {
-    return createErrorResponse('ENRICH_QUEUE_ERROR', error.message, {}, 500, requestId);
+    console.error('[ENRICH_QUEUE_DQ] Error:', error.message);
+    return createErrorResponse('ENRICH_QUEUE_ERROR', 'Failed to queue enrichment', {}, 500, requestId);
   }
 }
 
@@ -314,7 +316,8 @@ export async function handleEnrichRun(request: Request, requestId: string, env: 
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('ENRICH_RUN_ERROR', error.message, {}, 500, requestId);
+    console.error('[ENRICH_RUN] Error:', error.message);
+    return createErrorResponse('ENRICH_RUN_ERROR', 'Failed to run enrichment', {}, 500, requestId);
   }
 }
 
@@ -362,6 +365,7 @@ export async function handleEnrichApply(request: Request, requestId: string, env
     await createMoltEvent(env, eventDoc);
     return createSuccessResponse({ applied: true, proposalId }, requestId);
   } catch (error: any) {
-    return createErrorResponse('ENRICH_APPLY_ERROR', error.message, {}, 500, requestId);
+    console.error('[ENRICH_APPLY] Error:', error.message);
+    return createErrorResponse('ENRICH_APPLY_ERROR', 'Failed to apply enrichment', {}, 500, requestId);
   }
 }

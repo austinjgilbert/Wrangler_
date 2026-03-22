@@ -7113,8 +7113,8 @@ const workerHandler = {
           return await handleDqScan(req, requestId, env);
         }
         if (path === '/enrich/run') {
-          const { handleEnrichRunUnified } = await import('./routes/enrich.ts');
-          return await handleEnrichRunUnified(req, requestId, env);
+          const { handleEnrichRun } = await import('./routes/dq.ts');
+          return await handleEnrichRun(req, requestId, env);
         }
         if (path === '/enrich/process') {
           const { groqQuery, groqQueryCached, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
@@ -7784,12 +7784,12 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         return await handleEnrichApply(request, requestId, env);
       } else if (url.pathname === '/enrich/run') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { handleEnrichRunUnified } = await import('./routes/enrich.ts');
-        return await handleEnrichRunUnified(request, requestId, env);
+        const { handleEnrichRun } = await import('./routes/dq.ts');
+        return await handleEnrichRun(request, requestId, env);
       } else if (url.pathname === '/enrich/apply') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-        const { handleEnrichApplyUnified } = await import('./routes/enrich.ts');
-        return await handleEnrichApplyUnified(request, requestId, env);
+        const { handleEnrichApply } = await import('./routes/dq.ts');
+        return await handleEnrichApply(request, requestId, env);
       } else if (url.pathname === '/molt/log') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleMoltLog } = await import('./routes/molt.ts');

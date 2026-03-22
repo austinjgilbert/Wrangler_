@@ -244,7 +244,7 @@ export async function handleQueueEnrichment(
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to queue enrichment',
-      { hint: error.message },
+      {},
       500,
       requestId
     );
@@ -284,10 +284,11 @@ export async function handleGetEnrichmentStatus(
     }, requestId);
     
   } catch (error) {
+    console.error('[ENRICH_STATUS] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get enrichment status',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -465,10 +466,11 @@ export async function handleAdvanceEnrichment(
       status,
     }, requestId);
   } catch (error) {
+    console.error('[ENRICH_ADVANCE] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to advance enrichment',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -519,10 +521,11 @@ export async function handleGetResearchSet(
     }, requestId);
     
   } catch (error) {
+    console.error('[ENRICH_RESEARCH_SET] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get research set',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -613,10 +616,11 @@ export async function handleExecuteEnrichmentStage(
     }, requestId);
     
   } catch (error) {
+    console.error('[ENRICH_EXECUTE] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to execute enrichment stage',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -658,10 +662,11 @@ export async function handleProcessEnrichmentJobs(
       error: result.error ?? null,
     }, requestId);
   } catch (error) {
+    console.error('[ENRICH_PROCESS] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to process enrichment jobs',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -699,10 +704,11 @@ export async function handleListEnrichmentJobs(
     }, requestId);
     
   } catch (error) {
+    console.error('[ENRICH_JOBS] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to list enrichment jobs',
-      { error: error.message },
+      {},
       500,
       requestId
     );
