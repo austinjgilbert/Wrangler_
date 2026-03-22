@@ -159,7 +159,7 @@ export async function triggerGapFill(opts) {
         }
       } catch (ensureErr) {
         console.error('Gap-fill ensure account/pack error:', ensureErr?.message);
-        return { triggered: false, reason: ensureErr?.message || 'Failed to create account' };
+        return { triggered: false, reason: 'Failed to ensure account for gap-fill' };
       }
     }
 
@@ -210,8 +210,8 @@ export async function triggerGapFill(opts) {
       currentScore: work.currentScore,
     };
   } catch (error) {
-    console.error('Gap-fill trigger error:', error);
-    return { triggered: false, reason: error.message };
+    console.error('Gap-fill trigger error:', error.message);
+    return { triggered: false, reason: 'Gap-fill failed to trigger' };
   }
 }
 
