@@ -1384,6 +1384,29 @@
 
     .wrangler-overlay[data-docked="right"] { right: 16px; left: auto; }
     .wrangler-overlay[data-docked="left"]  { left: 16px; right: auto; }
+
+    /* ─── E3: Profile Reconstruction Card ─────────────────────── */
+
+    .wrangler-profile-header { margin-bottom: 8px; }
+    .wrangler-profile-name { font-size: 14px; font-weight: 600; color: var(--wrangler-text, #f1f5f9); }
+    .wrangler-profile-headline { font-size: 12px; color: var(--wrangler-text-muted, #94a3b8); margin-top: 2px; }
+    .wrangler-profile-meta { font-size: 11px; color: var(--wrangler-text-dim, #64748b); margin-top: 2px; }
+    .wrangler-profile-about {
+      font-size: 12px; color: var(--wrangler-text-muted, #94a3b8);
+      padding: 6px 0; border-top: 1px solid var(--wrangler-border, #334155);
+      line-height: 1.4;
+    }
+    .wrangler-profile-section { padding: 4px 0; }
+    .wrangler-profile-section-title { font-size: 11px; font-weight: 600; color: var(--wrangler-text-dim, #64748b); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .wrangler-profile-exp { margin-bottom: 4px; }
+    .wrangler-profile-exp-title { font-size: 12px; color: var(--wrangler-text, #f1f5f9); display: block; }
+    .wrangler-profile-exp-co { font-size: 11px; color: var(--wrangler-text-dim, #64748b); display: block; }
+    .wrangler-profile-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .wrangler-profile-tag {
+      font-size: 10px; padding: 2px 6px; border-radius: 3px;
+      background: rgba(245, 158, 11, 0.12); color: var(--wrangler-accent, #f59e0b);
+    }
+    .wrangler-profile-footer { font-size: 10px; color: var(--wrangler-text-dim, #64748b); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--wrangler-border, #334155); }
   `;
 
   // ─── Overlay rendering ─────────────────────────────────────────────────
@@ -1683,6 +1706,41 @@
             : '<button class="wrangler-btn" data-action="capture">\uD83D\uDCE5 Capture This Page</button>'}
         `;
         el.addEventListener('click', handleActionClick);
+        return el;
+      }));
+    }
+
+    // ── E3: LinkedIn Profile Reconstruction card ──
+    if (isLinkedInProfile && lastCapturedProfile) {
+      const p = lastCapturedProfile;
+      body.appendChild(buildCard('Captured Profile', null, false, () => {
+        const el = document.createElement('div');
+        const expItems = (p.experience || []).slice(0, 3).map(exp =>
+          `<div class="wrangler-profile-exp">
+            <span class="wrangler-profile-exp-title">${escapeHtml(exp.title || 'Unknown role')}</span>
+            <span class="wrangler-profile-exp-co">${escapeHtml(exp.company || '')}${exp.duration ? ' \u00B7 ' + escapeHtml(exp.duration) : ''}</span>
+          </div>`
+        ).join('');
+        const skillTags = (p.skills || []).slice(0, 8).map(s =>
+          `<span class="wrangler-profile-tag">${escapeHtml(s)}</span>`
+        ).join('');
+        el.innerHTML = `
+          <div class="wrangler-profile-header">
+            <div class="wrangler-profile-name">${escapeHtml(p.name)}</div>
+            ${p.headline ? `<div class="wrangler-profile-headline">${escapeHtml(p.headline)}</div>` : ''}
+            ${p.location ? `<div class="wrangler-profile-meta">${escapeHtml(p.location)}</div>` : ''}
+            <div class="wrangler-profile-meta">
+              ${p.connections ? escapeHtml(String(p.connections)) + ' connections' : ''}
+              ${p.connections && p.followers ? ' \u00B7 ' : ''}
+              ${p.followers ? escapeHtml(String(p.followers)) + ' followers' : ''}
+              ${p.openToWork ? ' \u00B7 <span style="color:var(--wrangler-green)">\uD83D\uDFE2 Open to Work</span>' : ''}
+            </div>
+          </div>
+          ${p.about ? `<div class="wrangler-profile-about">${escapeHtml(p.about.length > 200 ? p.about.slice(0, 200) + '\u2026' : p.about)}</div>` : ''}
+          ${expItems ? `<div class="wrangler-profile-section"><div class="wrangler-profile-section-title">Experience</div>${expItems}</div>` : ''}
+          ${skillTags ? `<div class="wrangler-profile-section"><div class="wrangler-profile-section-title">Skills</div><div class="wrangler-profile-tags">${skillTags}</div></div>` : ''}
+          <div class="wrangler-profile-footer">Captured ${escapeHtml(formatRelativeTime(p.capturedAt))}</div>
+        `;
         return el;
       }));
     }
