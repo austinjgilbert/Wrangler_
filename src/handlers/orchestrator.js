@@ -8,7 +8,7 @@ import {
   getCompleteAccountIntelligence,
 } from '../services/unified-orchestrator.js';
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 
 /**
  * Orchestrate complete research from single input
@@ -25,7 +25,8 @@ export async function handleResearch(
   handlers
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const input = body.input || body.url || body.company || body.accountKey;
     const inputType = body.inputType || 
                      (body.url ? 'url' : 

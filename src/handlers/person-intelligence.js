@@ -3,7 +3,7 @@
  * POST /person/brief endpoint handler
  */
 
-import { createSuccessResponse, createErrorResponse, generateRequestId } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, generateRequestId, safeParseJson } from '../utils/response.js';
 import { generatePersonBriefInternal } from '../services/person-intelligence-service.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -23,18 +23,8 @@ export async function handlePersonBrief(
 ) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
 
     // Validate required fields
     const { name, profileUrl, companyName, companyDomain } = body;
@@ -105,10 +95,8 @@ export async function handlePersonBrief(
           'CONFIGURATION_ERROR',
           'Sanity CMS not configured',
           {
-            message: error.details?.message || error.message,
-            action: error.details?.action || 'Configure Sanity secrets',
+            hint: 'Sanity CMS not configured',
             missing: error.details?.missing || [],
-            suggestion: 'Sanity is required for storing person intelligence data.',
           },
           503,
           requestId
@@ -262,10 +250,11 @@ export async function handlePersonBrief(
     const errorLogger = createLogger(requestId || generateRequestId(), 'person-intelligence-handler');
     errorLogger.error('Person brief handler failed', error);
     
+    console.error('[PERSON_INTEL] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to generate person brief',
-      { error: error.message, stack: error.stack },
+      {},
       500,
       requestId || generateRequestId()
     );

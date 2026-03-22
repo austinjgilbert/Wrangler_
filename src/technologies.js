@@ -19,7 +19,7 @@
  *   /technologies/insights reads both, merges into single response.
  */
 
-import { createSuccessResponse, createErrorResponse } from './utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from './utils/response.js';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -272,7 +272,8 @@ export async function handleTechInsights(request, requestId, env, groqQuery, ass
  */
 export async function handleTechAnalyze(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured, ctx) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const { accountKey, force } = body;
 
     if (!accountKey) {

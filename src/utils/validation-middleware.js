@@ -3,7 +3,7 @@
  * Validates request bodies and parameters against schemas
  */
 
-import { createErrorResponse } from './response.js';
+import { createErrorResponse, safeParseJson } from './response.js';
 
 /**
  * Validate request body against schema
@@ -112,7 +112,8 @@ export function validateRequest(schema) {
     try {
       // Only validate POST/PUT requests with body
       if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-        const body = await request.json();
+        const { data: body, error: parseError } = await safeParseJson(request, requestId);
+        if (parseError) return parseError;
         const validation = validateSchema(body, schema);
         
         if (!validation.valid) {

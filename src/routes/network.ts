@@ -5,7 +5,7 @@
  * - POST /network/dailyRun
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { ToolRegistry } from '../lib/toolRegistry.ts';
 import { ToolClient } from '../lib/toolClient.ts';
 import {
@@ -116,7 +116,8 @@ export async function handleImportConnections(request: Request, requestId: strin
     let csvText = '';
 
     if (contentType.includes('application/json')) {
-      const body = (await request.json()) as Record<string, any>;
+      const { data: body, error: parseError } = await safeParseJson(request, requestId);
+      if (parseError) return parseError;
       csvText = body.csvText || body.text || '';
     } else {
       csvText = await request.text();
@@ -177,7 +178,7 @@ export async function handleImportConnections(request: Request, requestId: strin
 
     return createSuccessResponse({ imported: count }, requestId);
   } catch (error: any) {
-    return createErrorResponse('NETWORK_IMPORT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('NETWORK_IMPORT_ERROR', sanitizeErrorMessage(error, 'network/import'), {}, 500, requestId);
   }
 }
 
@@ -345,6 +346,6 @@ export async function handleDailyRun(request: Request, requestId: string, env: a
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('NETWORK_DAILY_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('NETWORK_DAILY_ERROR', sanitizeErrorMessage(error, 'network/daily'), {}, 500, requestId);
   }
 }

@@ -1,4 +1,4 @@
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import {
   addPattern,
   adjustSignalWeights,
@@ -16,13 +16,14 @@ export async function handleSuperuserState(request: Request, requestId: string, 
     const state = await getSuperuserInterfaceState(env);
     return createSuccessResponse(state, requestId);
   } catch (error: any) {
-    return createErrorResponse('SUPERUSER_STATE_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('SUPERUSER_STATE_ERROR', sanitizeErrorMessage(error, 'superuser/state'), {}, 500, requestId);
   }
 }
 
 export async function handleSuperuserCommand(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const command = String(body.command || '').trim();
 
     if (!command) {
@@ -83,6 +84,6 @@ export async function handleSuperuserCommand(request: Request, requestId: string
 
     return createSuccessResponse({ command, result }, requestId);
   } catch (error: any) {
-    return createErrorResponse('SUPERUSER_COMMAND_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('SUPERUSER_COMMAND_ERROR', sanitizeErrorMessage(error, 'superuser/command'), {}, 500, requestId);
   }
 }

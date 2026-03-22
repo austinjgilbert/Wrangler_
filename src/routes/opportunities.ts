@@ -3,7 +3,7 @@
  * - POST /opportunities/daily
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { ToolRegistry } from '../lib/toolRegistry.ts';
 import { ToolClient } from '../lib/toolClient.ts';
 import { clusterByTopics } from '../lib/cluster.ts';
@@ -22,7 +22,8 @@ import {
 
 export async function handleOpportunitiesDaily(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const dateIso = body.date || new Date().toISOString();
     const sinceIso = new Date(new Date(dateIso).getTime() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -147,6 +148,6 @@ export async function handleOpportunitiesDaily(request: Request, requestId: stri
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('OPPORTUNITIES_DAILY_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('OPPORTUNITIES_DAILY_ERROR', sanitizeErrorMessage(error, 'opportunities/daily'), {}, 500, requestId);
   }
 }

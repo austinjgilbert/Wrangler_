@@ -3,7 +3,7 @@
  * POST /orchestrate - Orchestrate complete company/account intelligence pipeline
  */
 
-import { createSuccessResponse, createErrorResponse, generateRequestId } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, generateRequestId, safeParseJson } from '../utils/response.js';
 import { createUnifiedOrchestrationJob, executeNextOrchestrationStage, ORCHESTRATION_STAGES } from '../services/unified-orchestrator.js';
 
 /**
@@ -23,18 +23,8 @@ export async function handleUnifiedOrchestrate(
 ) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { input, inputType = 'url', options = {}, runMode = 'queue' } = body;
     
@@ -81,8 +71,7 @@ export async function handleUnifiedOrchestrate(
           'CONFIGURATION_ERROR',
           'Sanity CMS not configured (required for orchestration)',
           {
-            message: error.details?.message || error.message,
-            action: error.details?.action || 'Configure Sanity secrets',
+            hint: 'Sanity CMS not configured',
           },
           503,
           requestId
@@ -310,10 +299,11 @@ export async function handleUnifiedOrchestrate(
     }
     
   } catch (error) {
+    console.error('[UNIFIED_ORCH] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message, stack: error.stack },
+      {},
       500,
       requestId
     );
@@ -377,7 +367,7 @@ async function executeOrchestrationBackground(job, context) {
       await patchDocument(client, job.jobId, {
         set: {
           status: 'error',
-          error: error.message,
+          error: error.message, // Internal job state — not exposed in HTTP responses
           updatedAt: new Date().toISOString(),
         },
       });
@@ -423,7 +413,7 @@ export async function handleGetOrchestrationStatus(
         return createErrorResponse(
           'CONFIGURATION_ERROR',
           'Sanity CMS not configured',
-          { message: error.message },
+          { hint: 'Sanity CMS not configured' },
           503,
           requestId
         );
@@ -472,10 +462,11 @@ export async function handleGetOrchestrationStatus(
     );
     
   } catch (error) {
+    console.error('[UNIFIED_ORCH_STATUS] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Internal server error',
-      { message: error.message },
+      {},
       500,
       requestId
     );
