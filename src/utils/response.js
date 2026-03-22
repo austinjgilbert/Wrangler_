@@ -82,6 +82,35 @@ export function sanitizeErrorMessage(error, context = 'unknown') {
  * @param {string} requestId - Request ID
  * @returns {Response}
  */
+/**
+ * Safely parse JSON from a Request body.
+ * Returns { data, error } — never throws.
+ *
+ * On parse failure, returns { data: null, error: Response } where
+ * error is a 400 response with a static message (no leak of parse details).
+ *
+ * Usage:
+ *   const { data: body, error } = await safeParseJson(request, requestId);
+ *   if (error) return error;
+ */
+export async function safeParseJson(request, requestId = null) {
+  try {
+    const data = await request.json();
+    return { data, error: null };
+  } catch (_e) {
+    return {
+      data: null,
+      error: createErrorResponse(
+        'INVALID_BODY',
+        'Invalid or missing request body',
+        { hint: 'Request body must be valid JSON' },
+        400,
+        requestId
+      ),
+    };
+  }
+}
+
 export function createErrorResponse(code, message, details = null, status = 400, requestId = null) {
   const safeDetails = details ? Object.fromEntries(
     Object.entries(details).filter(([key]) => SAFE_DETAIL_KEYS.has(key))

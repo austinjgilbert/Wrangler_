@@ -104,7 +104,9 @@ interface CapturePayload {
 
 export async function handleExtensionCapture(request: Request, requestId: string, env: any) {
   try {
-    const body: CapturePayload = await request.json();
+    const { safeParseJson } = await import('../utils/response.js');
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
 
     if (!body.url || !body.source) {
       return createErrorResponse(
@@ -520,7 +522,9 @@ export async function handleExtensionCapture(request: Request, requestId: string
 
 export async function handleExtensionPageIntel(request: Request, requestId: string, env: any) {
   try {
-    const body: CapturePayload = await request.json();
+    const { safeParseJson } = await import('../utils/response.js');
+    const { data: body, error } = await safeParseJson(request, requestId);
+    if (error) return error;
     if (!body?.url || !body?.source) {
       return createErrorResponse('VALIDATION_ERROR', 'url and source are required', {}, 400, requestId);
     }
@@ -642,7 +646,9 @@ export async function handleExtensionAsk(request: Request, requestId: string, en
 
 export async function handleExtensionLearn(request: Request, requestId: string, env: any) {
   try {
-    const body: CapturePayload = await request.json();
+    const { safeParseJson } = await import('../utils/response.js');
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     if (!body?.url || !body?.source) {
       return createErrorResponse('VALIDATION_ERROR', 'url and source are required', {}, 400, requestId);
     }

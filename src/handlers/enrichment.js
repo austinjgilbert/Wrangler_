@@ -133,7 +133,9 @@ export async function handleQueueEnrichment(
   executionContext = null
 ) {
   try {
-    const body = await request.json();
+    const { safeParseJson } = await import('../utils/response.js');
+    const { data: body, error } = await safeParseJson(request, requestId);
+    if (error) return error;
     let canonicalUrl = body.canonicalUrl || body.url;
     let accountKey = body.accountKey;
     const accountId = body.accountId;
@@ -547,7 +549,9 @@ export async function handleExecuteEnrichmentStage(
   handlers
 ) {
   try {
-    const body = await request.json();
+    const { safeParseJson } = await import('../utils/response.js');
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const jobId = body.jobId;
     
     if (!jobId) {
