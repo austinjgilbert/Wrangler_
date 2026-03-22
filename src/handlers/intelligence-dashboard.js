@@ -69,28 +69,17 @@ export async function handleIntelligenceDashboard(
     const url = new URL(request.url);
     const detail = url.searchParams.get('detail') || 'full';
 
-    // Run all queries in parallel
-    const [
-      documentCounts,
-      accounts,
-      accountPacks,
-      enrichmentJobs,
-      persons,
-      technologies,
-      interactions,
-      sessions,
-      learnings,
-    ] = await Promise.all([
-      getDocumentCounts(groqQuery, client),
-      getAccountsWithFields(groqQuery, client),
-      getAccountPacks(groqQuery, client),
-      getEnrichmentJobs(groqQuery, client),
-      getPersons(groqQuery, client),
-      getTechnologies(groqQuery, client),
-      getInteractionStats(groqQuery, client),
-      getSessionStats(groqQuery, client),
-      getLearningStats(groqQuery, client),
-    ]);
+    // Single consolidated query — replaces 9 separate API calls with 1.
+    const data = await getDashboardData(groqQuery, client);
+    const documentCounts = data.counts || {};
+    const accounts = data.accounts || [];
+    const accountPacks = data.packs || [];
+    const enrichmentJobs = data.jobs || [];
+    const persons = data.persons || [];
+    const technologies = data.technologies || [];
+    const interactions = data.interactions || {};
+    const sessions = data.sessions || {};
+    const learnings = data.learnings || {};
 
     // Build accountPack lookup
     const packByKey = {};
@@ -141,10 +130,11 @@ export async function handleIntelligenceDashboard(
     }, requestId);
 
   } catch (error) {
+    console.error(`[${requestId}] Intelligence dashboard failed:`, error);
     return createErrorResponse(
       'DASHBOARD_ERROR',
-      error.message || 'Failed to generate intelligence dashboard',
-      { stack: error.stack?.split('\n').slice(0, 3) },
+      'Failed to generate intelligence dashboard',
+      { hint: 'Dashboard query or builder function failed' },
       500,
       requestId
     );
@@ -153,132 +143,105 @@ export async function handleIntelligenceDashboard(
 
 // ─── Query Functions ────────────────────────────────────────────────────
 
-async function getDocumentCounts(groqQuery, client) {
-  const query = `{
-    "accounts": count(*[_type == "account"]),
-    "persons": count(*[_type == "person"]),
-    "technologies": count(*[_type == "technology"]),
-    "interactions": count(*[_type == "interaction"]),
-    "sessions": count(*[_type == "session"]),
-    "learnings": count(*[_type == "learning"]),
-    "enrichmentJobs": count(*[_type == "enrichmentJob"]),
-    "accountPacks": count(*[_type == "accountPack"]),
-    "briefs": count(*[_type == "molt.strategyBrief"]),
-    "signals": count(*[_type == "signal"]),
-    "opportunities": count(*[_type == "opportunity"]),
-    "crawlSnapshots": count(*[_type == "crawl.snapshot"]),
-    "dqFindings": count(*[_type == "dq.finding"]),
-    "enrichProposals": count(*[_type == "enrich.proposal"]),
-    "moltEvents": count(*[_type == "molt.event"]),
-    "moltJobs": count(*[_type == "molt.job"]),
-    "callSessions": count(*[_type == "call.session"]),
-    "networkPersons": count(*[_type == "networkPerson"]),
-    "userInteractions": count(*[_type == "interaction"]),
-    "total": count(*[!(_type match "system.*")])
-  }`;
-  return await groqQuery(client, query, {}) || {};
-}
-
-async function getAccountsWithFields(groqQuery, client) {
-  const query = `*[_type == "account"] | order(_updatedAt desc) {
-    _id, accountKey, domain, companyName, canonicalUrl,
-    industry, classification, tags,
-    technologyStack,
-    "techRefCount": count(technologies),
-    opportunityScore, aiReadiness, performance, businessScale,
-    "leadershipCount": count(leadership),
-    "painPointCount": count(painPoints),
-    "competitorCount": count(competitors),
-    competitorResearch,
-    benchmarks, signals,
-    profileCompleteness,
-    lastScannedAt, lastEnrichedAt,
-    createdAt, _updatedAt
-  }`;
-  return await groqQuery(client, query, {}) || [];
-}
-
-async function getAccountPacks(groqQuery, client) {
-  const query = `*[_type == "accountPack"] {
-    _id, accountKey,
-    "hasScan": payloadIndex.hasScan,
-    "hasDiscovery": payloadIndex.hasDiscovery,
-    "hasCrawl": payloadIndex.hasCrawl,
-    "hasEvidence": payloadIndex.hasEvidence,
-    "hasLinkedin": payloadIndex.hasLinkedin,
-    "hasBrief": payloadIndex.hasBrief,
-    "hasVerification": payloadIndex.hasVerification,
-    "hasCompetitors": payloadIndex.hasCompetitors,
-    _updatedAt
-  }`;
-  return await groqQuery(client, query, {}) || [];
-}
-
-async function getEnrichmentJobs(groqQuery, client) {
-  const query = `*[_type == "enrichmentJob"] | order(_updatedAt desc) {
-    _id, accountKey, status, currentStage,
-    completedStages, failedStages,
-    priority, startedAt, _updatedAt
-  }`;
-  return await groqQuery(client, query, {}) || [];
-}
-
-async function getPersons(groqQuery, client) {
-  const query = `*[_type == "person"] {
-    _id, personKey, name, title, linkedinUrl,
-    "hasCompanyRef": defined(companyRef),
-    roleCategory, seniorityLevel, isDecisionMaker,
-    "hasExperience": count(experience) > 0,
-    "hasEducation": count(education) > 0,
-    "hasSkills": count(skills) > 0,
-    connections,
-    relatedAccountKey, rootDomain,
-    _updatedAt
-  }`;
-  return await groqQuery(client, query, {}) || [];
-}
-
-async function getTechnologies(groqQuery, client) {
-  const query = `*[_type == "technology"] {
-    _id, name, category, isLegacy, isMigrationTarget, accountCount
-  }`;
-  return await groqQuery(client, query, {}) || [];
-}
-
-async function getInteractionStats(groqQuery, client) {
-  const query = `{
-    "total": count(*[_type == "interaction"]),
-    "last24h": count(*[_type == "interaction" && _createdAt > $since24h]),
-    "last7d": count(*[_type == "interaction" && _createdAt > $since7d]),
-    "withFollowUp": count(*[_type == "interaction" && followUpNeeded == true]),
-    "withInsight": count(*[_type == "interaction" && derivedInsight == true]),
-    "domains": *[_type == "interaction" && defined(domain)].domain
-  }`;
+/**
+ * Single consolidated GROQ query for the entire dashboard.
+ *
+ * Replaces 9 separate queries with 1 top-level projection.
+ * Reduces API calls from 9 → 1 per dashboard load (~390K fewer/month).
+ *
+ * Removed 5 always-empty type counts (signal, opportunity, enrichmentJob,
+ * networkPerson, callSessions) per @databuilder's production audit.
+ * buildInventory defaults missing keys to 0 — no response shape change.
+ */
+async function getDashboardData(groqQuery, client) {
   const now = Date.now();
-  return await groqQuery(client, query, {
-    since24h: new Date(now - 86400000).toISOString(),
-    since7d: new Date(now - 7 * 86400000).toISOString(),
-  }) || {};
-}
+  const since24h = new Date(now - 86400000).toISOString();
+  const since7d = new Date(now - 7 * 86400000).toISOString();
 
-async function getSessionStats(groqQuery, client) {
   const query = `{
-    "total": count(*[_type == "session"]),
-    "last7d": count(*[_type == "session" && _createdAt > $since7d])
+    "counts": {
+      "accounts": count(*[_type == "account"]),
+      "persons": count(*[_type == "person"]),
+      "technologies": count(*[_type == "technology"]),
+      "interactions": count(*[_type == "interaction"]),
+      "sessions": count(*[_type == "session"]),
+      "learnings": count(*[_type == "learning"]),
+      "accountPacks": count(*[_type == "accountPack"]),
+      "briefs": count(*[_type == "molt.strategyBrief"]),
+      "crawlSnapshots": count(*[_type == "crawl.snapshot"]),
+      "dqFindings": count(*[_type == "dq.finding"]),
+      "enrichProposals": count(*[_type == "enrich.proposal"]),
+      "moltEvents": count(*[_type == "molt.event"]),
+      "moltJobs": count(*[_type == "molt.job"]),
+      "userInteractions": count(*[_type == "interaction"]),
+      "total": count(*[!(_type match "system.*")])
+    },
+    "accounts": *[_type == "account"] | order(_updatedAt desc) {
+      _id, accountKey, domain, companyName, canonicalUrl,
+      industry, classification, tags,
+      technologyStack,
+      "techRefCount": count(technologies),
+      opportunityScore, aiReadiness, performance, businessScale,
+      "leadershipCount": count(leadership),
+      "painPointCount": count(painPoints),
+      "competitorCount": count(competitors),
+      competitorResearch,
+      benchmarks, signals,
+      profileCompleteness,
+      lastScannedAt, lastEnrichedAt,
+      createdAt, _updatedAt
+    },
+    "packs": *[_type == "accountPack"] {
+      _id, accountKey,
+      "hasScan": payloadIndex.hasScan,
+      "hasDiscovery": payloadIndex.hasDiscovery,
+      "hasCrawl": payloadIndex.hasCrawl,
+      "hasEvidence": payloadIndex.hasEvidence,
+      "hasLinkedin": payloadIndex.hasLinkedin,
+      "hasBrief": payloadIndex.hasBrief,
+      "hasVerification": payloadIndex.hasVerification,
+      "hasCompetitors": payloadIndex.hasCompetitors,
+      _updatedAt
+    },
+    "jobs": *[_type == "enrichmentJob"] | order(_updatedAt desc) {
+      _id, accountKey, status, currentStage,
+      completedStages, failedStages,
+      priority, startedAt, _updatedAt
+    },
+    "persons": *[_type == "person"] {
+      _id, personKey, name, title, linkedinUrl,
+      "hasCompanyRef": defined(companyRef),
+      roleCategory, seniorityLevel, isDecisionMaker,
+      "hasExperience": count(experience) > 0,
+      "hasEducation": count(education) > 0,
+      "hasSkills": count(skills) > 0,
+      connections,
+      relatedAccountKey, rootDomain,
+      _updatedAt
+    },
+    "technologies": *[_type == "technology"] {
+      _id, name, category, isLegacy, isMigrationTarget, accountCount
+    },
+    "interactions": {
+      "total": count(*[_type == "interaction"]),
+      "last24h": count(*[_type == "interaction" && _createdAt > $since24h]),
+      "last7d": count(*[_type == "interaction" && _createdAt > $since7d]),
+      "withFollowUp": count(*[_type == "interaction" && followUpNeeded == true]),
+      "withInsight": count(*[_type == "interaction" && derivedInsight == true]),
+      "domains": *[_type == "interaction" && defined(domain)].domain
+    },
+    "sessions": {
+      "total": count(*[_type == "session"]),
+      "last7d": count(*[_type == "session" && _createdAt > $since7d])
+    },
+    "learnings": {
+      "total": count(*[_type == "learning"]),
+      "last7d": count(*[_type == "learning" && _createdAt > $since7d])
+    }
   }`;
-  return await groqQuery(client, query, {
-    since7d: new Date(Date.now() - 7 * 86400000).toISOString(),
-  }) || {};
-}
 
-async function getLearningStats(groqQuery, client) {
-  const query = `{
-    "total": count(*[_type == "learning"]),
-    "last7d": count(*[_type == "learning" && _createdAt > $since7d])
-  }`;
-  return await groqQuery(client, query, {
-    since7d: new Date(Date.now() - 7 * 86400000).toISOString(),
-  }) || {};
+  const result = await groqQuery(client, query, { since24h, since7d });
+  return result || {};
 }
 
 // ─── Builder Functions ──────────────────────────────────────────────────
