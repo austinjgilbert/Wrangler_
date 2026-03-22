@@ -381,4 +381,79 @@ describe('ATTRIBUTE_WHITELIST structure', () => {
     expect(me.has('category')).toBe(true);
     expect(me.has('eventData')).toBe(true);
   });
+
+  it('person whitelist includes contactEmails array fields (18 new paths)', () => {
+    const p = ATTRIBUTE_WHITELIST.person;
+    // contactEmails array + 7 object fields + _key = 9 paths
+    expect(p.has('contactEmails')).toBe(true);
+    expect(p.has('contactEmails.value')).toBe(true);
+    expect(p.has('contactEmails.source')).toBe(true);
+    expect(p.has('contactEmails.firstSeenAt')).toBe(true);
+    expect(p.has('contactEmails.lastSeenAt')).toBe(true);
+    expect(p.has('contactEmails.confidence')).toBe(true);
+    expect(p.has('contactEmails.isPrimary')).toBe(true);
+    expect(p.has('contactEmails.userPinned')).toBe(true);
+    expect(p.has('contactEmails._key')).toBe(true);
+  });
+
+  it('person whitelist includes contactPhones array fields (matching contactEmails shape)', () => {
+    const p = ATTRIBUTE_WHITELIST.person;
+    // contactPhones array + 7 object fields + _key = 9 paths
+    expect(p.has('contactPhones')).toBe(true);
+    expect(p.has('contactPhones.value')).toBe(true);
+    expect(p.has('contactPhones.source')).toBe(true);
+    expect(p.has('contactPhones.firstSeenAt')).toBe(true);
+    expect(p.has('contactPhones.lastSeenAt')).toBe(true);
+    expect(p.has('contactPhones.confidence')).toBe(true);
+    expect(p.has('contactPhones.isPrimary')).toBe(true);
+    expect(p.has('contactPhones.userPinned')).toBe(true);
+    expect(p.has('contactPhones._key')).toBe(true);
+  });
+
+  it('person whitelist still includes legacy flat email/phone fields', () => {
+    const p = ATTRIBUTE_WHITELIST.person;
+    expect(p.has('email')).toBe(true);
+    expect(p.has('phone')).toBe(true);
+  });
+});
+
+describe('checkPathsAgainstWhitelist — contact data paths', () => {
+  it('allows contactEmails array item write', () => {
+    const result = checkPathsAgainstWhitelist('person', [
+      'contactEmails', 'contactEmails.value', 'contactEmails.source',
+      'contactEmails.firstSeenAt', 'contactEmails.lastSeenAt',
+      'contactEmails.confidence', 'contactEmails.isPrimary',
+      'contactEmails.userPinned', 'contactEmails._key',
+    ]);
+    expect(result.allowed).toBe(true);
+    expect(result.unknownPaths).toEqual([]);
+  });
+
+  it('allows contactPhones array item write', () => {
+    const result = checkPathsAgainstWhitelist('person', [
+      'contactPhones', 'contactPhones.value', 'contactPhones.source',
+      'contactPhones.confidence', 'contactPhones.isPrimary',
+      'contactPhones._key',
+    ]);
+    expect(result.allowed).toBe(true);
+    expect(result.unknownPaths).toEqual([]);
+  });
+
+  it('rejects unknown sub-fields on contactEmails', () => {
+    const result = checkPathsAgainstWhitelist('person', [
+      'contactEmails', 'contactEmails.value', 'contactEmails.bogusField',
+    ]);
+    expect(result.allowed).toBe(false);
+    expect(result.unknownPaths).toContain('contactEmails.bogusField');
+  });
+
+  it('allows mixed legacy + contact array write (typical write path)', () => {
+    const result = checkPathsAgainstWhitelist('person', [
+      'email', 'phone', 'name', 'updatedAt',
+      'contactEmails', 'contactEmails.value', 'contactEmails.source',
+      'contactEmails.confidence', 'contactEmails.isPrimary', 'contactEmails._key',
+    ]);
+    expect(result.allowed).toBe(true);
+    expect(result.unknownPaths).toEqual([]);
+  });
 });

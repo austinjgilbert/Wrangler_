@@ -29,9 +29,53 @@ export default {
     { name: 'headline', title: 'LinkedIn Headline', type: 'string' },
     { name: 'linkedinUrl', title: 'LinkedIn URL', type: 'url' },
     { name: 'linkedInUrl', title: 'LinkedIn URL (alt casing)', type: 'url', hidden: true },
-    { name: 'email', title: 'Email', type: 'string' },
-    { name: 'phone', title: 'Phone', type: 'string' },
+    { name: 'email', title: 'Email (Primary)', type: 'string', description: 'Primary email — synced from highest-confidence contactEmails[] entry' },
+    { name: 'phone', title: 'Phone (Primary)', type: 'string', description: 'Primary phone — synced from highest-confidence contactPhones[] entry' },
     { name: 'location', title: 'Location', type: 'string' },
+
+    // ── Multi-Source Contact Data ─────────────────────────────────────
+    {
+      name: 'contactEmails',
+      title: 'Contact Emails',
+      type: 'array',
+      description: 'All known email addresses with source provenance and consensus scoring',
+      of: [{
+        type: 'object',
+        fields: [
+          { name: 'value', type: 'string', title: 'Email Address', validation: (Rule: any) => Rule.required() },
+          { name: 'source', type: 'string', title: 'Source', description: 'salesforce, hubspot, linkedin, outreach, nooks, commonroom, google, extension, enrichment, legacy, user_override' },
+          { name: 'firstSeenAt', type: 'datetime', title: 'First Seen' },
+          { name: 'lastSeenAt', type: 'datetime', title: 'Last Seen' },
+          { name: 'confidence', type: 'number', title: 'Confidence', description: '0-1, computed by consensus engine' },
+          { name: 'isPrimary', type: 'boolean', title: 'Primary?', description: 'Highest-confidence or user-pinned entry' },
+          { name: 'userPinned', type: 'boolean', title: 'User Pinned?', description: 'True if user explicitly chose this as primary — consensus engine will not override' },
+        ],
+        preview: {
+          select: { title: 'value', subtitle: 'source' },
+        },
+      }],
+    },
+    {
+      name: 'contactPhones',
+      title: 'Contact Phones',
+      type: 'array',
+      description: 'All known phone numbers with source provenance and consensus scoring',
+      of: [{
+        type: 'object',
+        fields: [
+          { name: 'value', type: 'string', title: 'Phone Number', validation: (Rule: any) => Rule.required() },
+          { name: 'source', type: 'string', title: 'Source', description: 'salesforce, hubspot, linkedin, outreach, nooks, commonroom, google, extension, enrichment, legacy, user_override' },
+          { name: 'firstSeenAt', type: 'datetime', title: 'First Seen' },
+          { name: 'lastSeenAt', type: 'datetime', title: 'Last Seen' },
+          { name: 'confidence', type: 'number', title: 'Confidence', description: '0-1, computed by consensus engine' },
+          { name: 'isPrimary', type: 'boolean', title: 'Primary?', description: 'Highest-confidence or user-pinned entry' },
+          { name: 'userPinned', type: 'boolean', title: 'User Pinned?', description: 'True if user explicitly chose this as primary — consensus engine will not override' },
+        ],
+        preview: {
+          select: { title: 'value', subtitle: 'source' },
+        },
+      }],
+    },
     { name: 'about', title: 'About', type: 'text' },
     { name: 'sourceSystems', title: 'Source Systems', type: 'array', of: [{ type: 'string' }] },
 
