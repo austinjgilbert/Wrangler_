@@ -90,7 +90,7 @@
 
 .people-detail__card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 10px 14px;
   background: #f8f9fa;
@@ -184,4 +184,237 @@
 
 .people-detail__linkedin:hover {
   text-decoration: underline;
+}
+
+/* ── Contact Section ─────────────────────────────────────────────────── */
+
+.contact-section {
+  margin-top: 6px;
+}
+
+.contact-section--legacy {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.contact-section__legacy-item {
+  font-size: 12px;
+  color: #606068;
+}
+
+/* ── Contact Summary (collapsed) ──────────────────────────────────── */
+
+.contact-section__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.contact-section__primary-preview {
+  font-size: 12px;
+  color: #606068;
+}
+
+.contact-section__expand-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: #2563eb;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.contact-section__expand-btn:hover {
+  text-decoration: underline;
+}
+
+/* ── Contact Detail (expanded) ────────────────────────────────────── */
+
+.contact-section__detail {
+  margin-top: 8px;
+  padding: 8px 0 0;
+  border-top: 1px solid #eaeaea;
+}
+
+.contact-section__group {
+  margin-bottom: 8px;
+}
+
+.contact-section__group:last-child {
+  margin-bottom: 0;
+}
+
+.contact-section__group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #808088;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ── Contact Entry Row ────────────────────────────────────────────── */
+
+.contact-section__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  margin-bottom: 3px;
+}
+
+.contact-section__entry:last-child {
+  margin-bottom: 0;
+}
+
+.contact-section__entry--primary {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.contact-section__entry-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contact-section__entry-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.contact-section__primary-badge {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.contact-section__entry-value {
+  font-size: 12px;
+  color: #303038;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.contact-section__email-link,
+.contact-section__phone-link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.contact-section__email-link:hover,
+.contact-section__phone-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Source Badges ─────────────────────────────────────────────────── */
+
+.contact-section__source {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.contact-section__source--user {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.contact-section__source--crm {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.contact-section__source--professional {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.contact-section__source--sales-tool {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.contact-section__source--web {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* ── Confidence Bar ───────────────────────────────────────────────── */
+
+.contact-section__entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-section__confidence {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contact-section__confidence-bar {
+  width: 48px;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.contact-section__confidence-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #2563eb;
+  transition: width 0.2s ease;
+}
+
+.contact-section__confidence-label {
+  font-size: 10px;
+  color: #808088;
+  min-width: 28px;
+}
+
+.contact-section__last-seen {
+  font-size: 10px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+/* ── Pin Button ───────────────────────────────────────────────────── */
+
+.contact-section__pin-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 11px;
+  cursor: not-allowed;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.contact-section__pin-btn:not(:disabled) {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.contact-section__pin-btn:not(:disabled):hover {
+  opacity: 1;
+  border-color: #2563eb;
 }
