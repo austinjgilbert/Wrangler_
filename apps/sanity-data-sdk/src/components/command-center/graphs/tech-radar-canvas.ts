@@ -58,8 +58,9 @@ export function drawTechRadar(
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
 
-  const c = canvas.getContext('2d');
-  if (!c) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const c = ctx;
 
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.scale(dpr, dpr);

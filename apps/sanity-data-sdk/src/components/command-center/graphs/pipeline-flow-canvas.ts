@@ -113,7 +113,7 @@ export function drawPipelineFlow(
     const isHov = hoveredIndex === i;
 
     // Determine which status this stage is in
-    let statusColor = STATUS_COLORS.pending;
+    let statusColor: string = STATUS_COLORS.pending;
     let statusLabel = 'Pending';
     if (stage.failed > 0) { statusColor = STATUS_COLORS.failed; statusLabel = '✗ Failed'; }
     else if (stage.active > 0) { statusColor = STATUS_COLORS.active; statusLabel = '▶ Active'; }
