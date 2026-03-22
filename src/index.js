@@ -7112,7 +7112,7 @@ const workerHandler = {
           return await handleEnrichRunUnified(req, requestId, env);
         }
         if (path === '/enrich/process') {
-          const { groqQuery, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
+          const { groqQuery, groqQueryCached, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
           assertSanityConfigured(env);
           const { handleProcessEnrichmentJobs } = await import('./handlers/enrichment.js');
           // Sub-route calls from enrichment pipeline need internal auth bypass
@@ -7144,7 +7144,7 @@ const workerHandler = {
         }
         if (path === '/analytics/operator-brief') {
           const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
-          return await handleOperatorBriefing(req, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
+          return await handleOperatorBriefing(req, requestId, env, groqQueryCached, upsertDocument, assertSanityConfigured);
         }
         if (path === '/analytics/nightly-intelligence') {
           const { handleNightlyIntelligence } = await import('./routes/analyticsNightly.ts');
@@ -7418,7 +7418,8 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     // ── END auth middleware ───────────────────────────────────────────
 
     // Import Sanity functions
-    const { groqQuery, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
+    // groqQueryCached uses apicdn.sanity.io (~60s stale) — for read-only handlers only.
+    const { groqQuery, groqQueryCached, upsertDocument, patchDocument, assertSanityConfigured } = await import('./sanity-client.js');
     
     if (url.pathname === '/health') {
     return await handleHealth(requestId, env);
@@ -7612,7 +7613,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       } else if (url.pathname === '/memory') {
         if (request.method === 'GET') {
           const { handleMemoryRecall } = await import('./handlers/memory.js');
-          return await handleMemoryRecall(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleMemoryRecall(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (request.method === 'POST') {
           const { handleMemorySync } = await import('./handlers/memory.js');
           return await handleMemorySync(request, requestId, env, groqQuery, upsertDocument, patchDocument, assertSanityConfigured);
@@ -8047,23 +8048,23 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         if (url.pathname === '/analytics/compare') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { handleCompareAccounts } = await import('./handlers/analytics.js');
-          return await handleCompareAccounts(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleCompareAccounts(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/trends') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleAccountTrends } = await import('./handlers/analytics.js');
-          return await handleAccountTrends(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleAccountTrends(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/dashboard') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleAnalyticsDashboard } = await import('./handlers/analytics.js');
-          return await handleAnalyticsDashboard(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleAnalyticsDashboard(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/export') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleExportAccount } = await import('./handlers/analytics.js');
-          return await handleExportAccount(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleExportAccount(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/intelligence') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { handleIntelligenceDashboard } = await import('./handlers/intelligence-dashboard.js');
-          return await handleIntelligenceDashboard(request, requestId, env, groqQuery, assertSanityConfigured);
+          return await handleIntelligenceDashboard(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/explain') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
@@ -8083,7 +8084,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
             return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
           const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
-          return await handleOperatorBriefing(request, requestId, env, groqQuery, upsertDocument, assertSanityConfigured);
+          return await handleOperatorBriefing(request, requestId, env, groqQueryCached, upsertDocument, assertSanityConfigured);
         } else if (url.pathname === '/analytics/superuser') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const { checkMoltApiKey } = await import('./utils/molt-auth.js');
@@ -8256,7 +8257,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
       } else if (url.pathname === '/sdr/good-morning' || url.pathname === '/accountability/good-morning') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleGoodMorningRouting } = await import('./handlers/sdr-good-morning.js');
-        return await handleGoodMorningRouting(request, requestId, env, groqQuery, assertSanityConfigured);
+        return await handleGoodMorningRouting(request, requestId, env, groqQueryCached, assertSanityConfigured);
       } else if (url.pathname.startsWith('/user-patterns/')) {
         if (url.pathname === '/user-patterns/query') {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
