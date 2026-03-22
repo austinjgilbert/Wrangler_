@@ -1921,7 +1921,7 @@ function rankAndDeduplicateResults(rawResults, query, recencyDays) {
 }
 
 // Response utilities imported from utils/response.js
-import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil, setRequestContext, sanitizeErrorMessage } from './utils/response.js';
+import { createErrorResponse as createErrorResponseUtil, createSuccessResponse as createSuccessResponseUtil, setRequestContext, sanitizeErrorMessage, safeParseJson } from './utils/response.js';
 
 // Use imported utilities
 const createErrorResponse = createErrorResponseUtil;
@@ -1933,18 +1933,8 @@ const createSuccessResponse = createSuccessResponseUtil;
 async function handleSearch(request, requestId, env) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { query, limit = 10, recencyDays = 30, mode = 'fast' } = body;
     
@@ -2035,18 +2025,8 @@ async function handleSearch(request, requestId, env) {
  */
 async function handleDiscover(request, requestId) {
   try {
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { url, budget = 20 } = body;
     
@@ -2111,18 +2091,8 @@ async function handleDiscover(request, requestId) {
  */
 async function handleCrawl(request, requestId) {
   try {
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { url, depth = 1, budget = 20, includeTypes = [] } = body;
     
@@ -2316,18 +2286,8 @@ async function handleCrawl(request, requestId) {
 async function handleExtract(request, requestId, env) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { url, mode = 'fast', maxChars } = body;
     
@@ -2613,18 +2573,8 @@ async function verifyClaim(claim, excerpts, signals) {
 async function handleVerify(request, requestId, env) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { claims, sources } = body;
     
@@ -2926,18 +2876,8 @@ function generateBrief(fetchedData, companyOrSite) {
 async function handleBrief(request, requestId, env) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { companyOrSite, seedUrl, query, disableAutoSave = false } = body;
     
@@ -3618,18 +3558,8 @@ async function handleLinkedInProfile(request, requestId, env) {
   const { initSanityClient } = await import('./sanity-client.js');
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { profileUrl, profileHtml, profileText } = body;
     
@@ -5739,7 +5669,8 @@ async function handleStore(request, requestId, env) {
       );
     }
     
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     // Validate account structure - accept canonicalUrl or derive from domain
     if (!body.account) {
@@ -6349,7 +6280,8 @@ async function handleQuery(request, requestId, env) {
     
     if (request.method === 'POST') {
       // Custom GROQ query
-      const body = await request.json();
+      const { data: body, error: parseError } = await safeParseJson(request, requestId);
+      if (parseError) return parseError;
       if (!body.query) {
         return createErrorResponse(
           'VALIDATION_ERROR',
@@ -6576,7 +6508,8 @@ async function handleUpdate(request, requestId, env) {
       );
     }
     
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const { set = {}, unset = [], inc = {}, append = null } = body;
     
     let client;
