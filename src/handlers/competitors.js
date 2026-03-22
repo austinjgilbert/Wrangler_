@@ -131,6 +131,22 @@ export async function handleResearchCompetitors(
       accountResearchSet,
       body.options || {}
     );
+
+    // Fire-and-forget activity event — never blocks response
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'job',
+      status: 'completed',
+      source: 'worker',
+      accountKey: accountKeyFinal || null,
+      category: 'research',
+      message: `Competitor research completed for ${account?.companyName || accountKeyFinal}`,
+      data: {
+        competitorCount: result.competitors?.length || 0,
+        opportunityCount: result.opportunities?.length || 0,
+      },
+      idempotencyKey: `competitor-research.${accountKeyFinal}.${Date.now()}`,
+    }).catch(() => {});
     
     return createSuccessResponse({
       research: result,

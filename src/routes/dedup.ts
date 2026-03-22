@@ -197,6 +197,26 @@ export async function handleDedupExecute(
       results.warning = 'Some mutations had partial failures — check individual merge results for details';
     }
 
+    // Fire-and-forget activity event for actual merges (not dry runs)
+    if (!dryRun && totalMerged > 0) {
+      const { emitActivityEvent } = await import('../lib/sanity.ts');
+      emitActivityEvent(env, {
+        eventType: 'system',
+        status: errors.length > 0 ? 'failed' : 'completed',
+        source: 'app',
+        accountKey: null,
+        category: 'system',
+        message: `Dedup merge: ${totalMerged} clusters merged, ${totalDeleted} documents deleted`,
+        data: {
+          clustersMerged: totalMerged,
+          documentsDeleted: totalDeleted,
+          errorCount: errors.length,
+          type,
+        },
+        idempotencyKey: `dedup-execute.${type}.${Date.now()}`,
+      }).catch(() => {});
+    }
+
     // Return 207 Multi-Status if there were errors or partial failures, 200 if clean
     const status = (errors.length > 0 || partialFailures.length > 0) ? 207 : 200;
     return createResponse(results, status, requestId);

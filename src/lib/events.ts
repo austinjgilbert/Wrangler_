@@ -205,6 +205,11 @@ function mapLegacyToIndex(
     'approval.rejected': { eventType: 'system', category: 'system' },
     'approval.approved': { eventType: 'system', category: 'system' },
     'superuser.rerank_actions': { eventType: 'system', category: 'system', source: 'app' },
+    'superuser.adjust_signal_weights': { eventType: 'system', category: 'system', source: 'app' },
+    'superuser.add_pattern': { eventType: 'system', category: 'system', source: 'app' },
+    'superuser.trigger_reanalysis': { eventType: 'system', category: 'system', source: 'app' },
+    'superuser.inject_strategy_updates': { eventType: 'system', category: 'system', source: 'app' },
+    'superuser.queueAntiDriftMaintenance': { eventType: 'system', category: 'system', source: 'app' },
 
     // Call events
     'call.ingested': { eventType: 'data_write', category: 'interaction', source: 'app' },

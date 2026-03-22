@@ -343,6 +343,23 @@ export async function handleTechAnalyze(request, requestId, env, groqQuery, upse
 
     console.log(`[technologies/analyze] Stub: would analyze ${technologies.length} technologies for ${accountKey} (hash: ${rawStackHash})`);
 
+    // Fire-and-forget activity event — never blocks response
+    const { emitActivityEvent } = await import('./lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'job',
+      status: 'processing',
+      source: 'worker',
+      accountKey: accountKey || null,
+      category: 'enrichment',
+      message: `Tech analysis triggered for ${account?.companyName || accountKey} (${technologies.length} technologies)`,
+      data: {
+        analysisId,
+        technologiesQueued: technologies.length,
+        rawStackHash,
+      },
+      idempotencyKey: `tech-analyze.${accountKey}.${Date.now()}`,
+    }).catch(() => {});
+
     return createSuccessResponse({
       accountKey,
       status: 'analyzing',
