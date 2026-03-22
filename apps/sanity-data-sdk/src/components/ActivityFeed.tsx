@@ -185,7 +185,7 @@ function ActivityFeedInner() {
             <div className="activity-feed__empty-icon">📡</div>
             <p className="activity-feed__empty-title">No activity yet</p>
             <p className="activity-feed__empty-desc">
-              Events appear here as you research accounts, capture pages, and run enrichments.
+              Events appear here as you research accounts, capture pages, and run research jobs.
             </p>
             <button
               className="activity-action"
