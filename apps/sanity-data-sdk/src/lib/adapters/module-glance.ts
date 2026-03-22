@@ -170,10 +170,10 @@ function deriveSignalsGlance(ctx: GlanceContext): ModuleGlanceProps {
   const { account, signals, activeJobs } = ctx;
   const gaps: string[] = [];
 
-  // Filter signals for the selected account (case-insensitive match on accountName)
-  const accountName = account?.companyName?.trim().toLowerCase() ?? '';
-  const accountSignals = accountName
-    ? signals.filter((s: Signal) => s.accountName?.trim().toLowerCase() === accountName)
+  // Filter signals for the selected account (exact match on accountId → account._id)
+  const accountId = account?._id ?? '';
+  const accountSignals = accountId
+    ? signals.filter((s: Signal) => s.accountId === accountId)
     : [];
 
   if (accountSignals.length === 0) gaps.push('No buying signals detected yet');

@@ -23,6 +23,7 @@ import type { Signal } from '../../lib/adapters/types';
 
 export interface SignalsDetailProps {
   accountKey: string;
+  accountId: string;            // Sanity _id — used for signal matching (CC-4)
   accountName: string;
   /** Worker snapshot signals (system-wide — we filter for this account) */
   signals: Signal[];
@@ -34,6 +35,7 @@ export interface SignalsDetailProps {
 
 export function SignalsDetail({
   accountKey,
+  accountId,
   accountName,
   signals,
   accountSignalStrings,
@@ -41,10 +43,9 @@ export function SignalsDetail({
 }: SignalsDetailProps) {
   const { navigateToView } = useNavigation();
   const timelineSignals = useMemo((): TimelineSignal[] => {
-    // Source 1: Worker snapshot signals filtered for this account
-    const name = accountName.trim().toLowerCase();
+    // Source 1: Worker snapshot signals filtered for this account (CC-4: match on accountId, not name)
     const workerSignals = signals.filter(
-      (s) => s.accountName?.trim().toLowerCase() === name,
+      (s) => s.accountId === accountId,
     );
 
     if (workerSignals.length > 0) {
@@ -79,7 +80,7 @@ export function SignalsDetail({
     }
 
     return [];
-  }, [accountKey, accountName, signals, accountSignalStrings, updatedAt]);
+  }, [accountKey, accountId, accountName, signals, accountSignalStrings, updatedAt]);
 
   return (
     <div className="signals-detail">
