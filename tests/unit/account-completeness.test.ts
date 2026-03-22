@@ -9,6 +9,8 @@ import {
   analyseCompleteness,
   buildCompletenessSummary,
   needsBackgroundWork,
+  getRefreshIntervalDays,
+  isAccountStale,
 } from '../../src/services/account-completeness.js';
 
 describe('analyseCompleteness', () => {
@@ -183,5 +185,77 @@ describe('needsBackgroundWork', () => {
 
     const result = needsBackgroundWork(account, pack);
     expect(result.needed).toBe(false);
+  });
+});
+
+describe('getRefreshIntervalDays', () => {
+  it('returns 3 days for high-value accounts (≥80)', () => {
+    expect(getRefreshIntervalDays(80)).toBe(3);
+    expect(getRefreshIntervalDays(95)).toBe(3);
+  });
+
+  it('returns 7 days for medium-value accounts (≥50)', () => {
+    expect(getRefreshIntervalDays(50)).toBe(7);
+    expect(getRefreshIntervalDays(79)).toBe(7);
+  });
+
+  it('returns 14 days for low-value accounts (≥30)', () => {
+    expect(getRefreshIntervalDays(30)).toBe(14);
+    expect(getRefreshIntervalDays(49)).toBe(14);
+  });
+
+  it('returns 30 days for minimal-value accounts (<30)', () => {
+    expect(getRefreshIntervalDays(0)).toBe(30);
+    expect(getRefreshIntervalDays(29)).toBe(30);
+  });
+
+  it('defaults to 30 days when undefined', () => {
+    expect(getRefreshIntervalDays(undefined as any)).toBe(30);
+  });
+});
+
+describe('isAccountStale', () => {
+  it('returns stale when lastScannedAt is missing', () => {
+    const result = isAccountStale({ opportunityScore: 50 });
+    expect(result.isStale).toBe(true);
+    expect(result.daysSinceScan).toBeNull();
+  });
+
+  it('returns stale when scan is older than interval', () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 86400000).toISOString();
+    const result = isAccountStale({ opportunityScore: 50, lastScannedAt: tenDaysAgo });
+    // 50 score → 7 day interval, 10 days ago → stale
+    expect(result.isStale).toBe(true);
+    expect(result.intervalDays).toBe(7);
+    expect(result.daysSinceScan).toBeGreaterThanOrEqual(10);
+  });
+
+  it('returns not stale when scan is recent', () => {
+    const oneDayAgo = new Date(Date.now() - 1 * 86400000).toISOString();
+    const result = isAccountStale({ opportunityScore: 50, lastScannedAt: oneDayAgo });
+    // 50 score → 7 day interval, 1 day ago → not stale
+    expect(result.isStale).toBe(false);
+    expect(result.intervalDays).toBe(7);
+    expect(result.daysSinceScan).toBeLessThanOrEqual(1);
+  });
+
+  it('returns stale for high-value account with 4-day-old scan', () => {
+    const fourDaysAgo = new Date(Date.now() - 4 * 86400000).toISOString();
+    const result = isAccountStale({ opportunityScore: 85, lastScannedAt: fourDaysAgo });
+    // 85 score → 3 day interval, 4 days ago → stale
+    expect(result.isStale).toBe(true);
+    expect(result.intervalDays).toBe(3);
+  });
+
+  it('handles invalid date gracefully', () => {
+    const result = isAccountStale({ opportunityScore: 50, lastScannedAt: 'not-a-date' });
+    expect(result.isStale).toBe(true);
+    expect(result.daysSinceScan).toBeNull();
+  });
+
+  it('handles null account gracefully', () => {
+    const result = isAccountStale(null);
+    expect(result.isStale).toBe(true);
+    expect(result.intervalDays).toBe(30);
   });
 });
