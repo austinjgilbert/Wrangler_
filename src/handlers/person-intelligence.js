@@ -227,6 +227,24 @@ export async function handlePersonBrief(
       });
     }
 
+    // Fire-and-forget activity event — never blocks response
+    const { emitActivityEvent } = await import('../lib/sanity.ts');
+    emitActivityEvent(env, {
+      eventType: 'data_write',
+      status: 'completed',
+      source: 'worker',
+      accountKey: result.accountKey || null,
+      category: 'research',
+      message: `Person brief generated for ${name}`,
+      data: {
+        personName: name,
+        personId: result.personId,
+        companyName: companyName || companyDomain || null,
+        confidenceScore: result.personBrief?.opportunityConfidence?.score || null,
+      },
+      idempotencyKey: `person-brief.${result.personId || name}.${Date.now()}`,
+    }).catch(() => {});
+
     // Return bounded response
     return createSuccessResponse(
       {
