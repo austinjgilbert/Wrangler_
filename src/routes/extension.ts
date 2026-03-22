@@ -22,6 +22,7 @@ import { createMoltEvent } from '../lib/sanity.ts';
 import { buildDeterministicSnapshotId, buildExtensionCaptureBucketId } from '../../shared/accountStoragePolicy.ts';
 import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
 import { categorizeTechnology } from '../utils/tech-categories.js';
+import { appendContactSighting, computeContactConsensus } from '../lib/contactConsensus.js';
 
 interface CapturedPerson {
   name?: string;
@@ -287,8 +288,24 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (person.publications?.length) personDoc.publications = person.publications;
         if (person.languages?.length) personDoc.languages = person.languages;
         if (person.connections != null) personDoc.connections = typeof person.connections === 'number' ? person.connections : parseInt(String(person.connections), 10) || null;
-        if (person.email) personDoc.email = person.email;
-        if (person.phone) personDoc.phone = person.phone;
+        // Contact data aggregation: append sightings, score, pick primary, sync flat fields
+        if (person.email) {
+          personDoc.contactEmails = appendContactSighting(
+            personDoc.contactEmails, person.email, body.source, new Date().toISOString()
+          );
+        }
+        if (person.phone) {
+          personDoc.contactPhones = appendContactSighting(
+            personDoc.contactPhones, person.phone, body.source, new Date().toISOString()
+          );
+        }
+        if (person.email || person.phone) {
+          const consensus = computeContactConsensus(personDoc);
+          personDoc.contactEmails = consensus.emails;
+          personDoc.contactPhones = consensus.phones;
+          personDoc.email = consensus.primaryEmail?.value || personDoc.email;
+          personDoc.phone = consensus.primaryPhone?.value || personDoc.phone;
+        }
         if (person.source) personDoc.sourceSystems = [person.source];
 
         const titleStr = person.currentTitle || person.title || person.headline || '';
