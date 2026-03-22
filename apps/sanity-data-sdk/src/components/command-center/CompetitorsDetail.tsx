@@ -89,11 +89,11 @@ export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
     setLoading(true);
     setError(null);
 
-    workerGet<{ data: CompetitorResearchData }>(
+    workerGet<CompetitorResearchData>(
       `/competitors/research?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        const payload = res.data?.data ?? null;
+        const payload = res.data ?? null;
         setData(payload);
       })
       .catch((err) => {

@@ -71,18 +71,14 @@ export async function fetchWorkerHealth(): Promise<boolean> {
  * Fetch enrichment status for an account.
  *
  * Worker response shape: { ok: true, data: { status: { status, progress, currentStage, ... } } }
- * workerGet unwraps to: { ok, data: ^that^, status }
  */
 export async function fetchEnrichStatus(accountKey: string): Promise<EnrichStatus> {
   if (!hasWorkerConfig()) return {};
   try {
-    const response = await workerGet<{ data: { status?: EnrichStatus }; status?: EnrichStatus }>(
+    const response = await workerGet<{ status?: EnrichStatus }>(
       `/enrich/status?accountKey=${encodeURIComponent(accountKey)}`,
     );
-    // workerGet wraps Worker JSON in { ok, data: T, status }
-    // T.data.status is the nested path; T.status is the flat fallback
-    const inner = response.data;
-    const status = inner?.data?.status ?? inner?.status;
+    const status = response.data?.status;
     return typeof status === 'object' && status !== null ? status : { status: status as string | undefined };
   } catch {
     return {};
@@ -95,12 +91,11 @@ export async function fetchEnrichStatus(accountKey: string): Promise<EnrichStatu
 export async function advanceEnrichment(accountKey: string): Promise<EnrichStatus> {
   if (!hasWorkerConfig()) return {};
   try {
-    const response = await workerPost<{ data: { status?: EnrichStatus }; status?: EnrichStatus }>(
+    const response = await workerPost<{ status?: EnrichStatus }>(
       '/enrich/advance',
       { accountKey },
     );
-    const inner = response.data;
-    const status = inner?.data?.status ?? inner?.status;
+    const status = response.data?.status;
     return typeof status === 'object' && status !== null ? status : { status: status as string | undefined };
   } catch {
     return {};
@@ -113,8 +108,7 @@ export async function advanceEnrichment(accountKey: string): Promise<EnrichStatu
 export async function queueEnrichment(params: QueueEnrichmentParams): Promise<QueueEnrichmentResult> {
   try {
     const response = await workerPost<{
-      ok?: boolean;
-      data?: { queued?: boolean; jobId?: string; message?: string };
+      queued?: boolean;
       jobId?: string;
       message?: string;
     }>('/enrich/queue', {
@@ -126,11 +120,10 @@ export async function queueEnrichment(params: QueueEnrichmentParams): Promise<Qu
       options: params.options,
       selfHeal: params.selfHeal !== false,
     });
-    const inner = response.data;
     return {
-      ok: response.ok && (inner?.ok === true || inner?.data?.queued === true),
-      jobId: inner?.data?.jobId ?? inner?.jobId,
-      message: inner?.data?.message ?? inner?.message,
+      ok: response.ok && (response.data?.queued === true),
+      jobId: response.data?.jobId,
+      message: response.data?.message,
     };
   } catch (err) {
     return {

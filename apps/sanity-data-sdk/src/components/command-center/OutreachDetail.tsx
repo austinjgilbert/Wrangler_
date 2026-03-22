@@ -101,10 +101,8 @@ function OutreachDetailInner({ accountKey, accountId }: OutreachDetailProps) {
         body.operatorFeedback = feedback.trim();
       }
 
-      const res = await workerPost<{ data: DraftingOutput }>(endpoint, body);
-      const output = (res.data as Record<string, unknown>)?.data as DraftingOutput | undefined
-        ?? res.data as unknown as DraftingOutput | undefined
-        ?? null;
+      const res = await workerPost<DraftingOutput>(endpoint, body);
+      const output = res.data ?? null;
       setDraft(output);
       setShowRegenerate(true);
       setFeedback('');

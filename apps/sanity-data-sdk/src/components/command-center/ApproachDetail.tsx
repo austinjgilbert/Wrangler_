@@ -102,14 +102,11 @@ export function ApproachDetail({ accountKey }: ApproachDetailProps) {
     setError(null);
     setEndpointUnavailable(false);
 
-    workerGet<{ data: QueueResponse }>(
+    workerGet<QueueResponse>(
       `/opportunities/score?accountKey=${encodeURIComponent(accountKey)}&mode=queue`,
     )
       .then((res) => {
-        // Double-nesting: workerGet wraps { ok, data: WorkerJSON }, WorkerJSON is { ok, data: QueueResponse }
-        const queue = (res.data as Record<string, unknown>)?.data as QueueResponse | undefined
-          ?? res.data as unknown as QueueResponse | undefined
-          ?? null;
+        const queue = res.data ?? null;
         setData(queue);
       })
       .catch((err) => {

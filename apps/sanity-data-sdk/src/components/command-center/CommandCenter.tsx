@@ -156,13 +156,11 @@ export function CommandCenter() {
       return;
     }
 
-    workerGet<{ data: { status: Record<string, unknown> } }>(
+    workerGet<{ status: Record<string, unknown> }>(
       `/enrich/status?accountKey=${encodeURIComponent(selectedAccount.accountKey)}`,
     )
       .then((res) => {
-        // workerGet wraps Worker JSON in { ok, data: T, status }
-        // T here is { data: { status: {...} } }, so res.data.data.status is the payload
-        const statusPayload = res.data?.data?.status ?? {};
+        const statusPayload = res.data?.status ?? {};
         const enrichStatus = statusPayload.status as string | undefined;
         const currentStage = statusPayload.currentStage as string | undefined;
 
@@ -187,9 +185,9 @@ export function CommandCenter() {
   const [signals, setSignals] = useState<Signal[]>([]);
 
   useEffect(() => {
-    workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
+    workerGet<{ signals: { recent: Signal[] } }>('/operator/console/snapshot')
       .then((res) => {
-        const recent = res.data?.data?.signals?.recent ?? [];
+        const recent = res.data?.signals?.recent ?? [];
         setSignals(recent);
       })
       .catch(() => {
@@ -210,7 +208,7 @@ export function CommandCenter() {
     setBriefingError(null);
 
     try {
-      const response = await workerPost<{ ok: boolean; data: RawGoodMorningResponse }>('/sdr/good-morning', {
+      const response = await workerPost<RawGoodMorningResponse>('/sdr/good-morning', {
         daysBack: 30,
         minCallScore: 6,
         maxCalls: 25,
@@ -220,9 +218,6 @@ export function CommandCenter() {
         trackPattern: true,
       });
 
-      // workerPost wraps Worker JSON in { ok, data: T, status }
-      // T here is { ok, data: RawGoodMorningResponse }
-      // transformBriefingResponse expects { ok, data: RawGoodMorningResponse }
       const transformed = transformBriefingResponse(response.data);
 
       setBriefing(transformed);
@@ -274,9 +269,9 @@ export function CommandCenter() {
           return;
         }
         showToast('Refreshing signals...');
-        workerGet<{ data: { signals: { recent: Signal[] } } }>('/operator/console/snapshot')
+        workerGet<{ signals: { recent: Signal[] } }>('/operator/console/snapshot')
           .then((res) => {
-            const recent = res.data?.data?.signals?.recent ?? [];
+            const recent = res.data?.signals?.recent ?? [];
             setSignals(recent);
             const name = selectedAccount.companyName?.trim().toLowerCase() ?? '';
             const count = recent.filter((s: Signal) => s.accountName?.trim().toLowerCase() === name).length;

@@ -70,13 +70,11 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
     setLoading(true);
     setError(null);
 
-    workerGet<{ data: { researchSet: ResearchSet } }>(
+    workerGet<{ researchSet: ResearchSet }>(
       `/enrich/research?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        // workerGet wraps Worker JSON in { ok, data: T, status }
-        // T here is { data: { researchSet: {...} } }, so res.data.data.researchSet
-        const researchSet = res.data?.data?.researchSet ?? null;
+        const researchSet = res.data?.researchSet ?? null;
         setResults(researchSet);
       })
       .catch((err) => {

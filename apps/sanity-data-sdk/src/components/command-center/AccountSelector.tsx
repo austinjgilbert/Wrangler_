@@ -55,13 +55,10 @@ export function AccountSelector({ selectedAccount, onSelect, onClear }: AccountS
     setError(null);
 
     try {
-      // Worker response: { ok, data: { entities: { accounts: [...] } }, requestId }
-      // workerGet unwraps to: { ok, data: ^that whole thing^, status }
-      // So we need response.data.data.entities.accounts
       const response = await workerGet<{
-        data: { entities: { accounts: SnapshotAccount[] } };
+        entities: { accounts: SnapshotAccount[] };
       }>('/operator/console/snapshot');
-      const raw = response.data?.data?.entities?.accounts ?? [];
+      const raw = response.data?.entities?.accounts ?? [];
       const transformed = transformSnapshotAccounts(raw);
       const sorted = sortAccountsForSelector(transformed);
       setAccounts(sorted);

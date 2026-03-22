@@ -62,8 +62,13 @@ async function fetchFromWorker<T>(
     );
   }
 
-  const data = await response.json() as T;
-  return { ok: true, data, status: response.status };
+  // Worker endpoints return { ok: true, data: <payload> } (via createSuccessResponse).
+  // Unwrap the Worker envelope so callers get the payload directly as T.
+  // Exception: /health returns raw JSON without a data wrapper — but no caller
+  // accesses .data on the health response, so this is safe.
+  const json = await response.json() as { ok?: boolean; data?: T } & Record<string, unknown>;
+  const data = (json.data !== undefined ? json.data : json) as T;
+  return { ok: json.ok !== false, data, status: response.status };
 }
 
 // ─── Convenience Methods ────────────────────────────────────────────────
