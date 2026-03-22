@@ -12,7 +12,7 @@
  */
 
 import type { TimelineSignal, SignalType } from './signal-timeline-adapter';
-import { computeDensity, SIGNAL_TYPE_COLORS } from './signal-timeline-adapter';
+import { computeDensity, SIGNAL_TYPE_COLORS, SIGNAL_HALF_LIFE_HOURS, decayedStrength } from './signal-timeline-adapter';
 import { GRAPH_TOKENS as T, hexToRgba, drawRoundedRect } from './types';
 
 // ── Layout ──────────────────────────────────────────────────────────
@@ -25,6 +25,16 @@ export interface DotLayout {
   r: number;
   sig: TimelineSignal;
   index: number;
+  /** Pre-computed current decayed strength (0-1). No Date math in draw. */
+  decayedStr: number;
+  /** Pre-computed base strength before decay. */
+  baseStr: number;
+  /** Half-life in hours for this signal type. */
+  halfLifeHours: number;
+  /** Pre-computed decay curve sample points (x,y in canvas coords). Empty in degraded mode. */
+  decayCurve: { x: number; y: number }[];
+  /** Pre-computed half-life marker position, or null if off-screen. */
+  halfLifeMark: { x: number; y: number } | null;
 }
 
 export interface AreaPoint {
@@ -48,6 +58,9 @@ export function layoutSignals(
   const gH = H - PAD.top - PAD.bottom;
   const density = computeDensity(signals, days);
   const maxDensity = Math.max(1, ...density);
+  const allDay0 = signals.length > 0 && signals.every((s) => s.day === 0);
+  const nowMs = Date.now();
+  const totalHours = days * 24;
 
   // Density area points
   const areaPoints: AreaPoint[] = [];
@@ -58,6 +71,7 @@ export function layoutSignals(
   }
 
   // Signal dot positions — jitter Y within the density band
+  // Pre-compute all decay data here (no Date math in draw calls)
   const daySlots: Record<number, number> = {};
   const dots: DotLayout[] = signals.map((sig, i) => {
     const dayKey = sig.day;
@@ -67,7 +81,54 @@ export function layoutSignals(
     const baseY = PAD.top + gH - (density[sig.day] / maxDensity) * gH * 0.6;
     const jitterY = baseY + 12 + slot * 22;
     const r = Math.max(5, Math.min(10, (sig.strength ?? sig.confidence ?? 0.5) * 12));
-    return { x, y: Math.min(jitterY, PAD.top + gH - 10), r, sig, index: i };
+
+    // Decay pre-computation
+    const halfLifeHours = SIGNAL_HALF_LIFE_HOURS[sig.type] ?? 24 * 7;
+    const currentDecayed = decayedStrength(sig.strength, sig.type, sig.detectedAt);
+    const detectedMs = new Date(sig.detectedAt).getTime();
+    const detectedHoursAgo = Math.max(0, (nowMs - detectedMs) / (1000 * 60 * 60));
+    // Infer base strength: if signal has decayed, reverse the decay to find original
+    const baseStr = detectedHoursAgo > 0 && currentDecayed > 0
+      ? sig.strength / Math.pow(0.5, detectedHoursAgo / halfLifeHours)
+      : sig.strength;
+
+    // Pre-compute decay curve points (rich mode only)
+    let decayCurve: { x: number; y: number }[] = [];
+    let halfLifeMark: { x: number; y: number } | null = null;
+
+    if (!allDay0) {
+      const startHoursAgo = Math.min(detectedHoursAgo, totalHours);
+      const CURVE_SAMPLES = 24;
+      const step = startHoursAgo / CURVE_SAMPLES;
+      if (step > 0) {
+        for (let s = 0; s <= CURVE_SAMPLES; s++) {
+          const hoursAgo = startHoursAgo - s * step;
+          const ageHours = detectedHoursAgo - hoursAgo;
+          const str = Math.max(0, Math.min(1, baseStr * Math.pow(0.5, ageHours / halfLifeHours)));
+          const cx = PAD.left + ((totalHours - hoursAgo) / totalHours) * gW;
+          const cy = PAD.top + gH - str * gH * 0.85;
+          decayCurve.push({ x: cx, y: cy });
+        }
+      }
+
+      // Half-life marker position
+      const hlHoursAgo = detectedHoursAgo - halfLifeHours;
+      if (hlHoursAgo >= 0 && hlHoursAgo <= totalHours) {
+        const hlX = PAD.left + ((totalHours - hlHoursAgo) / totalHours) * gW;
+        const hlStr = baseStr * 0.5;
+        const hlY = PAD.top + gH - hlStr * gH * 0.85;
+        halfLifeMark = { x: hlX, y: hlY };
+      }
+    }
+
+    return {
+      x, y: Math.min(jitterY, PAD.top + gH - 10), r, sig, index: i,
+      decayedStr: currentDecayed,
+      baseStr,
+      halfLifeHours,
+      decayCurve,
+      halfLifeMark,
+    };
   });
 
   return { areaPoints, dots };
@@ -246,6 +307,35 @@ export function drawSignalTimeline(
     }
   }
 
+  // ── Decay Curves (rich mode only, pre-computed in layout) ─────────
+  if (!allDay0 && prog > 0.2) {
+    const curveProg = Math.min(1, (prog - 0.2) / 0.5);
+
+    for (const dot of dots) {
+      if (dot.decayCurve.length < 2) continue;
+      const color = SIGNAL_TYPE_COLORS[dot.sig.type] || '#94a3b8';
+      const visiblePts = Math.ceil(dot.decayCurve.length * curveProg);
+
+      // Decay curve stroke — reads pre-computed x,y only
+      c.beginPath();
+      c.moveTo(dot.decayCurve[0].x, dot.decayCurve[0].y);
+      for (let i = 1; i < visiblePts; i++) {
+        c.lineTo(dot.decayCurve[i].x, dot.decayCurve[i].y);
+      }
+      c.strokeStyle = hexToRgba(color, 0.25 * curveProg);
+      c.lineWidth = 1.5;
+      c.stroke();
+
+      // Half-life tick mark (pre-computed position)
+      if (curveProg > 0.6 && dot.halfLifeMark) {
+        c.beginPath();
+        c.arc(dot.halfLifeMark.x, dot.halfLifeMark.y, 2, 0, Math.PI * 2);
+        c.fillStyle = hexToRgba(color, 0.4);
+        c.fill();
+      }
+    }
+  }
+
   // ── Signal Dots ───────────────────────────────────────────────────
   const dotProg = Math.max(0, (prog - 0.3) / 0.7); // Dots appear after 30%
   for (let i = 0; i < dots.length; i++) {
@@ -323,11 +413,30 @@ export function drawSignalTimeline(
     const dot = dots[hoveredIndex];
     if (dot) {
       const sig = dot.sig;
+      // All decay values pre-computed in layoutSignals() — zero Date math here
+      const halfLifeLabel = dot.halfLifeHours >= 24
+        ? `${Math.round(dot.halfLifeHours / 24)}d`
+        : `${dot.halfLifeHours}h`;
+
       const lines: string[] = [
         `${sig.account} — ${sig.type.replace('-', ' ')}`,
         sig.text,
-        `Confidence: ${Math.round(sig.confidence * 100)}% · Strength: ${Math.round((sig.strength ?? sig.confidence) * 100)}%`,
+        `Strength: ${Math.round(dot.decayedStr * 100)}% · Half-life: ${halfLifeLabel}`,
       ];
+      if (dot.decayedStr < dot.baseStr && sig.day > 0) {
+        const pctDecayed = Math.round((1 - dot.decayedStr / dot.baseStr) * 100);
+        lines.push(`📉 Decayed ${pctDecayed}% from ${Math.round(dot.baseStr * 100)}% base`);
+      }
+      // Action threshold line (pre-computed values, only log2 math — no Date)
+      if (dot.decayedStr >= 0.35) {
+        const hoursToThreshold = dot.halfLifeHours * Math.log2(dot.decayedStr / 0.35);
+        const daysLeft = Math.max(0, Math.round(hoursToThreshold / 24));
+        if (daysLeft > 0 && daysLeft < 365) {
+          lines.push(`⏱ ${daysLeft}d until below action threshold`);
+        }
+      } else if (sig.isActive) {
+        lines.push('⚠ Below action threshold (35%)');
+      }
       if (!sig.isActive && sig.expiresAt) {
         const detected = sig.detectedAt?.slice(0, 10) ?? '?';
         const expired = sig.expiresAt?.slice(0, 10) ?? '?';
