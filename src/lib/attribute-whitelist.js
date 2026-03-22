@@ -139,6 +139,16 @@ export const ATTRIBUTE_WHITELIST = {
     'name', 'firstName', 'lastName', 'personKey',
     'linkedinUrl', 'linkedInUrl', 'linkedInSlug', // both casings exist
     'email', 'phone', 'location',
+
+    // Multi-source contact arrays (18 new paths: 2 arrays × 9 fields each including _key)
+    'contactEmails', 'contactEmails.value', 'contactEmails.source',
+    'contactEmails.firstSeenAt', 'contactEmails.lastSeenAt',
+    'contactEmails.confidence', 'contactEmails.isPrimary', 'contactEmails.userPinned',
+    'contactEmails._key',
+    'contactPhones', 'contactPhones.value', 'contactPhones.source',
+    'contactPhones.firstSeenAt', 'contactPhones.lastSeenAt',
+    'contactPhones.confidence', 'contactPhones.isPrimary', 'contactPhones.userPinned',
+    'contactPhones._key',
     'createdAt', 'updatedAt',
 
     // Current role
