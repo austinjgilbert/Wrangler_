@@ -11,6 +11,7 @@
  */
 
 import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
+import { appendContactSighting, reconcileLegacy, computeContactConsensus } from '../lib/contactConsensus.js';
 
 // ── Field merge helpers ──────────────────────────────────────────────────────
 
@@ -184,8 +185,28 @@ function mergePersonFields(winner, loser) {
   merged.personKey = pickBest(merged.personKey, loser.personKey);
   merged.linkedInUrl = pickBest(merged.linkedInUrl, loser.linkedInUrl);
   merged.linkedinUrl = pickBest(merged.linkedinUrl, loser.linkedinUrl);
-  merged.email = pickBest(merged.email, loser.email);
-  merged.phone = pickBest(merged.phone, loser.phone);
+  // Contact data — merge multi-source arrays, reconcile legacy flat fields
+  const winnerContacts = reconcileLegacy(merged);
+  const loserContacts = reconcileLegacy(loser);
+  let mergedEmails = winnerContacts.emails;
+  let mergedPhones = winnerContacts.phones;
+  for (const entry of loserContacts.emails) {
+    mergedEmails = appendContactSighting(mergedEmails, entry.value, entry.source, entry.lastSeenAt);
+  }
+  for (const entry of loserContacts.phones) {
+    mergedPhones = appendContactSighting(mergedPhones, entry.value, entry.source, entry.lastSeenAt);
+  }
+  // Score and pick primaries
+  const consensus = computeContactConsensus({
+    contactEmails: mergedEmails,
+    contactPhones: mergedPhones,
+  });
+  merged.contactEmails = consensus.emails;
+  merged.contactPhones = consensus.phones;
+  // Sync legacy shortcut fields for backward compat
+  merged.email = consensus.primaryEmail?.value || merged.email || loser.email;
+  merged.phone = consensus.primaryPhone?.value || merged.phone || loser.phone;
+
   merged.location = pickBest(merged.location, loser.location);
   merged.headline = pickLongerString(merged.headline, loser.headline);
   merged.about = pickLongerString(merged.about, loser.about);
