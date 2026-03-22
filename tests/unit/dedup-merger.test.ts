@@ -254,7 +254,7 @@ describe('mergePersonCluster', () => {
         _id: 'person.loser', _type: 'person', personKey: 'loser',
         name: 'Jane Elizabeth Doe', // Longer name
         linkedInUrl: 'https://linkedin.com/in/janedoe',
-        email: 'jane@bigco.com', // Winner doesn't have email
+        email: 'jane@bigco.com', // Winner doesn't have email — reconcileLegacy promotes to contactEmails
         skills: ['Python', 'ML'],
         roleCategory: 'engineering',
         seniorityLevel: 'director',
@@ -282,10 +282,166 @@ describe('mergePersonCluster', () => {
     expect(patchMutation).toBeDefined();
     const merged = patchMutation.patch.set;
     expect(merged.name).toBe('Jane Elizabeth Doe'); // Longer name wins
-    expect(merged.email).toBe('jane@bigco.com'); // Filled from loser
+    expect(merged.email).toBe('jane@bigco.com'); // Synced from consensus primary
+    // Legacy email promoted to contactEmails array via reconcileLegacy
+    expect(merged.contactEmails).toBeDefined();
+    expect(merged.contactEmails.length).toBeGreaterThanOrEqual(1);
+    expect(merged.contactEmails.some((e: any) => e.value === 'jane@bigco.com')).toBe(true);
     expect(merged.skills).toContain('Python');
     expect(merged.roleCategory).toBe('engineering');
     expect(merged.seniorityLevel).toBe('director');
+  });
+
+  it('merges multi-source contact arrays from winner and loser', async () => {
+    const docs: Record<string, any> = {
+      'person.winner': {
+        _id: 'person.winner', _type: 'person', personKey: 'winner',
+        name: 'Alice', linkedInUrl: 'https://linkedin.com/in/alice',
+        contactEmails: [
+          { value: 'alice@salesforce.com', source: 'salesforce', firstSeenAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-03-01T00:00:00Z', confidence: 0.9, isPrimary: true, userPinned: false },
+        ],
+        contactPhones: [
+          { value: '+15551234567', source: 'hubspot', firstSeenAt: '2026-02-01T00:00:00Z', lastSeenAt: '2026-02-15T00:00:00Z', confidence: 0.8, isPrimary: true, userPinned: false },
+        ],
+        email: 'alice@salesforce.com',
+        phone: '+15551234567',
+      },
+      'person.loser': {
+        _id: 'person.loser', _type: 'person', personKey: 'loser',
+        name: 'Alice Smith',
+        contactEmails: [
+          { value: 'alice@salesforce.com', source: 'linkedin', firstSeenAt: '2026-02-01T00:00:00Z', lastSeenAt: '2026-03-15T00:00:00Z', confidence: 0.7, isPrimary: false, userPinned: false },
+          { value: 'alice.smith@gmail.com', source: 'google', firstSeenAt: '2026-01-15T00:00:00Z', lastSeenAt: '2026-01-15T00:00:00Z', confidence: 0.3, isPrimary: false, userPinned: false },
+        ],
+        contactPhones: [],
+        email: 'alice@salesforce.com',
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
+
+    const cluster = {
+      matchKey: 'https://www.linkedin.com/in/alice',
+      matchType: 'linkedin',
+      winner: { _id: 'person.winner', personKey: 'winner' },
+      losers: [{ _id: 'person.loser', personKey: 'loser' }],
+    };
+
+    const result = await mergePersonCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(true);
+    const mutations = mutate.mock.calls[0][1];
+    const patchMutation = mutations.find((m: any) => m.patch?.id === 'person.winner');
+    const merged = patchMutation.patch.set;
+
+    // Should have both emails — deduped alice@salesforce.com + new alice.smith@gmail.com
+    expect(merged.contactEmails).toHaveLength(2);
+    const sfEmail = merged.contactEmails.find((e: any) => e.value === 'alice@salesforce.com');
+    const gmailEmail = merged.contactEmails.find((e: any) => e.value === 'alice.smith@gmail.com');
+    expect(sfEmail).toBeDefined();
+    expect(gmailEmail).toBeDefined();
+    // Salesforce email should be primary (higher source reliability + cross-source frequency)
+    expect(sfEmail.isPrimary).toBe(true);
+    expect(sfEmail.confidence).toBeGreaterThan(gmailEmail.confidence);
+    // Legacy email field synced to primary
+    expect(merged.email).toBe('alice@salesforce.com');
+    // Phone preserved from winner
+    expect(merged.contactPhones).toHaveLength(1);
+    expect(merged.phone).toBe('+15551234567');
+  });
+
+  it('reconciles legacy flat email/phone when neither doc has contact arrays', async () => {
+    const docs: Record<string, any> = {
+      'person.winner': {
+        _id: 'person.winner', _type: 'person', personKey: 'winner',
+        name: 'Bob', linkedInUrl: 'https://linkedin.com/in/bob',
+        email: 'bob@acme.com',
+        phone: '+15559876543',
+      },
+      'person.loser': {
+        _id: 'person.loser', _type: 'person', personKey: 'loser',
+        name: 'Robert',
+        email: 'bob.r@gmail.com',
+        // No phone on loser
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
+
+    const cluster = {
+      matchKey: 'https://www.linkedin.com/in/bob',
+      matchType: 'linkedin',
+      winner: { _id: 'person.winner', personKey: 'winner' },
+      losers: [{ _id: 'person.loser', personKey: 'loser' }],
+    };
+
+    const result = await mergePersonCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(true);
+    const mutations = mutate.mock.calls[0][1];
+    const patchMutation = mutations.find((m: any) => m.patch?.id === 'person.winner');
+    const merged = patchMutation.patch.set;
+
+    // Both legacy emails promoted to contactEmails array
+    expect(merged.contactEmails).toHaveLength(2);
+    expect(merged.contactEmails.some((e: any) => e.value === 'bob@acme.com')).toBe(true);
+    expect(merged.contactEmails.some((e: any) => e.value === 'bob.r@gmail.com')).toBe(true);
+    // Both should have source 'legacy'
+    expect(merged.contactEmails.every((e: any) => e.source === 'legacy')).toBe(true);
+    // Legacy phone promoted
+    expect(merged.contactPhones).toHaveLength(1);
+    expect(merged.contactPhones[0].value).toBe('+15559876543');
+    // Flat fields still synced
+    expect(merged.email).toBeDefined();
+    expect(merged.phone).toBe('+15559876543');
+  });
+
+  it('preserves userPinned contact through merge', async () => {
+    const docs: Record<string, any> = {
+      'person.winner': {
+        _id: 'person.winner', _type: 'person', personKey: 'winner',
+        name: 'Carol',
+        contactEmails: [
+          { value: 'carol@work.com', source: 'salesforce', firstSeenAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-03-01T00:00:00Z', confidence: 0.9, isPrimary: false, userPinned: false },
+          { value: 'carol@personal.com', source: 'google', firstSeenAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-01-01T00:00:00Z', confidence: 0.3, isPrimary: true, userPinned: true },
+        ],
+        email: 'carol@personal.com',
+      },
+      'person.loser': {
+        _id: 'person.loser', _type: 'person', personKey: 'loser',
+        name: 'Carol D.',
+        contactEmails: [
+          { value: 'carol@work.com', source: 'hubspot', firstSeenAt: '2026-02-01T00:00:00Z', lastSeenAt: '2026-03-20T00:00:00Z', confidence: 0.9, isPrimary: true, userPinned: false },
+        ],
+      },
+    };
+
+    const groqQuery = createMockGroqQuery(docs);
+    const mutate = vi.fn().mockResolvedValue(sanityOk());
+
+    const cluster = {
+      matchKey: 'carol',
+      matchType: 'email',
+      winner: { _id: 'person.winner', personKey: 'winner' },
+      losers: [{ _id: 'person.loser', personKey: 'loser' }],
+    };
+
+    const result = await mergePersonCluster(groqQuery, mockClient, mutate, cluster, { dryRun: false });
+
+    expect(result.executed).toBe(true);
+    const mutations = mutate.mock.calls[0][1];
+    const patchMutation = mutations.find((m: any) => m.patch?.id === 'person.winner');
+    const merged = patchMutation.patch.set;
+
+    // userPinned entry should remain primary despite lower confidence score
+    const pinnedEmail = merged.contactEmails.find((e: any) => e.value === 'carol@personal.com');
+    expect(pinnedEmail).toBeDefined();
+    expect(pinnedEmail.userPinned).toBe(true);
+    expect(pinnedEmail.isPrimary).toBe(true);
+    // Legacy email synced to pinned entry
+    expect(merged.email).toBe('carol@personal.com');
   });
 
   it('reports partial failures from mutation results', async () => {
