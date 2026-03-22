@@ -5123,7 +5123,7 @@ async function handleScan(request, requestId, env) {
       // Skip if orchestrate=false (called from within orchestrator to prevent recursion)
       const shouldOrchestrate = url.searchParams.get('orchestrate') !== 'false';
       if (shouldOrchestrate && env && client && stored.accountKey) {
-        const { orchestrateAccountResearch } = await import('./services/account-orchestrator.js');
+        const { orchestrateAccountResearch } = await import('./services/unified-orchestrator.js');
         
         const { groqQuery: gq, upsertDocument: ud, patchDocument: pd } = await import('./sanity-client.js');
         orchestrateAccountResearch({

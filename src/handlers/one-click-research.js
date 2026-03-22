@@ -4,7 +4,7 @@
  */
 
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
-import { orchestrateAccountResearch } from '../services/account-orchestrator.js';
+import { orchestrateAccountResearch } from '../services/unified-orchestrator.js';
 import { quickGetCompleteProfile } from '../services/sanity-quick-query.js';
 import { triggerAutoEnrichment } from '../services/auto-enrichment-pipeline.js';
 import { researchCompetitors } from '../services/competitor-research.js';

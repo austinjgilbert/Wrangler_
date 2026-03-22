@@ -6,7 +6,7 @@
 import {
   orchestrateAccountResearch,
   getCompleteAccountIntelligence,
-} from '../services/account-orchestrator.js';
+} from '../services/unified-orchestrator.js';
 
 import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
 
@@ -84,10 +84,11 @@ export async function handleResearch(
     }, requestId);
     
   } catch (error) {
+    console.error('[ORCHESTRATE_RESEARCH] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to orchestrate research',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -145,10 +146,11 @@ export async function handleGetIntelligence(
     }, requestId);
     
   } catch (error) {
+    console.error('[GET_INTELLIGENCE] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get account intelligence',
-      { error: error.message },
+      {},
       500,
       requestId
     );
