@@ -10,7 +10,7 @@
 const MOLTBOOK_KV_KEY = 'moltbook:activity';
 const MOLTBOOK_ACTIVITY_MAX = 100;
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { fetchMoltbookActivity, fetchMoltbookPosts } from '../lib/moltbookAdapter.ts';
 import { sanitizePost } from '../lib/sanitize.ts';
 import {
@@ -22,7 +22,8 @@ import {
 
 export async function handleMoltbookFetch(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const topics = Array.isArray(body.topics) ? body.topics : ['network'];
     const limit = body.limit || 10;
 
@@ -55,7 +56,7 @@ export async function handleMoltbookFetch(request: Request, requestId: string, e
 
     return createSuccessResponse({ fetchedCount: posts.length, storedIds }, requestId);
   } catch (error: any) {
-    return createErrorResponse('MOLTBOOK_FETCH_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('MOLTBOOK_FETCH_ERROR', sanitizeErrorMessage(error, 'moltbook/fetch'), {}, 500, requestId);
   }
 }
 
@@ -94,13 +95,14 @@ export async function handleMoltbookCrawl(request: Request, requestId: string, e
     }
     return createSuccessResponse({ crawled: live.length, stored }, requestId);
   } catch (error: any) {
-    return createErrorResponse('MOLTBOOK_CRAWL_ERROR', (error as Error).message, {}, 500, requestId);
+    return createErrorResponse('MOLTBOOK_CRAWL_ERROR', sanitizeErrorMessage(error, 'moltbook/crawl'), {}, 500, requestId);
   }
 }
 
 export async function handleMoltbookSanitize(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const sinceHours = body.sinceHours || 24;
     const sinceIso = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
 
@@ -126,7 +128,7 @@ export async function handleMoltbookSanitize(request: Request, requestId: string
 
     return createSuccessResponse({ sanitizedCount: storedIds.length, storedIds }, requestId);
   } catch (error: any) {
-    return createErrorResponse('MOLTBOOK_SANITIZE_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('MOLTBOOK_SANITIZE_ERROR', sanitizeErrorMessage(error, 'moltbook/sanitize'), {}, 500, requestId);
   }
 }
 
@@ -172,7 +174,7 @@ export async function handleMoltbookApiActivityGet(request: Request, requestId: 
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=60' },
     });
   } catch (error: any) {
-    return createErrorResponse('MOLTBOOK_API_ERROR', (error as Error).message, {}, 500, requestId);
+    return createErrorResponse('MOLTBOOK_API_ERROR', sanitizeErrorMessage(error, 'moltbook/activity-get'), {}, 500, requestId);
   }
 }
 
@@ -191,7 +193,8 @@ export async function handleMoltbookApiActivityPost(request: Request, requestId:
         return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
       }
     }
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const rawItems = Array.isArray(body?.items) ? body.items : body ? [body] : [];
     if (rawItems.length === 0) {
       return createSuccessResponse({ appended: 0, total: 0 }, requestId);
@@ -203,6 +206,6 @@ export async function handleMoltbookApiActivityPost(request: Request, requestId:
     await kv.put(MOLTBOOK_KV_KEY, JSON.stringify(combined));
     return createSuccessResponse({ appended: normalized.length, total: combined.length }, requestId);
   } catch (error: any) {
-    return createErrorResponse('MOLTBOOK_API_ERROR', (error as Error).message, {}, 500, requestId);
+    return createErrorResponse('MOLTBOOK_API_ERROR', sanitizeErrorMessage(error, 'moltbook/activity-post'), {}, 500, requestId);
   }
 }

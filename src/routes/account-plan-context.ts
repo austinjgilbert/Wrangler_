@@ -10,7 +10,7 @@
  *   GET  /account-plan/context/draft/:id    → Fetch a single draft by ID
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { callLlm, extractTextFromImage } from '../lib/llm.ts';
 import { buildAbmPromptMessages, parseAbmResponse } from '../lib/abm-prompt.ts';
 
@@ -50,7 +50,8 @@ export async function handleContextGenerate(
   env: any,
 ): Promise<Response> {
   try {
-    const body = (await request.json()) as GenerateBody;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
 
     if (!body.accountName?.trim()) {
       return createErrorResponse('VALIDATION_ERROR', 'accountName is required', {}, 400, requestId);
@@ -115,7 +116,7 @@ export async function handleContextGenerate(
       requestId,
     );
   } catch (error: any) {
-    return createErrorResponse('GENERATE_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('GENERATE_ERROR', sanitizeErrorMessage(error, 'account-plan/generate'), {}, 500, requestId);
   }
 }
 
@@ -127,7 +128,8 @@ export async function handleContextSave(
   env: any,
 ): Promise<Response> {
   try {
-    const body = (await request.json()) as SaveBody;
+    const { data: body, error: parseError2 } = await safeParseJson(request, requestId);
+    if (parseError2) return parseError2;
 
     if (!body.accountName?.trim()) {
       return createErrorResponse('VALIDATION_ERROR', 'accountName is required', {}, 400, requestId);
@@ -162,7 +164,7 @@ export async function handleContextSave(
 
     return createSuccessResponse({ draftId, createdAt: now }, requestId);
   } catch (error: any) {
-    return createErrorResponse('SAVE_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('SAVE_ERROR', sanitizeErrorMessage(error, 'account-plan/save'), {}, 500, requestId);
   }
 }
 
@@ -203,7 +205,7 @@ export async function handleContextRecent(
 
     return createSuccessResponse({ drafts: drafts || [] }, requestId);
   } catch (error: any) {
-    return createErrorResponse('RECENT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('RECENT_ERROR', sanitizeErrorMessage(error, 'account-plan/recent'), {}, 500, requestId);
   }
 }
 
@@ -231,7 +233,7 @@ export async function handleContextDraftGet(
 
     return createSuccessResponse({ draft }, requestId);
   } catch (error: any) {
-    return createErrorResponse('DRAFT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('DRAFT_ERROR', sanitizeErrorMessage(error, 'account-plan/draft'), {}, 500, requestId);
   }
 }
 
@@ -243,22 +245,8 @@ export async function handleContextIngest(
   env: any,
 ): Promise<Response> {
   try {
-    const body = (await request.json()) as {
-      accountName?: string;
-      selectedText?: string;
-      pageUrl?: string;
-      pageTitle?: string;
-      screenshotDataUrl?: string;
-      extractedData?: {
-        source?: string;
-        accounts?: Array<Record<string, any>>;
-        people?: Array<Record<string, any>>;
-        technologies?: string[];
-        signals?: Array<Record<string, any>>;
-        metadata?: Record<string, any>;
-        rawText?: string;
-      };
-    };
+    const { data: body, error: parseError3 } = await safeParseJson(request, requestId);
+    if (parseError3) return parseError3;
 
     const { initSanityClient, upsertDocument } = await import('../sanity-client.js');
     const client = initSanityClient(env);
@@ -315,7 +303,7 @@ export async function handleContextIngest(
 
     return createSuccessResponse({ draftId, accountName: doc.accountName }, requestId);
   } catch (error: any) {
-    return createErrorResponse('INGEST_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('INGEST_ERROR', sanitizeErrorMessage(error, 'account-plan/ingest'), {}, 500, requestId);
   }
 }
 

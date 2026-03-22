@@ -21,7 +21,7 @@ import {
   getLearningInsights,
 } from '../services/learning-storage.js';
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 
 /**
  * Handle learning from interaction
@@ -43,7 +43,8 @@ export async function handleStoreInteraction(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     if (!body.query && !body.action) {
       return createErrorResponse(
@@ -93,10 +94,11 @@ export async function handleStoreInteraction(
     }, requestId);
     
   } catch (error) {
+    console.error('[LEARN_STORE] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to store interaction',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -121,7 +123,8 @@ export async function handleGetSuggestions(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const query = body.query || '';
     const accountKey = body.accountKey || null;
     const accountContext = body.accountContext || {};
@@ -178,10 +181,11 @@ export async function handleGetSuggestions(
     }, requestId);
     
   } catch (error) {
+    console.error('[LEARN_SUGGEST] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to generate suggestions',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -206,7 +210,8 @@ export async function handleAnticipateNeeds(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const account = body.account || null;
     const accountKey = body.accountKey || null;
     
@@ -239,10 +244,11 @@ export async function handleAnticipateNeeds(
     }, requestId);
     
   } catch (error) {
+    console.error('[LEARN_ANTICIPATE] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to anticipate needs',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -273,7 +279,8 @@ export async function handleStoreFeedback(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     if (body.positive === undefined) {
       return createErrorResponse(
@@ -322,10 +329,11 @@ export async function handleStoreFeedback(
     }, requestId);
     
   } catch (error) {
+    console.error('[LEARN_FEEDBACK] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to store feedback',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -371,10 +379,11 @@ export async function handleGetLearningInsights(
     }, requestId);
     
   } catch (error) {
+    console.error('[LEARN_INSIGHTS] Error:', error);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get learning insights',
-      { error: error.message },
+      {},
       500,
       requestId
     );
