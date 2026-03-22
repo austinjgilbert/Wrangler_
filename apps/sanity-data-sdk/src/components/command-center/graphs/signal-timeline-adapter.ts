@@ -23,6 +23,39 @@ export type SignalType =
   | 'engagement'
   | 'churn';
 
+// ── Decay Constants ─────────────────────────────────────────────────
+// Duplicated from src/lib/signalIngestion.ts SIGNAL_HALF_LIFE_HOURS.
+// 15 lines of pure math — not worth a cross-package import.
+// Maps SDK signal types → half-life in hours for exponential decay.
+
+export const SIGNAL_HALF_LIFE_HOURS: Record<string, number> = {
+  'funding':     24 * 14,   // ~job_posting: long-lived business event
+  'hiring':      24 * 14,   // ~job_posting: hiring signals persist
+  'tech-change': 24 * 7,    // ~website_scan: tech changes are durable
+  'expansion':   24 * 7,    // ~operator_note: expansion news persists
+  'engagement':  48,         // ~pricing_page_visit: engagement decays fast
+  'churn':       72,         // ~intent_spike: churn risk is urgent
+};
+
+const DEFAULT_HALF_LIFE_HOURS = 24 * 7; // 7 days fallback
+
+/**
+ * Exponential decay: baseStrength × 0.5^(ageHours / halfLifeHours)
+ * Same formula as Worker's calculateDecayedSignalStrength.
+ */
+export function decayedStrength(
+  baseStrength: number,
+  signalType: string,
+  detectedAt: string,
+  now?: string,
+): number {
+  const nowMs = now ? new Date(now).getTime() : Date.now();
+  const detectedMs = new Date(detectedAt).getTime();
+  const ageHours = Math.max(0, (nowMs - detectedMs) / (1000 * 60 * 60));
+  const halfLife = SIGNAL_HALF_LIFE_HOURS[signalType] ?? DEFAULT_HALF_LIFE_HOURS;
+  return Math.max(0, Math.min(1, baseStrength * Math.pow(0.5, ageHours / halfLife)));
+}
+
 export interface TimelineSignal {
   id: string;
   day: number;            // Days ago (0 = today). All 0 in degraded mode.
