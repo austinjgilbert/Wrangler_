@@ -26,11 +26,7 @@ function toBriefingAccount(top: TopAccount): BriefingAccount {
   };
 }
 
-export function transformBriefingResponse(raw: {
-  ok: boolean;
-  data: RawGoodMorningResponse;
-}): TransformedBriefing {
-  const data = raw.data;
+export function transformBriefingResponse(data: RawGoodMorningResponse): TransformedBriefing {
   const topAccounts = data.top10Accounts ?? [];
   const enrichedAccounts = topAccounts.map(toBriefingAccount);
 

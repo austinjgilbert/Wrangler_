@@ -8,8 +8,7 @@
  * The endpoint merges technology docs + raw technologyStack + AI blob
  * into a single response with per-tech insights and stack summary.
  *
- * Double-nesting: workerGet returns { ok, data: { ok, data: TechInsightsResponse } }
- * → actual payload at response.data.data
+ * workerGet unwraps the Worker envelope — response.data is the payload directly.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -100,10 +99,10 @@ export function useTechInsights(accountKey: string | null): UseTechInsightsResul
     setError(null);
 
     try {
-      const response = await workerGet<{ ok: boolean; data: TechInsightsResponse }>(
+      const response = await workerGet<TechInsightsResponse>(
         `/technologies/insights?accountKey=${encodeURIComponent(accountKey)}`,
       );
-      setData(response.data?.data ?? null);
+      setData(response.data ?? null);
     } catch (err) {
       if (err instanceof WorkerApiError && err.status === 404) {
         setData(null);
@@ -125,11 +124,11 @@ export function useTechInsights(accountKey: string | null): UseTechInsightsResul
     setError(null);
 
     try {
-      const response = await workerPost<{ ok: boolean; data: AnalyzeResponse }>(
+      const response = await workerPost<AnalyzeResponse>(
         '/technologies/analyze',
         { accountKey },
       );
-      const result = response.data.data;
+      const result = response.data;
 
       if (result.status === 'already_analyzed') {
         await fetchInsights();

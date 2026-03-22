@@ -118,20 +118,17 @@ export function useJobPolling({
     try {
       // /enrich/jobs takes a single accountKey — fan out parallel requests per key.
       // Phase 2: consider /enrich/jobs/summary with GROQ projection for lighter payload.
-      // workerGet returns { ok, data: <Worker JSON>, status }
-      // Worker JSON is { ok, data: { jobs: [...], count }, requestId }
-      // So jobs are at response.data.data.jobs, not response.data.jobs
       const responses = await Promise.all(
         keys.map(k =>
-          workerGet<{ data: { jobs: BackendJob[] } }>(
+          workerGet<{ jobs: BackendJob[] }>(
             `/enrich/jobs?accountKey=${encodeURIComponent(k)}&limit=5`,
-          ).catch(() => ({ data: { data: { jobs: [] as BackendJob[] } } })),
+          ).catch(() => ({ data: { jobs: [] as BackendJob[] } })),
         ),
       );
 
       if (controller.signal.aborted) return;
 
-      const rawJobs = responses.flatMap(r => r.data?.data?.jobs ?? []);
+      const rawJobs = responses.flatMap(r => r.data?.jobs ?? []);
       const transformed = rawJobs
         .map(j => {
           try {

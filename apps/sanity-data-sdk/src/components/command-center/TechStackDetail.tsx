@@ -66,11 +66,11 @@ export function TechStackDetail({ accountKey }: TechStackDetailProps) {
     setLoading(true);
     setError(null);
 
-    workerGet<{ data: TechInsightsData }>(
+    workerGet<TechInsightsData>(
       `/technologies/insights?accountKey=${encodeURIComponent(accountKey)}`,
     )
       .then((res) => {
-        const payload = res.data?.data ?? null;
+        const payload = res.data ?? null;
         setData(payload);
       })
       .catch((err) => {

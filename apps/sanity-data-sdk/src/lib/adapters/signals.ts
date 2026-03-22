@@ -33,10 +33,8 @@ export interface WorkerSignal {
 }
 
 interface SnapshotResponse {
-  data: {
-    signals: {
-      recent: WorkerSignal[];
-    };
+  signals: {
+    recent: WorkerSignal[];
   };
 }
 
@@ -50,8 +48,7 @@ interface SnapshotResponse {
 export async function fetchRecentSignals(): Promise<WorkerSignal[]> {
   try {
     const res = await workerGet<SnapshotResponse>('/operator/console/snapshot');
-    // Double-nested: workerGet wraps in { data: T }, Worker wraps in { data: { signals: ... } }
-    const recent = res.data?.data?.signals?.recent;
+    const recent = res.data?.signals?.recent;
     if (!Array.isArray(recent)) return [];
     return recent;
   } catch {
