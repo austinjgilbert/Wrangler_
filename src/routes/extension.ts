@@ -21,7 +21,7 @@ import { buildEventDoc } from '../lib/events.ts';
 import { createMoltEvent } from '../lib/sanity.ts';
 import { buildDeterministicSnapshotId, buildExtensionCaptureBucketId } from '../../shared/accountStoragePolicy.ts';
 import { normalizeAccountDisplayName } from '../../shared/accountNameNormalizer.js';
-import { categorizeTechnology } from '../utils/tech-categories.js';
+import { categorizeTechnology, buildTechStack, mergeTechStacks } from '../utils/tech-categories.js';
 import { appendContactSighting, computeContactConsensus } from '../lib/contactConsensus.js';
 
 interface CapturedPerson {
@@ -234,6 +234,16 @@ export async function handleExtensionCapture(request: Request, requestId: string
         }
 
         const existingAccount = await getDocument(client, accountId) as Record<string, any> | null;
+
+        // P0-5: Categorize flat tech array into structured technologyStack
+        const techStack = buildTechStack(body.technologies || []);
+        if (Object.keys(techStack).length > 0) {
+          accountDoc.technologyStack = mergeTechStacks(
+            existingAccount?.technologyStack || {},
+            techStack,
+          );
+        }
+
         const merged = mergeAccountForExtension(existingAccount, accountDoc);
         await upsertDocument(client, merged);
 
@@ -1481,6 +1491,10 @@ function mergeAccountForExtension(existing: Record<string, any> | null, incoming
   }
   if (existing.classification && typeof existing.classification === 'object') {
     out.classification = { ...existing.classification, ...(out.classification || {}) };
+  }
+  // P0-5: Preserve existing technologyStack when incoming doesn't have one
+  if (!out.technologyStack && existing.technologyStack && typeof existing.technologyStack === 'object') {
+    out.technologyStack = existing.technologyStack;
   }
   return out;
 }

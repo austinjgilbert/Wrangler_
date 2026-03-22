@@ -114,3 +114,45 @@ export function categorizeTechnologies(techs) {
   }
   return result;
 }
+
+/**
+ * Build a categorized technologyStack object from a flat array of tech names.
+ * Returns { cms: ['WordPress'], analytics: ['Google Analytics'], ... }
+ * matching the account schema's technologyStack shape.
+ *
+ * @param {string[]} techs - Flat array of technology names
+ * @returns {Record<string, string[]>} Category → tech names
+ */
+export function buildTechStack(techs) {
+  const stack = {};
+  for (const tech of techs) {
+    const name = typeof tech === 'string' ? tech.trim() : '';
+    if (!name) continue;
+    const category = categorizeTechnology(name);
+    if (!stack[category]) stack[category] = [];
+    if (!stack[category].includes(name)) stack[category].push(name);
+  }
+  return stack;
+}
+
+/**
+ * Merge two categorized tech stacks, deduplicating within each category.
+ * Existing categories are preserved; incoming techs are appended if not already present.
+ *
+ * @param {Record<string, any>} existing - Current technologyStack from Sanity
+ * @param {Record<string, string[]>} incoming - New categorized stack from extension capture
+ * @returns {Record<string, string[]>} Merged stack
+ */
+export function mergeTechStacks(existing, incoming) {
+  const merged = {};
+  for (const [cat, techs] of Object.entries(existing || {})) {
+    if (Array.isArray(techs)) merged[cat] = [...techs];
+  }
+  for (const [cat, techs] of Object.entries(incoming)) {
+    if (!merged[cat]) merged[cat] = [];
+    for (const tech of techs) {
+      if (!merged[cat].includes(tech)) merged[cat].push(tech);
+    }
+  }
+  return merged;
+}
