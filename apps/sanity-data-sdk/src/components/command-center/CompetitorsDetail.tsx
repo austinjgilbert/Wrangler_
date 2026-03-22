@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { workerGet } from '../../lib/adapters';
+import { useNavigation } from '../../lib/navigation';
 import { CompetitorMap } from './graphs';
 import { deriveCompetitorMap } from './graphs/competitor-map-adapter';
 
@@ -79,6 +80,7 @@ function priorityClass(priority?: string): string {
 // ─── Component ──────────────────────────────────────────────────────────
 
 export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
+  const { navigateToView } = useNavigation();
   const [data, setData] = useState<CompetitorResearchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,9 +147,8 @@ export function CompetitorsDetail({ accountKey }: CompetitorsDetailProps) {
             <div className="competitors-detail__graph" style={{ marginBottom: 16 }}>
               <CompetitorMap
                 competitors={mapCompetitors}
-                onCompetitorClick={(domain) => {
-                  // TODO: navigate to competitor deep dive when available
-                  console.log('Competitor click:', domain);
+                onCompetitorClick={() => {
+                  navigateToView('accounts');
                 }}
                 width={680}
                 height={340}
