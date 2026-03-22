@@ -288,24 +288,6 @@ export async function handleExtensionCapture(request: Request, requestId: string
         if (person.publications?.length) personDoc.publications = person.publications;
         if (person.languages?.length) personDoc.languages = person.languages;
         if (person.connections != null) personDoc.connections = typeof person.connections === 'number' ? person.connections : parseInt(String(person.connections), 10) || null;
-        // Contact data aggregation: append sightings, score, pick primary, sync flat fields
-        if (person.email) {
-          personDoc.contactEmails = appendContactSighting(
-            personDoc.contactEmails, person.email, body.source, new Date().toISOString()
-          );
-        }
-        if (person.phone) {
-          personDoc.contactPhones = appendContactSighting(
-            personDoc.contactPhones, person.phone, body.source, new Date().toISOString()
-          );
-        }
-        if (person.email || person.phone) {
-          const consensus = computeContactConsensus(personDoc);
-          personDoc.contactEmails = consensus.emails;
-          personDoc.contactPhones = consensus.phones;
-          personDoc.email = consensus.primaryEmail?.value || personDoc.email;
-          personDoc.phone = consensus.primaryPhone?.value || personDoc.phone;
-        }
         if (person.source) personDoc.sourceSystems = [person.source];
 
         const titleStr = person.currentTitle || person.title || person.headline || '';
@@ -326,7 +308,32 @@ export async function handleExtensionCapture(request: Request, requestId: string
           }
         }
 
+        // Fetch existing person BEFORE contact logic so we seed from existing arrays
         const existingPerson = await getDocument(client, personId) as Record<string, any> | null;
+
+        // Contact data aggregation: append sighting to EXISTING arrays, score, sync flat fields
+        if (person.email) {
+          personDoc.contactEmails = appendContactSighting(
+            existingPerson?.contactEmails, person.email, body.source, new Date().toISOString()
+          );
+        }
+        if (person.phone) {
+          personDoc.contactPhones = appendContactSighting(
+            existingPerson?.contactPhones, person.phone, body.source, new Date().toISOString()
+          );
+        }
+        if (person.email || person.phone) {
+          const consensus = computeContactConsensus({
+            ...existingPerson,
+            contactEmails: personDoc.contactEmails || existingPerson?.contactEmails,
+            contactPhones: personDoc.contactPhones || existingPerson?.contactPhones,
+          });
+          personDoc.contactEmails = consensus.emails;
+          personDoc.contactPhones = consensus.phones;
+          personDoc.email = consensus.primaryEmail?.value || personDoc.email;
+          personDoc.phone = consensus.primaryPhone?.value || personDoc.phone;
+        }
+
         const merged = mergePersonForExtension(existingPerson, personDoc);
         await upsertDocument(client, merged);
 
@@ -1493,6 +1500,10 @@ function mergePersonForExtension(existing: Record<string, any> | null, incoming:
     const combined = [...new Set([...(out.sourceSystems || []), ...existing.sourceSystems])];
     out.sourceSystems = combined;
   }
+  // Preserve contact arrays — incoming wins if present (already has new sighting appended),
+  // otherwise keep existing. Do NOT dedup here — consensus engine handles scoring/dedup.
+  if (!out.contactEmails?.length && existing.contactEmails?.length) out.contactEmails = existing.contactEmails;
+  if (!out.contactPhones?.length && existing.contactPhones?.length) out.contactPhones = existing.contactPhones;
   if (!out.companyRef && existing.companyRef) out.companyRef = existing.companyRef;
   if (!out.relatedAccountKey && existing.relatedAccountKey) out.relatedAccountKey = existing.relatedAccountKey;
   if (!out.rootDomain && existing.rootDomain) out.rootDomain = existing.rootDomain;
