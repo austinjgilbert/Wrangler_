@@ -85,6 +85,11 @@ function initSanityClient(env) {
   const baseUrl = `https://${projectId}.api.sanity.io/v${apiVersion}`;
   const mutateUrl = `${baseUrl}/data/mutate/${dataset}`;
   const queryUrl = `${baseUrl}/data/query/${dataset}`;
+
+  // CDN endpoint — cached reads (~60s staleness), lower cost, higher throughput.
+  // Use groqQueryCached() for read-only queries where staleness is acceptable.
+  const cdnBaseUrl = `https://${projectId}.apicdn.sanity.io/v${apiVersion}`;
+  const cdnQueryUrl = `${cdnBaseUrl}/data/query/${dataset}`;
   
   return {
     projectId,
@@ -93,6 +98,7 @@ function initSanityClient(env) {
     baseUrl,
     mutateUrl,
     queryUrl,
+    cdnQueryUrl,
     apiVersion,
     env, // Layer 3: write-path guard reads KV health flag via env
   };
@@ -256,6 +262,43 @@ async function groqQuery(client, query, params = {}) {
     }
     
     const result = await sanityFetch(client, `${client.queryUrl}?${queryParams.toString()}`);
+    return result.result ?? null;
+  });
+}
+
+/**
+ * Execute GROQ query via CDN (apicdn.sanity.io) with retry.
+ *
+ * Identical to groqQuery() but hits the CDN endpoint for cached reads.
+ * Responses may be up to ~60s stale — only use for read-only queries
+ * where staleness is acceptable (dashboards, analytics, briefings).
+ *
+ * DO NOT use for queries that feed into write decisions (enrichment,
+ * dedup, merge operations). Use groqQuery() for those.
+ */
+async function groqQueryCached(client, query, params = {}) {
+  const { retrySanityOperation } = await import('./utils/retry.js');
+  
+  return retrySanityOperation(async () => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('query', query);
+    
+    for (const [key, value] of Object.entries(params)) {
+      if (value === null || value === undefined) continue;
+      
+      if (typeof value === 'string') {
+        const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        queryParams.append(`$${key}`, `"${escaped}"`);
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        queryParams.append(`$${key}`, String(value));
+      } else if (Array.isArray(value)) {
+        queryParams.append(`$${key}`, JSON.stringify(value));
+      } else {
+        queryParams.append(`$${key}`, JSON.stringify(value));
+      }
+    }
+    
+    const result = await sanityFetch(client, `${client.cdnQueryUrl}?${queryParams.toString()}`);
     return result.result ?? null;
   });
 }
@@ -638,6 +681,7 @@ export {
   isSanityQuotaError,
   getSanityServiceError,
   groqQuery,
+  groqQueryCached,
   mutate,
   upsertDocument,
   patchDocument,
