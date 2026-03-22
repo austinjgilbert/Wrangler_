@@ -7438,6 +7438,10 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     const draftId = decodeURIComponent(url.pathname.replace('/gmail/draft/', ''));
     const { handleGmailDraftGet } = await import('./routes/gmail-review.ts');
     return await handleGmailDraftGet(request, requestId, env, draftId);
+  } else if (url.pathname === '/account/profile') {
+    { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+    const { handleAccountProfile } = await import('./handlers/account-profile.js');
+    return await handleAccountProfile(request, requestId, env, groqQueryCached, assertSanityConfigured);
   } else if (url.pathname === '/accounts/stack-rank') {
     { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
     const { handleAccountsStackRank } = await import('./routes/account-rank.ts');
