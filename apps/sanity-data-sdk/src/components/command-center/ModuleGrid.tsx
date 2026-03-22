@@ -15,6 +15,8 @@ import { TechStackDetail } from './TechStackDetail';
 import { CompetitorsDetail } from './CompetitorsDetail';
 import { PeopleDetail } from './PeopleDetail';
 import { SignalsDetail } from './SignalsDetail';
+import { OutreachDetail } from './OutreachDetail';
+import { ApproachDetail } from './ApproachDetail';
 import type { ActionButton, ModuleGlanceProps } from '../../lib/adapters';
 import {
   MODULE_CONFIGS,
@@ -25,7 +27,7 @@ import {
 // ─── Props ──────────────────────────────────────────────────────────────
 
 /** Modules that are Phase 2 stubs — get muted styling + "Coming soon" badge. */
-const STUB_MODULE_KEYS = new Set(['outreach']);
+const STUB_MODULE_KEYS = new Set<string>([]);
 
 export interface ModuleGridProps {
   glanceContext: GlanceContext;
@@ -86,6 +88,16 @@ export function ModuleGrid({ glanceContext, onModuleAction, highlightedModule }:
         return <CompetitorsDetail accountKey={account.accountKey} />;
       case 'people':
         return <PeopleDetail accountKey={account.accountKey} />;
+      case 'outreach':
+        return (
+          <OutreachDetail
+            accountKey={account.accountKey}
+            accountId={account._id}
+          />
+        );
+      case 'approach':
+      case 'opportunity':
+        return <ApproachDetail accountKey={account.accountKey} />;
       default:
         return undefined;
     }

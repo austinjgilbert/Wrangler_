@@ -1,0 +1,427 @@
+/* OutreachDetail — BEM, light theme matching ResearchDetail pattern */
+
+.outreach-detail {
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #303038;
+}
+
+.outreach-detail--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: #808088;
+}
+
+.outreach-detail__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #eaeaea;
+  border-top-color: #4060e0;
+  border-radius: 50%;
+  animation: outreach-spin 0.8s linear infinite;
+}
+
+@keyframes outreach-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────── */
+
+.outreach-detail__empty {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.outreach-detail__empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 6px;
+}
+
+.outreach-detail__empty-hint {
+  font-size: 13px;
+  color: #808088;
+  margin: 0;
+}
+
+/* ── Candidate Selector ──────────────────────────────────────────────── */
+
+.outreach-detail__selector {
+  margin-bottom: 16px;
+}
+
+.outreach-detail__selector-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-bottom: 8px;
+}
+
+.outreach-detail__selector-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.outreach-detail__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid #eaeaea;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 12px;
+  color: #303038;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.outreach-detail__pill:hover {
+  border-color: #c0c0c8;
+}
+
+.outreach-detail__pill--active {
+  border-color: #4060e0;
+  background: #f0f4ff;
+}
+
+.outreach-detail__pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Candidate Card ──────────────────────────────────────────────────── */
+
+.outreach-detail__candidate {
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.outreach-detail__candidate-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.outreach-detail__candidate-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.outreach-detail__urgency-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.outreach-detail__score {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4060e0;
+}
+
+.outreach-detail__why-now {
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.outreach-detail__next-step,
+.outreach-detail__evidence,
+.outreach-detail__missing {
+  margin-bottom: 10px;
+}
+
+.outreach-detail__next-step-label,
+.outreach-detail__evidence-label,
+.outreach-detail__missing-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-bottom: 4px;
+}
+
+.outreach-detail__next-step p {
+  font-size: 13px;
+  color: #303038;
+  margin: 0;
+}
+
+.outreach-detail__evidence-list,
+.outreach-detail__missing-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.6;
+}
+
+.outreach-detail__missing-list {
+  color: #d97706;
+}
+
+/* ── Drafting Section ────────────────────────────────────────────────── */
+
+.outreach-detail__drafting {
+  border-top: 1px solid #eaeaea;
+  padding-top: 16px;
+}
+
+.outreach-detail__drafting-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.outreach-detail__drafting-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0;
+}
+
+.outreach-detail__tone-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.outreach-detail__tone-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+}
+
+.outreach-detail__tone-dropdown {
+  padding: 4px 8px;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #303038;
+  background: #fff;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+
+.outreach-detail__tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.outreach-detail__tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #808088;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.outreach-detail__tab:hover {
+  color: #303038;
+}
+
+.outreach-detail__tab--active {
+  color: #4060e0;
+  border-bottom-color: #4060e0;
+}
+
+/* ── Draft Output ────────────────────────────────────────────────────── */
+
+.outreach-detail__draft-output {
+  margin-bottom: 12px;
+}
+
+.outreach-detail__email,
+.outreach-detail__call {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.outreach-detail__field {
+  background: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.outreach-detail__field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-bottom: 4px;
+}
+
+.outreach-detail__field-value {
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.outreach-detail__field-value--body {
+  white-space: pre-wrap;
+}
+
+/* ── Confidence Bars ─────────────────────────────────────────────────── */
+
+.outreach-detail__confidence {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eaeaea;
+}
+
+.outreach-detail__confidence-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-bottom: 8px;
+}
+
+.outreach-detail__confidence-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outreach-detail__confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outreach-detail__confidence-name {
+  font-size: 12px;
+  color: #303038;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.outreach-detail__confidence-track {
+  flex: 1;
+  height: 6px;
+  background: #eaeaea;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.outreach-detail__confidence-fill {
+  height: 100%;
+  background: #4060e0;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.outreach-detail__confidence-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: #808088;
+  width: 36px;
+  text-align: right;
+}
+
+/* ── Error ────────────────────────────────────────────────────────────── */
+
+.outreach-detail__draft-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.outreach-detail__draft-error p {
+  font-size: 13px;
+  color: #dc2626;
+  margin: 0;
+}
+
+/* ── Generate / Regenerate ───────────────────────────────────────────── */
+
+.outreach-detail__draft-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.outreach-detail__feedback {
+  width: 100%;
+}
+
+.outreach-detail__feedback-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #303038;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.outreach-detail__feedback-input::placeholder {
+  color: #b0b0b8;
+}
+
+.outreach-detail__generate-btn {
+  align-self: flex-start;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #4060e0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.outreach-detail__generate-btn:hover:not(:disabled) {
+  background: #3050c8;
+}
+
+.outreach-detail__generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
