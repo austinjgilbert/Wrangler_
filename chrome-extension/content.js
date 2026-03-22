@@ -1740,7 +1740,9 @@
           ${expItems ? `<div class="wrangler-profile-section"><div class="wrangler-profile-section-title">Experience</div>${expItems}</div>` : ''}
           ${skillTags ? `<div class="wrangler-profile-section"><div class="wrangler-profile-section-title">Skills</div><div class="wrangler-profile-tags">${skillTags}</div></div>` : ''}
           <div class="wrangler-profile-footer">Captured ${escapeHtml(formatRelativeTime(p.capturedAt))}</div>
+          <button class="wrangler-btn wrangler-btn--primary" data-action="enrichPerson" style="margin-top:8px;width:100%">\uD83D\uDD0D Enrich This Person</button>
         `;
+        el.addEventListener('click', handleActionClick);
         return el;
       }));
     }
@@ -2132,6 +2134,37 @@
           btn.style.color = '#86efac';
           setTimeout(() => renderOverlay(), 2000);
         }
+        break;
+      }
+      case 'enrichPerson': {
+        // E4: Trigger person enrichment via POST /person/brief
+        if (!lastCapturedProfile?.name) {
+          btn.textContent = '⚠ Capture profile first';
+          btn.style.color = '#fbbf24';
+          setTimeout(() => renderOverlay(), 2000);
+          break;
+        }
+        const enrichPayload = {
+          name: lastCapturedProfile.name,
+          profileUrl: lastCapturedProfile.profileUrl || undefined,
+        };
+        // Extract company from current experience if available
+        const currentExp = (lastCapturedProfile.experience || []).find(e => e.isCurrent);
+        if (currentExp?.company) enrichPayload.companyName = currentExp.company;
+        chrome.runtime.sendMessage({
+          type: 'wrangler:enrichPerson',
+          payload: enrichPayload,
+        }, (res) => {
+          if (res?.ok) {
+            btn.textContent = '✓ Enrichment Started';
+            btn.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+            btn.style.color = '#86efac';
+          } else {
+            btn.textContent = '✗ ' + (res?.error || 'Enrichment failed');
+            btn.style.color = '#f87171';
+          }
+          setTimeout(() => renderOverlay(), 3000);
+        });
         break;
       }
       case 'captureProfile': {
