@@ -6,8 +6,10 @@
  * Fetches from GET /technologies/insights?accountKey=X on mount.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { workerGet } from '../../lib/adapters';
+import { TechStackRadar } from './graphs';
+import { deriveRadarCategories } from './graphs/tech-radar-adapter';
 
 import './TechStackDetail.css';
 
@@ -83,6 +85,21 @@ export function TechStackDetail({ accountKey }: TechStackDetailProps) {
       });
   }, [accountKey]);
 
+  // Tech Radar — convert grouped tech items to TechCategory[] for the radar adapter
+  const radarCategories = useMemo(
+    () =>
+      data?.grouped
+        ? deriveRadarCategories(
+            Object.entries(data.grouped).map(([cat, techs]) => ({
+              category: cat,
+              technologies: techs.map((t) => t.name),
+              count: techs.length,
+            })),
+          )
+        : [],
+    [data?.grouped],
+  );
+
   return (
     <div className="techstack-detail">
       {/* Loading */}
@@ -105,6 +122,18 @@ export function TechStackDetail({ accountKey }: TechStackDetailProps) {
       {/* Results */}
       {!loading && data && (
         <div className="techstack-detail__results">
+          {/* Tech Radar graph — spider chart of category strengths */}
+          {Object.keys(data.grouped).length > 0 && (
+            <div className="techstack-detail__graph" style={{ marginBottom: 16 }}>
+              <TechStackRadar
+                categories={radarCategories}
+                onCategoryClick={() => {}}
+                width={680}
+                height={340}
+              />
+            </div>
+          )}
+
           {/* Needs analysis banner */}
           {data.needsAnalysis && (
             <div className="techstack-detail__banner">

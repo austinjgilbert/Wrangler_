@@ -7,8 +7,10 @@
  * MVP: summary stats + brief markdown. No charts, no fancy layouts.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PipelineBar } from './PipelineBar';
+import { PipelineFlow } from './graphs';
+import { derivePipelineFlow } from './graphs/pipeline-flow-adapter';
 import { workerGet } from '../../lib/adapters';
 import type { PipelineStage } from '../../lib/adapters';
 import { formatTimestamp } from '../../lib/formatters';
@@ -61,6 +63,9 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pipeline Flow graph — derive flow stages from pipeline stages (memoized)
+  const flowStages = useMemo(() => derivePipelineFlow(pipelineStages), [pipelineStages]);
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -92,6 +97,19 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
       {/* Pipeline progress bar */}
       <PipelineBar stages={pipelineStages} />
 
+      {/* Pipeline Flow graph — stage breakdown with completion status */}
+      {flowStages.length > 0 && (
+        <div className="research-detail__graph" style={{ marginBottom: 16 }}>
+          <PipelineFlow
+            stages={flowStages}
+            pipelineStages={pipelineStages}
+            onStageClick={() => {}}
+            width={680}
+            height={260}
+          />
+        </div>
+      )}
+
       {/* Loading state */}
       {loading && (
         <div className="research-detail__loading">Loading research data...</div>
@@ -105,7 +123,7 @@ export function ResearchDetail({ accountKey, pipelineStages }: ResearchDetailPro
       {/* Empty state — no research yet */}
       {!loading && !error && !results && (
         <div className="research-detail__empty">
-          No research results yet. Click "Deep Research" to start.
+          No research results yet. Click &quot;Deep Research&quot; to start.
         </div>
       )}
 
