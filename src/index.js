@@ -8201,6 +8201,10 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           },
         };
         return await handlePersonBrief(request, requestId, env, groqQuery, upsertDocument, patchDocument, assertSanityConfigured, internalFunctions);
+      } else if (url.pathname === '/person/pin-contact') {
+        { const _m = requireMethod(request, 'PATCH', requestId); if (_m) return _m; }
+        const { handlePinContact } = await import('./handlers/person-pin.js');
+        return await handlePinContact(request, requestId, env, groqQuery, patchDocument, assertSanityConfigured, createSuccessResponse, createErrorResponse, safeParseJson);
       } else if (url.pathname === '/sdr/good-morning' || url.pathname === '/accountability/good-morning') {
         { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
         const { handleGoodMorningRouting } = await import('./handlers/sdr-good-morning.js');
