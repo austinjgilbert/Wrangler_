@@ -14,10 +14,11 @@
  * Each stage uses data from previous stages to inform what to do next.
  */
 
-import { findOrCreateMasterAccount } from './sanity-account.js';
+import { findOrCreateMasterAccount, getMasterAccount } from './sanity-account.js';
 import { createPipelineJob, executeNextPipelineStage, buildCompleteResearchSet } from './research-pipeline.js';
 import { autoEnrichAccount } from './enrichment-service.js';
 import { researchCompetitors } from './competitor-research.js';
+import { buildPayloadIndex } from '../lib/payload-helpers.js';
 
 /**
  * Orchestration stages
@@ -148,14 +149,57 @@ async function executeFoundationStage(job, context) {
       accountKey = accountResult.accountKey;
       account = accountResult.account;
       
+    } else if (job.inputType === 'domain') {
+      // Normalize domain to URL and scan
+      canonicalUrl = job.input.startsWith('http') ? job.input : `https://${job.input}`;
+      
+      const scanRequest = new Request(`https://worker/scan?url=${encodeURIComponent(canonicalUrl)}`);
+      const scanResponse = await handleScan(scanRequest, requestId, env);
+      const scanData = await scanResponse.json();
+      
+      if (!scanData.ok || !scanData.data) {
+        throw new Error(scanData.error?.message || 'Scan failed');
+      }
+      
+      scanResult = scanData.data;
+      companyName = scanResult.businessUnits?.companyName || 
+                   scanResult.technologyStack?.companyName || null;
+      
+      const accountResult = await findOrCreateMasterAccount(
+        groqQuery, upsertDocument, patchDocument, client,
+        canonicalUrl, companyName, scanResult
+      );
+      
+      if (!accountResult.success) {
+        throw new Error(accountResult.error || 'Failed to create account');
+      }
+      
+      accountKey = accountResult.accountKey;
+      account = accountResult.account;
+      
     } else if (job.inputType === 'accountKey') {
       // Use existing account
       accountKey = job.input;
-      // Would need to fetch account from Sanity
-      // For now, skip - would need groqQuery helper
+      account = await getMasterAccount(groqQuery, client, accountKey);
+      if (account) {
+        canonicalUrl = account.canonicalUrl;
+        companyName = account.companyName;
+      }
     } else if (job.inputType === 'company') {
-      // Search for company - would need search service
-      throw new Error('Company name resolution not yet implemented - use URL or accountKey');
+      // Search for existing account by company name
+      const searchResult = await findOrCreateAccountFromCompany(
+        job.input,
+        { groqQuery, upsertDocument, client, handleScan, requestId, env }
+      );
+      
+      if (searchResult.success) {
+        accountKey = searchResult.accountKey;
+        account = searchResult.account;
+        canonicalUrl = searchResult.canonicalUrl;
+        companyName = searchResult.companyName;
+      } else {
+        throw new Error(searchResult.error || 'Failed to find/create account');
+      }
     }
     
     // Store foundation data
@@ -817,6 +861,180 @@ export async function executeNextOrchestrationStage(job, context) {
       completed: false,
       result: { success: false, error: error.message || String(error) },
     };
+  }
+}
+
+// ── Company name resolution (ported from account-orchestrator.js) ────────────
+
+async function findOrCreateAccountFromCompany(companyName, context) {
+  const { groqQuery, client } = context;
+  
+  try {
+    // Search for existing account by company name or domain
+    const searchQuery = `*[_type == "account" && (companyName match "*${companyName}*" || domain match "*${companyName}*")][0]`;
+    const existingAccount = await groqQuery(client, searchQuery, {});
+    
+    if (existingAccount) {
+      const accountKey = existingAccount.accountKey;
+      const account = await getMasterAccount(groqQuery, client, accountKey);
+      
+      return {
+        success: true,
+        accountKey,
+        account,
+        canonicalUrl: account?.canonicalUrl || existingAccount.canonicalUrl,
+        companyName: account?.companyName || existingAccount.companyName,
+      };
+    }
+    
+    // Not found — suggest URL input instead
+    return {
+      success: false,
+      error: 'Company not found. Please provide a URL to scan.',
+      suggestion: 'Provide the company website URL instead',
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to search for company',
+    };
+  }
+}
+
+// ── Compatibility wrapper for account-orchestrator callers ───────────────────
+
+/**
+ * Drop-in replacement for account-orchestrator's orchestrateAccountResearch.
+ * Runs foundation + strategic stages only (same scope as the old orchestrator).
+ * Skips web intelligence, social intelligence, and synthesis.
+ * Returns the old return shape so callers don't need changes.
+ */
+export async function orchestrateAccountResearch(params) {
+  const { input, inputType = 'url', context, options = {} } = params;
+  
+  // Create job with only foundation + strategic stages enabled
+  const job = createUnifiedOrchestrationJob(input, inputType, {
+    includeLinkedIn: false,
+    includePersonBriefs: false,
+    includeOSINT: false,
+    includeCompetitors: options.includeCompetitors !== false,
+    includeEnrichment: options.includeEnrichment !== false,
+    ...options,
+  });
+  
+  // Run foundation stage
+  let stageResult = await executeNextOrchestrationStage(job, context);
+  
+  if (job.status === 'error' && !job.accountKey) {
+    return {
+      input, inputType,
+      accountKey: null, canonicalUrl: null, companyName: null,
+      status: 'error',
+      stages: {
+        accountCreation: { status: 'error', completed: false },
+        enrichment: { status: 'pending', completed: false },
+        competitorResearch: { status: 'pending', completed: false },
+      },
+      account: null, researchSet: null, competitorResearch: null, opportunities: [],
+      startedAt: job.startedAt, completedAt: new Date().toISOString(),
+      error: stageResult.result?.error || 'Foundation stage failed',
+    };
+  }
+  
+  // Skip web intelligence and social intelligence — jump to strategic
+  job.currentStage = ORCHESTRATION_STAGES.STRATEGIC_INTELLIGENCE;
+  job.completedStages.push(ORCHESTRATION_STAGES.WEB_INTELLIGENCE);
+  job.completedStages.push(ORCHESTRATION_STAGES.SOCIAL_INTELLIGENCE);
+  
+  // Run strategic stage (enrichment + competitors)
+  stageResult = await executeNextOrchestrationStage(job, context);
+  
+  // Fetch research set if enrichment completed
+  let researchSet = null;
+  if (job.data.enrichment?.hasResearchSet && context.client) {
+    try {
+      const { getCompleteResearchSet } = await import('./enrichment-service.js');
+      researchSet = await getCompleteResearchSet(context.groqQuery, context.client, job.accountKey);
+    } catch (e) {
+      // Non-critical — researchSet stays null
+    }
+  }
+  
+  // Map to old return shape
+  return {
+    input, inputType,
+    accountKey: job.accountKey,
+    canonicalUrl: job.canonicalUrl,
+    companyName: job.companyName,
+    status: job.failedStages.length > 0 && !job.accountKey ? 'error' : 'complete',
+    stages: {
+      accountCreation: {
+        status: job.completedStages.includes('foundation') ? 'complete' : 'error',
+        completed: job.completedStages.includes('foundation'),
+      },
+      enrichment: {
+        status: job.data.enrichment ? 'complete' : 'pending',
+        completed: !!job.data.enrichment?.hasResearchSet,
+        jobId: job.data.enrichment?.jobId,
+        message: job.data.enrichment?.message,
+      },
+      competitorResearch: {
+        status: job.data.competitorResearch ? 'complete' : 'pending',
+        completed: !!job.data.competitorResearch,
+        competitorCount: job.data.competitorResearch?.competitors?.length || 0,
+        opportunitiesCount: job.data.competitorResearch?.opportunities?.length || 0,
+      },
+    },
+    account: job.data.account,
+    researchSet,
+    competitorResearch: job.data.competitorResearch,
+    opportunities: job.data.competitorResearch?.opportunities || [],
+    startedAt: job.startedAt,
+    completedAt: new Date().toISOString(),
+  };
+}
+
+// ── Account intelligence reader (moved from account-orchestrator.js) ────────
+
+/**
+ * Get complete account intelligence — read-only data aggregation.
+ * Not orchestration — just fetches and combines existing data.
+ */
+export async function getCompleteAccountIntelligence(groqQuery, client, accountKey) {
+  try {
+    const account = await getMasterAccount(groqQuery, client, accountKey);
+    
+    if (!account) {
+      return null;
+    }
+    
+    const { getCompleteResearchSet, getEnrichmentStatus } = await import('./enrichment-service.js');
+    const { getCompetitorResearch, identifyProspectingOpportunities, buildIndustryProfile } = await import('./competitor-research.js');
+    
+    const researchSet = await getCompleteResearchSet(groqQuery, client, accountKey);
+    const competitorResearch = await getCompetitorResearch(groqQuery, client, accountKey);
+    const opportunities = competitorResearch ? identifyProspectingOpportunities(competitorResearch) : [];
+    const industryProfile = competitorResearch ? buildIndustryProfile(competitorResearch) : null;
+    const enrichmentStatus = await getEnrichmentStatus(groqQuery, client, accountKey);
+    
+    return {
+      account,
+      researchSet,
+      competitorResearch,
+      opportunities,
+      industryProfile,
+      enrichmentStatus,
+      completeness: {
+        hasAccount: !!account,
+        hasResearchSet: !!researchSet,
+        hasCompetitorResearch: !!competitorResearch,
+        hasOpportunities: opportunities.length > 0,
+        enrichmentComplete: enrichmentStatus.status === 'complete',
+      },
+    };
+  } catch (error) {
+    return null;
   }
 }
 
