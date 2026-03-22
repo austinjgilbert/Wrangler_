@@ -15,6 +15,7 @@
  */
 
 import { useMemo } from 'react';
+import { useNavigation } from '../../lib/navigation';
 import { SignalTimeline } from './graphs';
 import { deriveSignalTimeline } from './graphs/signal-timeline-adapter';
 import type { TimelineSignal } from './graphs/signal-timeline-adapter';
@@ -38,6 +39,7 @@ export function SignalsDetail({
   accountSignalStrings,
   updatedAt,
 }: SignalsDetailProps) {
+  const { navigateToView } = useNavigation();
   const timelineSignals = useMemo((): TimelineSignal[] => {
     // Source 1: Worker snapshot signals filtered for this account
     const name = accountName.trim().toLowerCase();
@@ -84,9 +86,8 @@ export function SignalsDetail({
       <SignalTimeline
         signals={timelineSignals}
         days={14}
-        onSignalClick={(signal) => {
-          // TODO: navigate to signal detail when available
-          console.log('Signal click:', signal.id, signal.account);
+        onSignalClick={() => {
+          navigateToView('accounts');
         }}
         width={680}
         height={380}
