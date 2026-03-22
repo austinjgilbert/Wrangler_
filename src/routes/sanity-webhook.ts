@@ -60,11 +60,18 @@ async function verifySignature(
     );
 
     const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
-    const computed = Array.from(new Uint8Array(sig))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    return computed === signature;
+    const computed = new Uint8Array(sig);
+    // Decode hex signature to Uint8Array for timing-safe comparison
+    const expected = new Uint8Array(
+      (signature.match(/.{2}/g) || []).map(byte => parseInt(byte, 16))
+    );
+    if (computed.length !== expected.length) return false;
+    // Constant-time comparison — prevents timing side-channel attacks
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) {
+      diff |= computed[i] ^ expected[i];
+    }
+    return diff === 0;
   } catch {
     return false;
   }
@@ -258,6 +265,7 @@ export async function handleSanityWebhook(request: Request, requestId: string, e
 
     return createSuccessResponse({ ...result, documentType: docType }, requestId);
   } catch (error: any) {
-    return createErrorResponse('WEBHOOK_ERROR', error.message, {}, 500, requestId);
+    console.error(`[${requestId}] Webhook processing failed:`, error);
+    return createErrorResponse('WEBHOOK_ERROR', 'Webhook processing failed', {}, 500, requestId);
   }
 }
