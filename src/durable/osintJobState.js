@@ -31,7 +31,15 @@ export class OsintJobState {
     
     if (request.method === 'POST') {
       // Update state
-      const body = await request.json();
+      let body;
+      try {
+        body = await request.json();
+      } catch (_e) {
+        return new Response(JSON.stringify({ ok: false, error: 'Invalid or missing request body' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       const currentState = await this.state.storage.get('state') || {};
       
       const newState = {

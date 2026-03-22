@@ -6,7 +6,7 @@
  */
 
 import type { OperatorFeedbackType } from '../../shared/types.ts';
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { buildEventDoc } from '../lib/events.ts';
 import { resolveEntities } from '../lib/entityResolver.ts';
 import { enqueueJobs, runQueuedJobs } from '../lib/jobs.ts';
@@ -34,7 +34,8 @@ function isValidFeedbackType(value: string): value is OperatorFeedbackType {
 
 export async function handleMoltLog(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const text = body.text;
     const channel = body.channel || 'manual';
     const outcome = body.outcome || null;
@@ -105,7 +106,7 @@ export async function handleMoltLog(request: Request, requestId: string, env: an
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('MOLT_LOG_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('MOLT_LOG_ERROR', sanitizeErrorMessage(error, 'molt/log'), {}, 500, requestId);
   }
 }
 
@@ -146,13 +147,14 @@ export async function handleMoltJobsRun(request: Request, requestId: string, env
 
     return createSuccessResponse({ jobsProcessed: results.length, results }, requestId);
   } catch (error: any) {
-    return createErrorResponse('MOLT_JOBS_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('MOLT_JOBS_ERROR', sanitizeErrorMessage(error, 'molt/jobs'), {}, 500, requestId);
   }
 }
 
 export async function handleMoltFeedback(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const actionCandidateId = typeof body.actionCandidateId === 'string' ? body.actionCandidateId.trim() : null;
     const feedbackTypeRaw = body.feedbackType;
     const idempotencyKey = typeof body.idempotencyKey === 'string'
@@ -196,6 +198,6 @@ export async function handleMoltFeedback(request: Request, requestId: string, en
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('MOLT_FEEDBACK_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('MOLT_FEEDBACK_ERROR', sanitizeErrorMessage(error, 'molt/feedback'), {}, 500, requestId);
   }
 }

@@ -4,7 +4,7 @@
  * - POST /calls/react
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { parseTranscript, cleanTranscript } from '../lib/callClean.ts';
 import { buildCallInsight } from '../lib/callInsight.ts';
 import { buildCallTasks } from '../lib/callTasks.ts';
@@ -36,7 +36,8 @@ function buildFollowupDraft(insight: any) {
 
 export async function handleCallsIngest(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const transcript = body.transcript;
     const meetingType = body.meetingType || 'discovery';
     const accountHint = body.accountHint || '';
@@ -158,13 +159,14 @@ export async function handleCallsIngest(request: Request, requestId: string, env
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('CALL_INGEST_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('CALL_INGEST_ERROR', sanitizeErrorMessage(error, 'calls/ingest'), {}, 500, requestId);
   }
 }
 
 export async function handleCallsReact(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const sessionId = body.sessionId;
     if (!sessionId) {
       return createErrorResponse('VALIDATION_ERROR', 'sessionId required', {}, 400, requestId);
@@ -221,6 +223,6 @@ export async function handleCallsReact(request: Request, requestId: string, env:
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('CALL_REACT_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('CALL_REACT_ERROR', sanitizeErrorMessage(error, 'calls/react'), {}, 500, requestId);
   }
 }

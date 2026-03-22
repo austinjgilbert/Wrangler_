@@ -1,4 +1,4 @@
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import {
   fetchActionCandidateById,
   fetchDocumentsByIds,
@@ -14,9 +14,12 @@ import { getDraftRecord } from '../services/gmail-workflow.ts';
 
 export async function handleAnalyticsExplain(request: Request, requestId: string, env: any) {
   try {
-    const body = request.method === 'POST'
-      ? ((await request.json()) as Record<string, any>)
-      : {};
+    let body: Record<string, any> = {};
+    if (request.method === 'POST') {
+      const { data, error: parseError } = await safeParseJson(request, requestId);
+      if (parseError) return parseError;
+      body = data;
+    }
 
     const explainType = String(body.explainType || body.type || '').trim();
     const actionCandidateId = String(body.actionCandidateId || '').trim();
@@ -81,7 +84,7 @@ export async function handleAnalyticsExplain(request: Request, requestId: string
 
     return createErrorResponse('VALIDATION_ERROR', `Unsupported explainType: ${explainType}`, {}, 400, requestId);
   } catch (error: any) {
-    return createErrorResponse('ANALYTICS_EXPLAIN_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('ANALYTICS_EXPLAIN_ERROR', sanitizeErrorMessage(error, 'analytics/explain'), {}, 500, requestId);
   }
 }
 

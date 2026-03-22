@@ -3,7 +3,7 @@
  * Manages webhook registration and delivery for async job completions
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 
 /**
  * Validate URL
@@ -31,7 +31,8 @@ export async function handleRegisterWebhook(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const { url, events, secret, accountKey } = body;
     
     // Validation

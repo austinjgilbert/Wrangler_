@@ -3,7 +3,7 @@
  * Accepts a Q&A exchange and stores it as interaction + molt.event.
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson, sanitizeErrorMessage } from '../utils/response.js';
 import { buildEventDoc } from '../lib/events.ts';
 import { resolveEntities } from '../lib/entityResolver.ts';
 import { enqueueJobs } from '../lib/jobs.ts';
@@ -11,7 +11,8 @@ import { createMoltEvent } from '../lib/sanity.ts';
 
 export async function handleWranglerIngest(request: Request, requestId: string, env: any) {
   try {
-    const body = (await request.json()) as Record<string, any>;
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const userPrompt = body.userPrompt || body.prompt;
     const gptResponse = body.gptResponse || body.response;
     const sessionId = body.sessionId || null;
@@ -118,6 +119,6 @@ export async function handleWranglerIngest(request: Request, requestId: string, 
       requestId
     );
   } catch (error: any) {
-    return createErrorResponse('WRANGLER_ERROR', error.message, {}, 500, requestId);
+    return createErrorResponse('WRANGLER_ERROR', sanitizeErrorMessage(error, 'wrangler/ingest'), {}, 500, requestId);
   }
 }

@@ -3,7 +3,7 @@
  * Handles queries about user patterns and approaches
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import {
   getOtherUserPatterns,
   getThinkingPatterns,
@@ -114,7 +114,8 @@ export async function handleStoreUserPattern(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const {
       userId,

@@ -3,7 +3,7 @@
  * POST /linkedin/search - Search for LinkedIn profiles
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import { getLinkedInHeaders } from '../utils/headers.js';
 import { parseLinkedInSearchResults } from '../services/linkedin-scraper.js';
 
@@ -14,18 +14,8 @@ import { parseLinkedInSearchResults } from '../services/linkedin-scraper.js';
 export async function handleLinkedInSearch(request, requestId, fetchWithTimeoutFn, readHtmlWithLimitFn) {
   try {
     // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return createErrorResponse(
-        'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: e.message },
-        400,
-        requestId
-      );
-    }
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     
     const { query, limit = 10, filters = {} } = body;
     

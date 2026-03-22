@@ -8,12 +8,12 @@ export async function parseToolRequest(request: Request, requestId: string, expe
   let body: any;
   try {
     body = await request.json();
-  } catch (error: any) {
+  } catch (_e: any) {
     return {
       errorResponse: createErrorResponse(
         'VALIDATION_ERROR',
-        'Invalid JSON in request body',
-        { message: error.message },
+        'Invalid or missing request body',
+        {},
         400,
         requestId
       ),

@@ -3,7 +3,7 @@
  * Routes: /molt/run, /molt/approve
  */
 
-import { createErrorResponse, createSuccessResponse } from '../utils/response.js';
+import { createErrorResponse, createSuccessResponse, safeParseJson } from '../utils/response.js';
 import { runMoltBot } from '../lib/orchestrator.ts';
 import { handleApprovalDecision, handleUnifiedApprovalDecision } from '../lib/approval.ts';
 import { fetchMoltApprovalById, createMoltEvent, createMoltJob } from '../lib/sanity.ts';
@@ -11,7 +11,8 @@ import { buildEventDoc } from '../lib/events.ts';
 
 export async function handleMoltRun(request, requestId, env) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const requestText = body.requestText;
     const mode = body.mode || 'auto';
     const entityHints = Array.isArray(body.entityHints) ? body.entityHints : [];
@@ -82,10 +83,11 @@ export async function handleMoltRun(request, requestId, env) {
       requestId
     );
   } catch (error) {
+    console.error('[MOLTBOT_RUN] Error:', error);
     return createErrorResponse(
       'MOLTBOT_ERROR',
       'Failed to run MoltBot',
-      { error: error.message },
+      {},
       500,
       requestId
     );
@@ -94,7 +96,8 @@ export async function handleMoltRun(request, requestId, env) {
 
 export async function handleMoltApprove(request, requestId, env) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const approvalId = body.approvalId;
     const decision = body.decision;
 
@@ -137,10 +140,11 @@ export async function handleMoltApprove(request, requestId, env) {
       requestId
     );
   } catch (error) {
+    console.error('[MOLTBOT_APPROVE] Error:', error);
     return createErrorResponse(
       'MOLTBOT_APPROVAL_ERROR',
       'Failed to process approval decision',
-      { error: error.message },
+      {},
       500,
       requestId
     );

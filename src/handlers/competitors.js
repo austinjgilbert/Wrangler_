@@ -10,7 +10,7 @@ import {
   buildIndustryProfile,
 } from '../services/competitor-research.js';
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import { hydratePayload } from '../lib/payload-helpers.js';
 
 /**
@@ -28,7 +28,8 @@ export async function handleResearchCompetitors(
   getAccountData
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const accountKey = body.accountKey;
     const canonicalUrl = body.canonicalUrl || body.url;
     

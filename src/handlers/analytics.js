@@ -3,7 +3,7 @@
  * Provides account comparison, trend analysis, and aggregate analytics
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import { normalizeDomain } from '../services/sanity-account.js';
 
 /**
@@ -19,7 +19,8 @@ export async function handleCompareAccounts(
   assertSanityConfigured
 ) {
   try {
-    const body = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
     const accountKeys = body.accountKeys || [];
     const urls = body.urls || [];
     const domains = body.domains || [];

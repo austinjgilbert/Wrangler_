@@ -10,7 +10,7 @@
  *   Extension DOM extraction → this endpoint → person doc upsert → AI enrichment queue
  */
 
-import { createSuccessResponse, createErrorResponse } from '../utils/response.js';
+import { createSuccessResponse, createErrorResponse, safeParseJson } from '../utils/response.js';
 import { generatePersonKey } from '../services/enhanced-storage-service.js';
 
 interface LinkedInExperience {
@@ -214,7 +214,8 @@ export async function handleLinkedInCapture(
   env: any
 ): Promise<Response> {
   try {
-    const body: LinkedInCaptureBody = await request.json();
+    const { data: body, error: parseError } = await safeParseJson(request, requestId);
+    if (parseError) return parseError;
 
     // Validate required fields
     if (!body?.profileUrl || !body?.profile?.name) {
