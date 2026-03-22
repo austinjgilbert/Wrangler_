@@ -191,6 +191,45 @@ export function needsBackgroundWork(account, accountPack, enrichmentJob) {
  *
  * (LinkedIn can run in parallel with crawl/extraction but we sequence for simplicity.)
  */
+/**
+ * Return the refresh interval (in days) for an account based on its opportunity score.
+ * Higher-value accounts refresh more frequently.
+ *
+ *   ≥80 → 3 days
+ *   ≥50 → 7 days
+ *   ≥30 → 14 days
+ *   else → 30 days
+ */
+export function getRefreshIntervalDays(opportunityScore = 0) {
+  if (opportunityScore >= 80) return 3;
+  if (opportunityScore >= 50) return 7;
+  if (opportunityScore >= 30) return 14;
+  return 30;
+}
+
+/**
+ * Check whether an account's data is stale based on its refresh tier.
+ *
+ * @param {object} account — must have lastScannedAt and opportunityScore
+ * @returns {{ isStale: boolean, intervalDays: number, daysSinceScan: number|null }}
+ */
+export function isAccountStale(account) {
+  const intervalDays = getRefreshIntervalDays(account?.opportunityScore || 0);
+  const lastScannedAt = account?.lastScannedAt;
+
+  if (!lastScannedAt) {
+    return { isStale: true, intervalDays, daysSinceScan: null };
+  }
+
+  const ts = new Date(lastScannedAt).getTime();
+  if (!Number.isFinite(ts)) {
+    return { isStale: true, intervalDays, daysSinceScan: null };
+  }
+
+  const daysSinceScan = Math.floor((Date.now() - ts) / 86400000);
+  return { isStale: daysSinceScan >= intervalDays, intervalDays, daysSinceScan };
+}
+
 export function nextPipelineStage(completedStages = []) {
   const ordered = [
     'initial_scan',

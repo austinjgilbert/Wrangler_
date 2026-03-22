@@ -7134,6 +7134,33 @@ const workerHandler = {
           }
         }
       }, 'stale-account-sweep'));
+      // Refresh stale but complete accounts — tiered by opportunity score
+      // (3d for ≥80, 7d for ≥50, 14d for ≥30, 30d otherwise)
+      ctx.waitUntil(breaker.execute(async () => {
+        const { initSanityClient, groqQuery } = await import('./sanity-client.js');
+        const client = initSanityClient(env);
+        if (!client) return;
+        const { isAccountStale } = await import('./services/account-completeness.js');
+        // Fetch complete accounts (score ≥ 70) ordered by value — high-value refresh first
+        const candidates = await groqQuery(client,
+          `*[_type == "account" && defined(profileCompleteness) && profileCompleteness.score >= 70 && defined(lastScannedAt)] | order(opportunityScore desc)[0...30]{accountKey, canonicalUrl, domain, opportunityScore, lastScannedAt}`,
+          {});
+        if (!Array.isArray(candidates) || !candidates.length) return;
+        const stale = candidates.filter(a => isAccountStale(a).isStale);
+        if (!stale.length) return;
+        console.log(`[scheduled] refresh: ${stale.length} stale accounts (of ${candidates.length} candidates)`);
+        const { triggerGapFill } = await import('./services/gap-fill-orchestrator.js');
+        // Limit to 5 per cron run to stay within execution budget
+        for (const acct of stale.slice(0, 5)) {
+          await triggerGapFill({
+            env,
+            accountKey: acct.accountKey,
+            canonicalUrl: acct.canonicalUrl,
+            domain: acct.domain,
+            trigger: 'cron_refresh',
+          }).catch(() => {});
+        }
+      }, 'stale-account-refresh'));
       // Auto-derive learnings from recent interactions
       ctx.waitUntil(breaker.execute(async () => {
         const { deriveAutomaticLearnings } = await import('./services/auto-learning.js');
@@ -7273,7 +7300,7 @@ const KNOWN_PATH_PREFIXES = [
   '/track', '/linkedin-profile', '/linkedin/', '/brief', '/verify', '/cache/', '/store/', '/query', '/update/', '/delete/',
   '/research', '/slack/', '/tools/', '/network/', '/moltbook/', '/opportunities/', '/drafting/', '/dq/', '/enrich/', '/calls/', '/gmail/',
   '/competitors/', '/scan', '/scan-batch', '/osint/', '/analytics/', '/technologies/', '/webhooks', '/orchestrate', '/person/',
-  '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
+  '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account/', '/account-plan/', '/system/',
   '/operator/console',
   '/memory',
 ];
@@ -7442,6 +7469,10 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
     const { handleAccountProfile } = await import('./handlers/account-profile.js');
     return await handleAccountProfile(request, requestId, env, groqQueryCached, assertSanityConfigured);
+  } else if (url.pathname === '/account/ensure-enriched') {
+    { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+    const { handleEnsureEnriched } = await import('./handlers/ensure-enriched.js');
+    return await handleEnsureEnriched(request, requestId, env, groqQuery, assertSanityConfigured);
   } else if (url.pathname === '/accounts/stack-rank') {
     { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
     const { handleAccountsStackRank } = await import('./routes/account-rank.ts');
