@@ -111,6 +111,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // async response
     }
 
+    case 'wrangler:enrichPerson': {
+      // E4: Trigger person enrichment via POST /person/brief
+      const payload = message.payload;
+      if (!payload?.name) {
+        sendResponse({ ok: false, error: 'Person name is required' });
+        return false;
+      }
+      if (!payload.companyName && !payload.companyDomain && !payload.profileUrl) {
+        sendResponse({ ok: false, error: 'At least one of companyName, companyDomain, or profileUrl required' });
+        return false;
+      }
+      handleEnrichPerson(payload)
+        .then((result) => sendResponse({ ok: true, data: result }))
+        .catch((error) => sendResponse({ ok: false, error: error.message }));
+      return true; // async response
+    }
+
     case 'wrangler:feedback': {
       const promptId = String(message.promptId || '').trim();
       const rating = message.rating;
@@ -421,6 +438,36 @@ async function handleFeedback({ promptId, rating, feedback, context }) {
   }));
   if (!data.ok) {
     throw new Error(data?.error?.message || 'Feedback submission failed');
+  }
+  return data.data || null;
+}
+
+// E4: Trigger person enrichment — fire-and-forget from extension perspective
+async function handleEnrichPerson({ name, profileUrl, companyName, companyDomain }) {
+  const settings = await getSettings();
+  if (!settings.apiKey) {
+    throw new Error('API key not configured. Open Settings to add your key.');
+  }
+  const workerUrl = normalizeWorkerUrl(settings.workerUrl);
+  const body = { name, mode: 'fast' };
+  if (profileUrl) body.profileUrl = profileUrl;
+  if (companyName) body.companyName = companyName;
+  if (companyDomain) body.companyDomain = companyDomain;
+
+  const response = await fetch(`${workerUrl}/person/brief`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': settings.apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({
+    ok: false,
+    error: { message: 'Invalid response from worker' },
+  }));
+  if (!data.ok) {
+    throw new Error(data?.error?.message || 'Person enrichment failed');
   }
   return data.data || null;
 }
