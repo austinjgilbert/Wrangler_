@@ -1,9 +1,11 @@
 export { AccountSelector } from './AccountSelector';
+export { ApproachDetail } from './ApproachDetail';
 export { CommandCenter } from './CommandCenter';
 export { CompetitorsDetail } from './CompetitorsDetail';
 export { JobTracker } from './JobTracker';
 export { ModuleGrid } from './ModuleGrid';
 export { ModuleShell } from './ModuleShell';
+export { OutreachDetail } from './OutreachDetail';
 export { PeopleDetail } from './PeopleDetail';
 export { PipelineBar } from './PipelineBar';
 export { TechStackDetail } from './TechStackDetail';

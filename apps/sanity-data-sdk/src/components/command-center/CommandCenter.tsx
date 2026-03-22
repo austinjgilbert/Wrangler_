@@ -78,9 +78,7 @@ function actionToModuleKey(action: string): string | null {
 /** Stage names in pipeline order — used to map currentStage string to an index. */
 const STAGE_ORDER = ['initial_scan', 'discovery', 'crawl', 'extraction', 'linkedin', 'brief', 'verification'] as const;
 
-const STUB_MODULES: Record<string, string> = {
-  outreach: 'Outreach queues are generated during morning briefing — use Command Center refresh to update',
-};
+const STUB_MODULES: Record<string, string> = {};
 
 // showToast is now React state-driven — see toastMessage state inside CommandCenter()
 

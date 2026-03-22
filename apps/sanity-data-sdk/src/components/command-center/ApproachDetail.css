@@ -1,0 +1,354 @@
+/* ApproachDetail — BEM, light theme matching ResearchDetail pattern */
+
+.approach-detail {
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #303038;
+}
+
+.approach-detail--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: #808088;
+}
+
+.approach-detail__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #eaeaea;
+  border-top-color: #408020;
+  border-radius: 50%;
+  animation: approach-spin 0.8s linear infinite;
+}
+
+@keyframes approach-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error ────────────────────────────────────────────────────────────── */
+
+.approach-detail--error {
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.approach-detail__error-text {
+  font-size: 13px;
+  color: #dc2626;
+  margin: 0;
+}
+
+/* ── Unavailable State ───────────────────────────────────────────────── */
+
+.approach-detail__unavailable {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.approach-detail__unavailable-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 6px;
+}
+
+.approach-detail__unavailable-hint {
+  font-size: 13px;
+  color: #808088;
+  margin: 0;
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────── */
+
+.approach-detail__empty {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.approach-detail__empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 6px;
+}
+
+.approach-detail__empty-hint {
+  font-size: 13px;
+  color: #808088;
+  margin: 0;
+}
+
+/* ── Summary Stats ───────────────────────────────────────────────────── */
+
+.approach-detail__stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.approach-detail__stat {
+  flex: 1;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.approach-detail__stat-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #303038;
+  line-height: 1.2;
+}
+
+.approach-detail__stat-value--score {
+  color: #408020;
+}
+
+.approach-detail__stat-value--driver {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4060e0;
+}
+
+.approach-detail__stat-value--priority {
+  color: #d97706;
+}
+
+.approach-detail__stat-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-top: 4px;
+}
+
+/* ── Section Title ───────────────────────────────────────────────────── */
+
+.approach-detail__section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.approach-detail__generated-at {
+  font-size: 11px;
+  font-weight: 400;
+  color: #808088;
+}
+
+/* ── Score Breakdown ─────────────────────────────────────────────────── */
+
+.approach-detail__breakdown {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.approach-detail__factors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.approach-detail__factor {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.approach-detail__factor--driver {
+  background: #f0fdf4;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin: -6px -8px;
+}
+
+.approach-detail__factor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.approach-detail__factor-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303038;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.approach-detail__driver-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #408020;
+  color: #fff;
+}
+
+.approach-detail__factor-weight {
+  font-size: 11px;
+  color: #808088;
+}
+
+.approach-detail__factor-track {
+  height: 6px;
+  background: #eaeaea;
+  border-radius: 3px;
+  overflow: hidden;
+  grid-column: 1;
+}
+
+.approach-detail__factor-fill {
+  height: 100%;
+  background: #408020;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.approach-detail__factor-score {
+  font-size: 12px;
+  font-weight: 600;
+  color: #303038;
+  text-align: right;
+  min-width: 28px;
+}
+
+/* ── Ranked Actions ──────────────────────────────────────────────────── */
+
+.approach-detail__actions {
+  margin-bottom: 8px;
+}
+
+.approach-detail__action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.approach-detail__action-card {
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.approach-detail__action-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.approach-detail__action-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: #808088;
+  min-width: 24px;
+}
+
+.approach-detail__action-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.approach-detail__action-urgency {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.approach-detail__action-score {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #408020;
+}
+
+.approach-detail__action-person {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.approach-detail__action-person-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+}
+
+.approach-detail__action-person-title {
+  font-size: 12px;
+  color: #808088;
+}
+
+.approach-detail__action-why {
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+/* ── Chips ────────────────────────────────────────────────────────────── */
+
+.approach-detail__action-evidence,
+.approach-detail__action-missing,
+.approach-detail__action-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.approach-detail__evidence-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: #e8f4fd;
+  color: #2563eb;
+}
+
+.approach-detail__missing-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.approach-detail__signal-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: #f3e8ff;
+  color: #6b21a8;
+}
