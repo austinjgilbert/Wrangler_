@@ -22,6 +22,8 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAccountDisplayName } from '../../lib/account-dedupe';
 import { AccountSelector } from './AccountSelector';
+import { PortfolioHeatMap } from './graphs';
+import { deriveHeatMapData } from './graphs/heat-map-adapter';
 import { JobTracker } from './JobTracker';
 import { ModuleGrid } from './ModuleGrid';
 import { useJobPolling } from './useJobPolling';
@@ -505,8 +507,33 @@ function MorningBriefingLanding({
 
   const { enrichedAccounts, stats } = briefing;
 
+  // Portfolio Heat Map — derive grid data from briefing accounts
+  const heatMapAccounts = deriveHeatMapData(briefing);
+
+  // Heat Map click → look up full account from cache, same as card click
+  const handleHeatMapClick = (accountKey: string) => {
+    const cached = getCached<Account[]>('accounts');
+    const fullAccount = cached?.data.find((a: Account) => a.accountKey === accountKey);
+    const briefingItem = enrichedAccounts.find((b: BriefingAccount) => b.accountKey === accountKey);
+    if (fullAccount) {
+      onSelectAccount(fullAccount, briefingItem);
+    }
+  };
+
   return (
     <div className="briefing-landing">
+      {/* Portfolio Heat Map — urgency/opportunity/signals/score grid */}
+      {heatMapAccounts.length > 0 && (
+        <div className="briefing-landing__graph" style={{ marginBottom: 16 }}>
+          <PortfolioHeatMap
+            accounts={heatMapAccounts}
+            onAccountClick={handleHeatMapClick}
+            width={680}
+            height={300}
+          />
+        </div>
+      )}
+
       {/* Stats bar */}
       <div className="briefing-landing__stats">
         <div className="briefing-landing__stat">
