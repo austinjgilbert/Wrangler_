@@ -176,6 +176,8 @@
       title:     ['.t-bold span', '.pv-entity__summary-info h3', '.pv-position-entity__title'],
       company:   ['.t-normal span', '.pv-entity__secondary-title', '.pv-position-entity__company'],
       duration:  ['.t-black--light .t-normal span', '.pv-entity__date-range span:nth-child(2)', '.pv-position-entity__duration'],
+      // E5: Experience descriptions — the text under each role revealing achievements, focus, tone
+      description: ['.inline-show-more-text', '.pvs-entity__description', '.pv-entity__description', '.pv-position-entity__description'],
     },
     skills: {
       container: ['#skills ~ div .pvs-list__outer-container', '.pv-skill-categories-section', '[data-section="skills"]'],
@@ -240,7 +242,11 @@
         const title   = extractWithFallbacks(LI_SEL.experience.title, e => e.textContent?.trim(), [el]);
         const company = extractWithFallbacks(LI_SEL.experience.company, e => e.textContent?.trim(), [el]);
         const dur     = extractWithFallbacks(LI_SEL.experience.duration, e => e.textContent?.trim(), [el]);
-        return (title || company) ? { title, company, duration: dur, isCurrent: !dur || /present/i.test(dur || '') } : null;
+        // E5: Extract description text — reveals achievements, focus, tone
+        const desc    = extractWithFallbacks(LI_SEL.experience.description, e => e.textContent?.trim(), [el]);
+        const entry = (title || company) ? { title, company, duration: dur, isCurrent: !dur || /present/i.test(dur || '') } : null;
+        if (entry && desc) entry.description = desc.substring(0, 2000);
+        return entry;
       });
 
       const education = extractMultipleItems(LI_SEL.education.container, LI_SEL.education.items, (el) => {
@@ -300,7 +306,7 @@
       const currentCompany = experience.find(e => e.isCurrent)?.company || '';
 
       data.people.push({
-        name, headline, location: loc, about: (about || '').substring(0, 2000),
+        name, headline, location: loc, about: about || '',
         currentCompany, currentTitle: experience.find(e => e.isCurrent)?.title || headline,
         linkedinUrl: location.href, experience, education, skills,
         certifications, publications, languages, volunteer: volunteer.length ? volunteer : undefined,
@@ -1401,6 +1407,7 @@
     .wrangler-profile-exp { margin-bottom: 4px; }
     .wrangler-profile-exp-title { font-size: 12px; color: var(--wrangler-text, #f1f5f9); display: block; }
     .wrangler-profile-exp-co { font-size: 11px; color: var(--wrangler-text-dim, #64748b); display: block; }
+    .wrangler-profile-exp-desc { font-size: 11px; color: var(--wrangler-text-muted, #94a3b8); display: block; margin-top: 2px; line-height: 1.3; font-style: italic; }
     .wrangler-profile-tags { display: flex; flex-wrap: wrap; gap: 4px; }
     .wrangler-profile-tag {
       font-size: 10px; padding: 2px 6px; border-radius: 3px;
@@ -1719,6 +1726,7 @@
           `<div class="wrangler-profile-exp">
             <span class="wrangler-profile-exp-title">${escapeHtml(exp.title || 'Unknown role')}</span>
             <span class="wrangler-profile-exp-co">${escapeHtml(exp.company || '')}${exp.duration ? ' \u00B7 ' + escapeHtml(exp.duration) : ''}</span>
+            ${exp.description ? `<span class="wrangler-profile-exp-desc">${escapeHtml(exp.description.length > 150 ? exp.description.slice(0, 150) + '\u2026' : exp.description)}</span>` : ''}
           </div>`
         ).join('');
         const skillTags = (p.skills || []).slice(0, 8).map(s =>
