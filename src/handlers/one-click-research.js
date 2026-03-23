@@ -115,8 +115,8 @@ export async function handleOneClickResearch(
     if (orchestration.status === 'error') {
       return createErrorResponse(
         'RESEARCH_ERROR',
-        orchestration.error || 'Failed to orchestrate research',
-        { details: orchestration },
+        'Failed to orchestrate research',
+        { hint: orchestration.error || 'Unknown orchestration error' },
         500,
         requestId
       );
@@ -244,10 +244,11 @@ export async function handleOneClickResearch(
     return createSuccessResponse(result, requestId);
 
   } catch (error) {
+    console.error('[ONE_CLICK_RESEARCH] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to complete one-click research',
-      { error: error.message, stack: error.stack },
+      {},
       500,
       requestId
     );
@@ -343,13 +344,13 @@ export async function handleQuickResearch(
     }, requestId);
 
   } catch (error) {
+    console.error('[QUICK_RESEARCH] Error:', error.message);
     return createErrorResponse(
       'INTERNAL_ERROR',
       'Failed to get quick research',
-      { error: error.message },
+      {},
       500,
       requestId
     );
   }
 }
-
