@@ -18,6 +18,7 @@ import { PeopleDetail } from './PeopleDetail';
 import { SignalsDetail } from './SignalsDetail';
 import { OutreachDetail } from './OutreachDetail';
 import { ApproachDetail } from './ApproachDetail';
+import { OpportunityDetail } from './OpportunityDetail';
 import type { ActionButton, ModuleGlanceProps } from '../../lib/adapters';
 import {
   MODULE_CONFIGS,
@@ -99,8 +100,9 @@ export function ModuleGrid({ glanceContext, onModuleAction, highlightedModule }:
           />
         );
       case 'approach':
-      case 'opportunity':
         return <ApproachDetail accountKey={account.accountKey} />;
+      case 'opportunity':
+        return <OpportunityDetail accountKey={account.accountKey} />;
       default:
         return undefined;
     }
