@@ -214,8 +214,30 @@ export async function handleLinkedInCapture(
   env: any
 ): Promise<Response> {
   try {
+    // ── Size gate: reject oversized payloads before parsing ─────────
+    const { isBodyWithinSizeLimit, stripHtmlTags } = await import('../utils/extension-sanitize.js');
+    if (!isBodyWithinSizeLimit(request)) {
+      return createErrorResponse('PAYLOAD_TOO_LARGE', 'Request body exceeds 50KB limit', {}, 413, requestId);
+    }
+
     const { data: body, error: parseError } = await safeParseJson(request, requestId);
     if (parseError) return parseError;
+
+    // ── Sanitize profile fields: cap strings, slice arrays ──────────
+    if (body?.profile && typeof body.profile === 'object') {
+      const p = body.profile;
+      if (p.about != null) p.about = stripHtmlTags(String(p.about)).slice(0, 5000);
+      if (p.headline != null) p.headline = stripHtmlTags(String(p.headline)).slice(0, 500);
+      if (p.location != null) p.location = stripHtmlTags(String(p.location)).slice(0, 200);
+      if (p.name != null) p.name = stripHtmlTags(String(p.name)).slice(0, 200);
+      if (Array.isArray(p.experience)) p.experience = p.experience.slice(0, 30);
+      if (Array.isArray(p.education)) p.education = p.education.slice(0, 20);
+      if (Array.isArray(p.skills)) p.skills = p.skills.slice(0, 100);
+      if (Array.isArray(p.certifications)) p.certifications = p.certifications.slice(0, 30);
+      if (Array.isArray(p.publications)) p.publications = p.publications.slice(0, 30);
+      if (Array.isArray(p.languages)) p.languages = p.languages.slice(0, 20);
+      if (Array.isArray(p.volunteer)) p.volunteer = p.volunteer.slice(0, 20);
+    }
 
     // Validate required fields
     if (!body?.profileUrl || !body?.profile?.name) {
@@ -371,7 +393,7 @@ export async function handleLinkedInCapture(
   } catch (error: any) {
     return createErrorResponse(
       'LINKEDIN_CAPTURE_ERROR',
-      error.message || 'Failed to capture LinkedIn profile',
+      'Failed to capture LinkedIn profile',
       {},
       500,
       requestId
