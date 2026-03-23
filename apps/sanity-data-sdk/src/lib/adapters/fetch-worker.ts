@@ -83,3 +83,10 @@ export async function workerPost<T>(endpoint: string, body: unknown): Promise<Wo
     body: JSON.stringify(body),
   });
 }
+
+export async function workerPatch<T>(endpoint: string, body: unknown): Promise<WorkerResponse<T>> {
+  return fetchFromWorker<T>(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}

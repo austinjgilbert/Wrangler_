@@ -7,13 +7,14 @@
  * badges, confidence bars, and pin controls).
  *
  * Queries Sanity directly via useDocuments filtered by relatedAccountKey.
- * No worker endpoint needed — person data lives in Sanity.
+ * Pin button calls PATCH /person/pin-contact to override primary contact.
  */
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useDocuments } from '@sanity/sdk-react';
 
 import { formatRelativeTime } from '../../lib/formatters';
+import { workerPatch } from '../../lib/adapters/fetch-worker';
 import './PeopleDetail.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -40,6 +41,17 @@ interface PersonDoc {
   currentCompany?: string;
   contactEmails?: ContactEntry[];
   contactPhones?: ContactEntry[];
+}
+
+interface PinContactResponse {
+  pinned: boolean;
+  personId: string;
+  field: 'contactEmails' | 'contactPhones';
+  value: string;
+  contactEmails: ContactEntry[];
+  contactPhones: ContactEntry[];
+  primaryEmail: string | null;
+  primaryPhone: string | null;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────────
@@ -105,8 +117,42 @@ function formatSeniority(seniority?: string): string {
 
 // ─── ContactSection Sub-component ───────────────────────────────────────
 
-function ContactEntryRow({ entry, type }: { entry: ContactEntry; type: 'email' | 'phone' }) {
+interface ContactEntryRowProps {
+  entry: ContactEntry;
+  type: 'email' | 'phone';
+  onPin: (field: 'contactEmails' | 'contactPhones', value: string) => void;
+  pinning: boolean;
+  pinError: string | null;
+}
+
+function ContactEntryRow({ entry, type, onPin, pinning, pinError }: ContactEntryRowProps) {
   const confidencePct = Math.round(entry.confidence * 100);
+  const field = type === 'email' ? 'contactEmails' as const : 'contactPhones' as const;
+
+  // 5 button states per copy spec:
+  // 1. Already pinned (userPinned: true) — filled style, "Pinned as primary"
+  // 2. Loading (pinning) — ⏳, "Pinning…"
+  // 3. Error — 📌, "Pin failed — try again"
+  // 4. Default — 📌, "Pin as primary"
+  // 5. Success — transitions to state 1 via response update
+  const isPinned = entry.userPinned;
+  let pinIcon = '📌';
+  let pinTitle = 'Pin as primary';
+  let pinAriaLabel = `Pin ${entry.value} as primary`;
+  let pinDisabled = false;
+
+  if (pinning) {
+    pinIcon = '⏳';
+    pinTitle = 'Pinning…';
+    pinAriaLabel = `Pinning ${entry.value}`;
+    pinDisabled = true;
+  } else if (isPinned) {
+    pinTitle = 'Pinned as primary';
+    pinAriaLabel = `Pinned — ${entry.value} is primary`;
+    pinDisabled = true;
+  } else if (pinError) {
+    pinTitle = 'Pin failed — try again';
+  }
 
   return (
     <div className={`contact-section__entry${entry.isPrimary ? ' contact-section__entry--primary' : ''}`}>
@@ -146,12 +192,13 @@ function ContactEntryRow({ entry, type }: { entry: ContactEntry; type: 'email' |
         </div>
       </div>
       <button
-        className="contact-section__pin-btn"
-        disabled
-        title="Pin override coming soon"
-        aria-label={`Pin ${entry.value} as primary`}
+        className={`contact-section__pin-btn${isPinned ? ' contact-section__pin-btn--pinned' : ''}`}
+        disabled={pinDisabled}
+        title={pinTitle}
+        aria-label={pinAriaLabel}
+        onClick={() => onPin(field, entry.value)}
       >
-        📌
+        {pinIcon}
       </button>
     </div>
   );
@@ -159,10 +206,34 @@ function ContactEntryRow({ entry, type }: { entry: ContactEntry; type: 'email' |
 
 function ContactSection({ person }: { person: PersonDoc }) {
   const [expanded, setExpanded] = useState(false);
+  const [pinning, setPinning] = useState<string | null>(null); // value being pinned
+  const [pinError, setPinError] = useState<string | null>(null);
+  // Local override arrays — updated from server response after successful pin
+  const [localEmails, setLocalEmails] = useState<ContactEntry[] | null>(null);
+  const [localPhones, setLocalPhones] = useState<ContactEntry[] | null>(null);
 
-  const emails = person.contactEmails ?? [];
-  const phones = person.contactPhones ?? [];
+  const emails = localEmails ?? person.contactEmails ?? [];
+  const phones = localPhones ?? person.contactPhones ?? [];
   const totalContacts = emails.length + phones.length;
+
+  const handlePin = useCallback(async (field: 'contactEmails' | 'contactPhones', value: string) => {
+    setPinning(value);
+    setPinError(null);
+    try {
+      const res = await workerPatch<PinContactResponse>('/person/pin-contact', {
+        personId: person.documentId,
+        field,
+        value,
+      });
+      // Update local state from server's recomputed consensus
+      setLocalEmails(res.data.contactEmails);
+      setLocalPhones(res.data.contactPhones);
+    } catch {
+      setPinError(value);
+    } finally {
+      setPinning(null);
+    }
+  }, [person.documentId]);
 
   // Nothing to show — fall back to legacy flat fields
   if (totalContacts === 0) {
@@ -223,7 +294,14 @@ function ContactSection({ person }: { person: PersonDoc }) {
             <div className="contact-section__group">
               <span className="contact-section__group-label">Emails</span>
               {sortedEmails.map((entry, i) => (
-                <ContactEntryRow key={`email-${entry.value}-${i}`} entry={entry} type="email" />
+                <ContactEntryRow
+                  key={`email-${entry.value}-${i}`}
+                  entry={entry}
+                  type="email"
+                  onPin={handlePin}
+                  pinning={pinning === entry.value}
+                  pinError={pinError === entry.value ? 'Pin failed' : null}
+                />
               ))}
             </div>
           )}
@@ -231,7 +309,14 @@ function ContactSection({ person }: { person: PersonDoc }) {
             <div className="contact-section__group">
               <span className="contact-section__group-label">Phones</span>
               {sortedPhones.map((entry, i) => (
-                <ContactEntryRow key={`phone-${entry.value}-${i}`} entry={entry} type="phone" />
+                <ContactEntryRow
+                  key={`phone-${entry.value}-${i}`}
+                  entry={entry}
+                  type="phone"
+                  onPin={handlePin}
+                  pinning={pinning === entry.value}
+                  pinError={pinError === entry.value ? 'Pin failed' : null}
+                />
               ))}
             </div>
           )}

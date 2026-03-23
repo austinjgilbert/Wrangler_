@@ -60,7 +60,7 @@ export { transformBriefingResponse } from './briefing';
 export { transformTechStack, getTechCount, type TechCategory } from './techstack';
 
 // Fetch
-export { workerGet, workerPost, WorkerApiError } from './fetch-worker';
+export { workerGet, workerPost, workerPatch, WorkerApiError } from './fetch-worker';
 
 // Cache
 export { getCached, setCache, clearCache, invalidateCache } from './cache';
@@ -84,4 +84,3 @@ export {
   type QueueEnrichmentParams,
   type QueueEnrichmentResult,
 } from './research';
-
