@@ -64,8 +64,8 @@ export async function handleResearch(
     if (result.status === 'error') {
       return createErrorResponse(
         'ORCHESTRATION_ERROR',
-        result.error || 'Failed to orchestrate research',
-        { result },
+        'Failed to orchestrate research',
+        { hint: result.error || 'Unknown orchestration error' },
         500,
         requestId
       );

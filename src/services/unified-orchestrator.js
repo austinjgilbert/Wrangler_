@@ -217,9 +217,10 @@ async function executeFoundationStage(job, context) {
     return { success: true };
     
   } catch (error) {
+    console.error('[ORCHESTRATE] Foundation stage failed:', error.message);
     return {
       success: false,
-      error: error.message || String(error),
+      error: "Foundation stage failed",
     };
   }
 }
@@ -377,9 +378,10 @@ async function executeWebIntelligenceStage(job, context) {
     return { success: true };
     
   } catch (error) {
+    console.error('[ORCHESTRATE] Web intelligence stage failed:', error.message);
     return {
       success: false,
-      error: error.message || String(error),
+      error: "Web intelligence stage failed",
     };
   }
 }
@@ -550,9 +552,10 @@ async function executeSocialIntelligenceStage(job, context) {
     return { success: true };
     
   } catch (error) {
+    console.error('[ORCHESTRATE] Social intelligence stage failed:', error.message);
     return {
       success: false,
-      error: error.message || String(error),
+      error: "Social intelligence stage failed",
     };
   }
 }
@@ -670,9 +673,10 @@ async function executeStrategicIntelligenceStage(job, context) {
     return { success: true };
     
   } catch (error) {
+    console.error('[ORCHESTRATE] Strategic intelligence stage failed:', error.message);
     return {
       success: false,
-      error: error.message || String(error),
+      error: "Strategic intelligence stage failed",
     };
   }
 }
@@ -738,9 +742,10 @@ async function executeSynthesisStage(job, context) {
     return { success: true };
     
   } catch (error) {
+    console.error('[ORCHESTRATE] Synthesis stage failed:', error.message);
     return {
       success: false,
-      error: error.message || String(error),
+      error: "Synthesis stage failed",
     };
   }
 }
@@ -848,9 +853,11 @@ export async function executeNextOrchestrationStage(job, context) {
     };
     
   } catch (error) {
+    const stageError = `Stage ${stage} failed`;
+    console.error(`[ORCHESTRATE] ${stageError}:`, error.message);
     job.failedStages.push({
       stage,
-      error: error.message || String(error),
+      error: stageError,
       timestamp: new Date().toISOString(),
     });
     job.status = 'error';
@@ -859,7 +866,7 @@ export async function executeNextOrchestrationStage(job, context) {
     return {
       job,
       completed: false,
-      result: { success: false, error: error.message || String(error) },
+      result: { success: false, error: stageError },
     };
   }
 }
@@ -871,8 +878,8 @@ async function findOrCreateAccountFromCompany(companyName, context) {
   
   try {
     // Search for existing account by company name or domain
-    const searchQuery = `*[_type == "account" && (companyName match "*${companyName}*" || domain match "*${companyName}*")][0]`;
-    const existingAccount = await groqQuery(client, searchQuery, {});
+    const searchQuery = `*[_type == "account" && (companyName match $companyPattern || domain match $companyPattern)][0]`;
+    const existingAccount = await groqQuery(client, searchQuery, { companyPattern: '*' + companyName + '*' });
     
     if (existingAccount) {
       const accountKey = existingAccount.accountKey;
