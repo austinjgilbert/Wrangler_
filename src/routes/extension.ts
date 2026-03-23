@@ -13,7 +13,7 @@
  *   5. Store a capture event (molt.event type = extension.capture)
  *   6. Trigger gap-fill enrichment for every resolved account
  *
- * Auth: Requires MOLT_API_KEY (same as /wrangler/ingest)
+ * Auth: Requires WORKER_API_KEY (global middleware)
  */
 
 import { createErrorResponse, createSuccessResponse, sanitizeErrorMessage } from '../utils/response.js';
@@ -850,7 +850,7 @@ export async function handleExtensionLearn(request: Request, requestId: string, 
  *
  * Body: { promptId: string, feedback: string, rating?: 'positive'|'negative', context?: object }
  *
- * Auth: MOLT_API_KEY (global middleware)
+ * Auth: WORKER_API_KEY (global middleware)
  */
 
 const VALID_RATINGS = ['positive', 'negative'] as const;

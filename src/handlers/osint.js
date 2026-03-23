@@ -272,26 +272,9 @@ export async function handleRunOsint(
   handlers
 ) {
   try {
+    // Auth: global middleware validates WORKER_API_KEY (Sprint 9 Lane 4)
     // Read request body once
     const body = await request.json().catch(() => ({}));
-    
-    // Check admin key
-    const adminKey = request.headers.get('X-Admin-API-Key') || 
-                    request.headers.get('X-Admin-Token') ||
-                    body.adminKey;
-    
-    if (env.ADMIN_API_KEY && adminKey !== env.ADMIN_API_KEY) {
-      return createErrorResponse(
-        'UNAUTHORIZED',
-        'Admin API key required',
-        {
-          message: 'This endpoint requires authentication. Provide X-Admin-API-Key header or adminKey in body.',
-          hint: 'Set ADMIN_API_KEY secret: wrangler secret put ADMIN_API_KEY',
-        },
-        401,
-        requestId
-      );
-    }
     
     const { url, companyName, mode = 'year_ahead', recencyDays } = body;
     

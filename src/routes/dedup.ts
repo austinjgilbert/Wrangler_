@@ -33,7 +33,7 @@ function sanitizeError(error: string): string {
   return error
     .replace(/\/[\w\-./]+\.(js|ts)/g, '[internal]')
     .replace(/at\s+\S+\s+\(.*?\)/g, '')
-    .replace(/SANITY_TOKEN|ADMIN_TOKEN|MOLT_API_KEY/gi, '[REDACTED]')
+    .replace(/SANITY_TOKEN|SANITY_API_TOKEN|ADMIN_TOKEN|WORKER_API_KEY|MOLT_API_KEY|CHATGPT_API_KEY/gi, '[REDACTED]')
     .substring(0, 200);
 }
 
