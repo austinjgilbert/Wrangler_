@@ -5,6 +5,7 @@ export { CompetitorsDetail } from './CompetitorsDetail';
 export { JobTracker } from './JobTracker';
 export { ModuleGrid } from './ModuleGrid';
 export { ModuleShell } from './ModuleShell';
+export { OpportunityDetail } from './OpportunityDetail';
 export { OutreachDetail } from './OutreachDetail';
 export { PeopleDetail } from './PeopleDetail';
 export { PipelineBar } from './PipelineBar';
