@@ -1,0 +1,596 @@
+/* ProfileDetail — BEM, light theme matching ResearchDetail/ApproachDetail pattern */
+
+.profile-detail {
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #303038;
+}
+
+/* ── Loading ──────────────────────────────────────────────────────────── */
+
+.profile-detail--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: #808088;
+}
+
+.profile-detail__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #eaeaea;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: profile-spin 0.8s linear infinite;
+}
+
+@keyframes profile-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error ────────────────────────────────────────────────────────────── */
+
+.profile-detail--error {
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.profile-detail__error-text {
+  font-size: 13px;
+  color: #dc2626;
+  margin: 0;
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────── */
+
+.profile-detail__empty {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.profile-detail__empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 6px;
+}
+
+.profile-detail__empty-hint {
+  font-size: 13px;
+  color: #808088;
+  margin: 0;
+}
+
+/* ── Identity Header ─────────────────────────────────────────────────── */
+
+.profile-detail__identity {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.profile-detail__identity-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.profile-detail__company-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #303038;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.profile-detail__domain {
+  font-size: 13px;
+  color: #4060e0;
+  text-decoration: none;
+}
+
+.profile-detail__domain:hover {
+  text-decoration: underline;
+}
+
+.profile-detail__identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-detail__tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f0f0f0;
+  color: #606068;
+}
+
+/* ── Scores Row ──────────────────────────────────────────────────────── */
+
+.profile-detail__scores {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.profile-detail__score-pill {
+  flex: 1;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.profile-detail__score-pill--high {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.profile-detail__score-pill--mid {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.profile-detail__score-pill--low {
+  border-color: #eaeaea;
+  background: #f8f9fa;
+}
+
+.profile-detail__score-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #303038;
+}
+
+.profile-detail__score-pill--high .profile-detail__score-value {
+  color: #408020;
+}
+
+.profile-detail__score-pill--mid .profile-detail__score-value {
+  color: #d97706;
+}
+
+.profile-detail__score-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+  margin-top: 2px;
+}
+
+/* ── Completeness ────────────────────────────────────────────────────── */
+
+.profile-detail__completeness {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.profile-detail__completeness-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.profile-detail__section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #808088;
+}
+
+.profile-detail__completeness-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303038;
+}
+
+.profile-detail__completeness-bar {
+  height: 6px;
+  background: #eaeaea;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.profile-detail__completeness-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.profile-detail__gaps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-detail__gaps-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #808088;
+}
+
+.profile-detail__gap-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.profile-detail__next-stages {
+  font-size: 12px;
+  color: #606068;
+  margin: 8px 0 0;
+  font-style: italic;
+}
+
+/* ── Fill Gaps Button ────────────────────────────────────────────────── */
+
+.profile-detail__fill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.profile-detail__fill-btn:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.profile-detail__fill-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.profile-detail__fill-btn--done {
+  background: #f0f0f0;
+  border-color: #eaeaea;
+  color: #408020;
+}
+
+.profile-detail__fill-btn--success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.profile-detail__fill-btn--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+/* ── Hint ─────────────────────────────────────────────────────────────── */
+
+.profile-detail__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.profile-detail__hint-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.profile-detail__hint-text {
+  font-size: 13px;
+  color: #1e40af;
+  line-height: 1.5;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────── */
+
+.profile-detail__section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.profile-detail__section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.profile-detail__section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303038;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-detail__section-meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: #808088;
+}
+
+.profile-detail__section-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: #808088;
+}
+
+.profile-detail__subsection {
+  margin-top: 12px;
+}
+
+.profile-detail__subsection-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #606068;
+  margin-bottom: 6px;
+}
+
+/* ── Brief / Findings ────────────────────────────────────────────────── */
+
+.profile-detail__brief-summary {
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+
+.profile-detail__findings-list {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.profile-detail__finding {
+  font-size: 13px;
+  color: #303038;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.profile-detail__meta-text {
+  display: block;
+  font-size: 11px;
+  color: #808088;
+  margin-top: 6px;
+}
+
+.profile-detail__meta-text--warn {
+  color: #dc2626;
+}
+
+/* ── OSINT Signals Row ───────────────────────────────────────────────── */
+
+.profile-detail__osint-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.profile-detail__signal-group {
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.profile-detail__signal-group-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #606068;
+  margin-bottom: 6px;
+}
+
+.profile-detail__signal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.profile-detail__signal-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: #e8f4fd;
+  color: #2563eb;
+}
+
+/* ── Leadership People Grid ──────────────────────────────────────────── */
+
+.profile-detail__people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.profile-detail__person-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #f8f9fa;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.profile-detail__person-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303038;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-detail__dm-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #4060e0;
+  color: #fff;
+}
+
+.profile-detail__person-title {
+  font-size: 12px;
+  color: #808088;
+  line-height: 1.3;
+}
+
+.profile-detail__person-linkedin {
+  font-size: 11px;
+  color: #4060e0;
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.profile-detail__person-linkedin:hover {
+  text-decoration: underline;
+}
+
+/* ── Pain Points ─────────────────────────────────────────────────────── */
+
+.profile-detail__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-detail__pain-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ── Enrichment Status ───────────────────────────────────────────────── */
+
+.profile-detail__enrichment {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.profile-detail__enrichment-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-detail__enrichment-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.profile-detail__enrichment-badge--complete {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.profile-detail__enrichment-badge--active {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.profile-detail__enrichment-badge--failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.profile-detail__enrichment-badge--none {
+  background: #f0f0f0;
+  color: #808088;
+}
+
+/* ── Data Freshness Footer ───────────────────────────────────────────── */
+
+.profile-detail__freshness {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-detail__freshness-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-detail__freshness-status {
+  margin-bottom: 4px;
+}
+
+.profile-detail__freshness-warn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.profile-detail__freshness-ok {
+  font-size: 13px;
+  font-weight: 600;
+  color: #408020;
+}
+
+.profile-detail__freshness-detail {
+  font-weight: 400;
+  font-size: 12px;
+  color: #808088;
+  margin-left: 8px;
+}
+
+.profile-detail__age-item {
+  font-size: 11px;
+  color: #808088;
+}

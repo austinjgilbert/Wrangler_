@@ -10,6 +10,7 @@
 import type React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { ModuleShell } from './ModuleShell';
+import { ProfileDetail } from './ProfileDetail';
 import { ResearchDetail } from './ResearchDetail';
 import { TechStackDetail } from './TechStackDetail';
 import { CompetitorsDetail } from './CompetitorsDetail';
@@ -66,6 +67,8 @@ export function ModuleGrid({ glanceContext, onModuleAction, highlightedModule }:
     if (!account) return undefined;
 
     switch (moduleKey) {
+      case 'profile':
+        return <ProfileDetail accountKey={account.accountKey} />;
       case 'research':
         return (
           <ResearchDetail

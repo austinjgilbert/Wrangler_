@@ -307,7 +307,7 @@ export function CommandCenter() {
           },
         },
         profile: {
-          endpoint: '/enrich/advance',
+          endpoint: '/account/ensure-enriched',
           body: {
             accountKey: selectedAccount.accountKey,
           },
