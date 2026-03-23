@@ -10,7 +10,8 @@
  *   2. X-API-Key: <key>                (preferred)
  *   3. ?apiKey=<key> or ?key=<key>     (DEPRECATED — will be removed)
  *
- * Env: WORKER_API_KEY (primary), MOLT_API_KEY or CHATGPT_API_KEY (legacy fallbacks).
+ * Env: WORKER_API_KEY (primary). Legacy fallbacks MOLT_API_KEY / CHATGPT_API_KEY
+ * retained for backward compatibility during migration — will be removed.
  *
  * SECURITY: Fail-closed — if no key is configured, ALL requests are rejected
  * with 503. This prevents accidental open access during initial setup.

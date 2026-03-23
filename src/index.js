@@ -7034,7 +7034,7 @@ const workerHandler = {
             // Internal caller marker — bypasses external auth middleware.
             // Uses WORKER_API_KEY as token: external callers can't forge it
             // (they'd need the key, which passes normal auth anyway).
-            'X-Internal-Caller': env.WORKER_API_KEY || env.MOLT_API_KEY || '__cron__',
+            'X-Internal-Caller': env.WORKER_API_KEY || '__cron__',
           },
           body: JSON.stringify(body),
         });
@@ -7060,7 +7060,7 @@ const workerHandler = {
               method: r.method,
               headers: new Headers([
                 ...r.headers.entries(),
-                ['X-Internal-Caller', env.WORKER_API_KEY || env.MOLT_API_KEY || '__cron__'],
+                ['X-Internal-Caller', env.WORKER_API_KEY || '__cron__'],
               ]),
               body: r.body,
             });
@@ -7336,7 +7336,9 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     // ── SECURITY: Global auth middleware ──────────────────────────────
     // Require API key for all endpoints except explicitly public/self-authed ones.
     //
-    // TODO(P2-1): Remove per-route checkMoltApiKey calls — now handled here.
+    // Sprint 9 Lane 4: Per-route checkMoltApiKey/checkAdminToken calls removed.
+    // All routes now use global middleware. Only exception: /operator/dedup
+    // retains checkAdminToken as second gate for destructive operations.
     //
     const AUTH_EXEMPT_PATHS = new Set([
       '/health',
@@ -7350,7 +7352,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
     ]);
     const AUTH_EXEMPT_PREFIXES = [
       '/track/',              // Tracking pixels — public by design
-      '/operator/console',    // Auth: uses separate checkAdminToken (X-Admin-Token header)
+      // /operator/console removed — now covered by global auth middleware (Sprint 9 Lane 4)
     ];
 
     const isAuthExempt = AUTH_EXEMPT_PATHS.has(url.pathname)
@@ -7358,8 +7360,9 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
 
     // Internal cron/queue calls set X-Internal-Caller with the API key.
     // Can only be forged if caller already has the key (which passes normal auth anyway).
+    const { getMoltApiKey } = await import('./utils/molt-auth.js');
     const internalCaller = request.headers.get('X-Internal-Caller');
-    const configuredKey = env.WORKER_API_KEY || env.MOLT_API_KEY || env.CHATGPT_API_KEY;
+    const configuredKey = getMoltApiKey(env);
     const isInternalCall = internalCaller
       && (internalCaller === configuredKey || internalCaller === '__cron__');
 
@@ -7932,11 +7935,7 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           return createErrorResponse('NOT_FOUND', 'Dedup endpoint not found. Use /operator/dedup/scan, /execute, or /merge', { path: url.pathname }, 404, requestId);
         }
       } else if (url.pathname.startsWith('/operator/console')) {
-        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-        const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-        if (!auth) {
-          return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
-        }
+        // Auth: global middleware (Sprint 9 Lane 4 — consolidated to WORKER_API_KEY)
         const {
           handleOperatorConsoleAccount,
           handleOperatorConsoleCommand,
@@ -8029,50 +8028,30 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           const { handleIntelligenceDashboard } = await import('./handlers/intelligence-dashboard.js');
           return await handleIntelligenceDashboard(request, requestId, env, groqQueryCached, assertSanityConfigured);
         } else if (url.pathname === '/analytics/explain') {
+          // Auth: global middleware (Sprint 9 Lane 4)
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-          if (!auth) {
-            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
-          }
           const { handleAnalyticsExplain } = await import('./routes/analyticsExplain.ts');
           return await handleAnalyticsExplain(request, requestId, env);
         } else if (url.pathname === '/analytics/operator-brief') {
+          // Auth: global middleware (Sprint 9 Lane 4)
           if (request.method !== 'GET' && request.method !== 'POST') {
             return createErrorResponse('METHOD_NOT_ALLOWED', 'GET or POST required', {}, 405, requestId);
-          }
-          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-          if (!auth) {
-            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
           }
           const { handleOperatorBriefing } = await import('./handlers/operator-briefing.js');
           return await handleOperatorBriefing(request, requestId, env, groqQueryCached, upsertDocument, assertSanityConfigured);
         } else if (url.pathname === '/analytics/superuser') {
+          // Auth: global middleware (Sprint 9 Lane 4)
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
-          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-          if (!auth) {
-            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
-          }
           const { handleSuperuserState } = await import('./routes/superuser.ts');
           return await handleSuperuserState(request, requestId, env);
         } else if (url.pathname === '/analytics/superuser/command') {
+          // Auth: global middleware (Sprint 9 Lane 4)
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-          if (!auth) {
-            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
-          }
           const { handleSuperuserCommand } = await import('./routes/superuser.ts');
           return await handleSuperuserCommand(request, requestId, env);
         } else if (url.pathname === '/analytics/nightly-intelligence') {
+          // Auth: global middleware (Sprint 9 Lane 4)
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
-          const { checkMoltApiKey } = await import('./utils/molt-auth.js');
-          const auth = checkAdminToken(request, env) === 'ok' || checkMoltApiKey(request, env, requestId).allowed;
-          if (!auth) {
-            return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
-          }
           const { handleNightlyIntelligence } = await import('./routes/analyticsNightly.ts');
           return await handleNightlyIntelligence(request, requestId, env);
         } else {
