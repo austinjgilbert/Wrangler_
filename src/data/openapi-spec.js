@@ -43,7 +43,7 @@ components:
       type: apiKey
       in: header
       name: Authorization
-      description: "Bearer token for Molt/ChatGPT API. In Custom GPT, use Authentication > API Key > Bearer and paste your MOLT_API_KEY."
+      description: "Bearer token for Worker API. In Custom GPT, use Authentication > API Key > Bearer and paste your WORKER_API_KEY."
   schemas:
     WranglerIngestRequest:
       type: object
@@ -1519,7 +1519,7 @@ components:
         adminKey:
           type: string
           nullable: true
-          description: Admin API key (required if ADMIN_API_KEY is set)
+          description: Deprecated — /osint/run now uses global WORKER_API_KEY auth
 
     OsintRunResponse:
       type: object
@@ -2143,7 +2143,7 @@ paths:
     post:
       operationId: wranglerIngest
       summary: Store Wrangler interaction
-      description: Store a Wrangler Q&A exchange and create a Molt event + jobs. Requires MOLT_API_KEY (Bearer or X-API-Key).
+      description: Store a Wrangler Q&A exchange and create a Molt event + jobs. Requires WORKER_API_KEY (Bearer or X-API-Key).
       tags: [Wrangler]
       security:
         - MoltApiKey: []
@@ -2161,7 +2161,7 @@ paths:
               schema:
                 \\\$ref: "#/components/schemas/WranglerIngestResponse"
         "401":
-          description: Missing or invalid API key (set MOLT_API_KEY in worker and use Authentication in GPT)
+          description: Missing or invalid API key (set WORKER_API_KEY in worker and use Authentication in GPT)
           content:
             application/json:
               schema:
@@ -2186,7 +2186,7 @@ paths:
         Accepts DOM-extracted data from the Molt Capture Chrome extension.
         Resolves accounts and people, creates technology documents, stores a
         capture event, and triggers background enrichment pipelines.
-        Requires MOLT_API_KEY (Bearer or X-API-Key).
+        Requires WORKER_API_KEY (Bearer or X-API-Key).
       tags: [Extension]
       security:
         - MoltApiKey: []
