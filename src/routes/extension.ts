@@ -864,7 +864,7 @@ export async function handleExtensionFeedback(request: Request, requestId: strin
       return createErrorResponse('PAYLOAD_TOO_LARGE', 'Request body exceeds 50KB limit', {}, 413, requestId);
     }
 
-    const body: Record<string, unknown> = await request.json().catch(() => ({}));
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
     // ── Validate required fields ────────────────────────────────────
     const promptId = typeof body.promptId === 'string' ? body.promptId.trim() : '';
@@ -967,17 +967,42 @@ export async function handleExtensionFeedback(request: Request, requestId: strin
 
 // SECURITY: All GROQ queries in buildRabbitIntel use parameterized $params, not string
 // interpolation. Verified safe against injection — see secops Phase 1 Finding 4.
-export async function buildRabbitIntel(body: CapturePayload, env: any, client: any) {
+export async function buildRabbitIntel(body: Partial<CapturePayload> | Record<string, any>, env: any, client: any) {
   const { groqQuery, extractDomain, generateAccountKey, normalizeCanonicalUrl } = await import('../sanity-client.js');
-  const pageDomain = extractDomain(body.contextUrl || body.url || '');
-  const contactSignals = extractContactSignals(body);
+  const normalizedBody: CapturePayload = {
+    url: String((body as any)?.url || ''),
+    title: String((body as any)?.title || ''),
+    source: String((body as any)?.source || ''),
+    capturedAt: String((body as any)?.capturedAt || new Date().toISOString()),
+    domain: (body as any)?.domain,
+    companyName: (body as any)?.companyName,
+    captureSource: (body as any)?.captureSource,
+    pageSource: (body as any)?.pageSource,
+    interaction: (body as any)?.interaction,
+    people: Array.isArray((body as any)?.people) ? (body as any).people : [],
+    accounts: Array.isArray((body as any)?.accounts) ? (body as any).accounts : [],
+    technologies: Array.isArray((body as any)?.technologies) ? (body as any).technologies : [],
+    signals: Array.isArray((body as any)?.signals) ? (body as any).signals : [],
+    metadata: ((body as any)?.metadata && typeof (body as any).metadata === 'object') ? (body as any).metadata : {},
+    rawText: (body as any)?.rawText,
+    emails: Array.isArray((body as any)?.emails) ? (body as any).emails : undefined,
+    phones: Array.isArray((body as any)?.phones) ? (body as any).phones : undefined,
+    headings: Array.isArray((body as any)?.headings) ? (body as any).headings : undefined,
+    links: Array.isArray((body as any)?.links) ? (body as any).links : undefined,
+    fingerprint: (body as any)?.fingerprint,
+    contextUrl: (body as any)?.contextUrl,
+    learnMode: (body as any)?.learnMode,
+  };
+
+  const pageDomain = extractDomain(normalizedBody.contextUrl || normalizedBody.url || '');
+  const contactSignals = extractContactSignals(normalizedBody);
   const pageAccountHints = [
-    ...(body.accounts || []).map((account) => account.name).filter(Boolean),
+    ...(normalizedBody.accounts || []).map((account) => account.name).filter(Boolean),
     pageDomain,
   ].filter(Boolean) as string[];
 
   const primaryAccount = await resolvePrimaryAccount({
-    body,
+    body: normalizedBody,
     client,
     groqQuery,
     pageDomain,
@@ -985,8 +1010,8 @@ export async function buildRabbitIntel(body: CapturePayload, env: any, client: a
     normalizeCanonicalUrl,
   });
 
-  const matchedPeople = await resolveMatchedPeople(groqQuery, client, body, primaryAccount);
-  const matchedConnections = await resolveMatchedConnections(groqQuery, client, body, primaryAccount);
+  const matchedPeople = await resolveMatchedPeople(groqQuery, client, normalizedBody, primaryAccount);
+  const matchedConnections = await resolveMatchedConnections(groqQuery, client, normalizedBody, primaryAccount);
   const recentConversation = primaryAccount
     ? await groqQuery(client, `*[_type == "interaction" && (accountKey == $accountKey || domain == $domain)] | order(timestamp desc)[0...5]{
       _id, userPrompt, gptResponse, timestamp, followUpNeeded, contextTags
@@ -999,7 +1024,7 @@ export async function buildRabbitIntel(body: CapturePayload, env: any, client: a
     : [];
 
   const opportunities = buildOpportunityCards({
-    body,
+    body: normalizedBody,
     pageDomain,
     primaryAccount,
     matchedPeople,
@@ -1010,14 +1035,14 @@ export async function buildRabbitIntel(body: CapturePayload, env: any, client: a
   const dedupedOpportunities = dedupeOpportunityCards(opportunities);
   const interruptLevel = computeInterruptLevel(dedupedOpportunities, contactSignals, matchedConnections);
   const interruptKey = [
-    body.source,
-    primaryAccount?.accountKey || primaryAccount?.domain || body.url,
+    normalizedBody.source,
+    primaryAccount?.accountKey || primaryAccount?.domain || normalizedBody.url,
     dedupedOpportunities.map((item) => item.type).join(','),
     contactSignals.map((item) => item.value).join(','),
   ].join('|');
 
   const nextActions = buildNextActions({
-    body,
+    body: normalizedBody,
     primaryAccount,
     opportunities: dedupedOpportunities,
     matchedPeople,
@@ -1028,13 +1053,13 @@ export async function buildRabbitIntel(body: CapturePayload, env: any, client: a
   return {
     groqQuery,
     page: {
-      url: body.url,
-      source: body.source,
-      title: body.title,
+      url: normalizedBody.url,
+      source: normalizedBody.source,
+      title: normalizedBody.title,
       domain: pageDomain,
-      headings: (body.headings || []).slice(0, 8),
+      headings: (normalizedBody.headings || []).slice(0, 8),
     },
-    summary: buildPageSummary(body, primaryAccount, dedupedOpportunities, matchedConnections),
+    summary: buildPageSummary(normalizedBody, primaryAccount, dedupedOpportunities, matchedConnections),
     primaryAccount,
     matchedPeople,
     connections: matchedConnections,
@@ -1045,7 +1070,7 @@ export async function buildRabbitIntel(body: CapturePayload, env: any, client: a
     recentLearnings,
     interruptLevel,
     interruptKey,
-    shouldStoreCapture: shouldStoreCapture(body, primaryAccount, dedupedOpportunities, contactSignals, pageAccountHints),
+    shouldStoreCapture: shouldStoreCapture(normalizedBody, primaryAccount, dedupedOpportunities, contactSignals, pageAccountHints),
     shouldQueueResearch: !!primaryAccount && ((primaryAccount.profileCompleteness?.score ?? 0) < 70 || dedupedOpportunities.length > 0),
   };
 }

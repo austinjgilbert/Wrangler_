@@ -30,10 +30,10 @@ import { buildPayloadIndex, hydratePayload } from '../lib/payload-helpers.js';
  * @param {object} opts
  * @param {object} opts.env           – Cloudflare env bindings
  * @param {string} opts.accountKey    – resolved account key
- * @param {string} opts.canonicalUrl  – canonical URL (if known)
- * @param {string} opts.domain        – domain (if known)
+ * @param {string=} opts.canonicalUrl – canonical URL (if known)
+ * @param {string=} opts.domain       – domain (if known)
  * @param {string} opts.trigger       – what initiated this ('scan', 'store', 'query', 'wrangler')
- * @param {object} opts.scanData      – if caller already has scan data, pass it to skip re-scan
+ * @param {object=} opts.scanData     – if caller already has scan data, pass it to skip re-scan
  */
 export async function triggerGapFill(opts) {
   try {

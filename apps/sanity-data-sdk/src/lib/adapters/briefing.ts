@@ -27,7 +27,12 @@ function toBriefingAccount(top: TopAccount): BriefingAccount {
 }
 
 export function transformBriefingResponse(data: RawGoodMorningResponse): TransformedBriefing {
-  const topAccounts = data.top10Accounts ?? [];
+  const payload: RawGoodMorningResponse =
+    data && typeof data === 'object' && 'data' in (data as any)
+      ? (((data as any).data ?? {}) as RawGoodMorningResponse)
+      : (data ?? ({} as RawGoodMorningResponse));
+
+  const topAccounts = payload.top10Accounts ?? [];
   const enrichedAccounts = topAccounts.map(toBriefingAccount);
 
   const scores = enrichedAccounts.map(a => a.score);
@@ -37,23 +42,23 @@ export function transformBriefingResponse(data: RawGoodMorningResponse): Transfo
   const hotAccounts = enrichedAccounts.filter(a => a.urgency === 'urgent').length;
 
   // Prefer API-generated winCondition (more contextual), fall back to computed
-  let winCondition = data.winCondition || 'Build pipeline momentum';
-  if (!data.winCondition) {
+  let winCondition = payload.winCondition || 'Build pipeline momentum';
+  if (!payload.winCondition) {
     if (hotAccounts >= 3) winCondition = `${hotAccounts} hot accounts — prioritize outreach`;
     else if (avgScore >= 70) winCondition = 'Strong pipeline — close the gaps';
   }
 
   return {
     enrichedAccounts,
-    emailQueue: data.emailQueue ?? [],
-    linkedInQueue: data.linkedInQueue ?? [],
-    callList: data.callList ?? [],
+    emailQueue: payload.emailQueue ?? [],
+    linkedInQueue: payload.linkedInQueue ?? [],
+    callList: payload.callList ?? [],
     stats: {
       totalAccounts: enrichedAccounts.length,
       hotAccounts,
       avgScore,
       winCondition,
     },
-    assumptionRefresh: data.assumptionRefresh ?? null,
+    assumptionRefresh: payload.assumptionRefresh ?? null,
   };
 }
