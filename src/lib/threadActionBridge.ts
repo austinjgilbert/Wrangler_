@@ -253,7 +253,7 @@ ${entriesSummary}`,
   }
 }
 
-// ─── Draft Generation ───────────────────────────────────────────────────────
+// ─── Draft Generation ─────────────────────────────────────────────────────────
 
 async function generateActionDraft(
   env: any,
@@ -455,23 +455,28 @@ export async function evaluateThreadsForAction(env: any): Promise<{
 
 // ─── API Handlers ───────────────────────────────────────────────────────────
 
-/** GET /operator/console/actions — list pending actions */
+/** GET /operator/console/actions — list pending actions, ranked by priority */
 export async function fetchPendingActions(env: any): Promise<ActionIndexEntry[]> {
   const kv = getKV(env);
   const raw = await kv.get('action:index:pending');
   const entries: ActionIndexEntry[] = raw ? JSON.parse(raw) : [];
 
-  // FIX 2: Filter out expired actions by checking createdAt against 7-day TTL
-  // Since the index doesn't have expiresAt, use createdAt as the source of truth
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  // Only return non-expired, pending actions
-  return entries.filter(e => {
-    if (e.status !== 'pending_review') return false;
-    const createdTime = new Date(e.createdAt);
-    return createdTime > sevenDaysAgo;
-  });
+  // Filter expired and non-pending, then rank by urgency × recency
+  const urgencyWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
+  return entries
+    .filter(e => {
+      if (e.status !== 'pending_review') return false;
+      return new Date(e.createdAt) > sevenDaysAgo;
+    })
+    .sort((a, b) => {
+      const wA = urgencyWeight[a.urgency] || 1;
+      const wB = urgencyWeight[b.urgency] || 1;
+      if (wB !== wA) return wB - wA;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 }
 
 /** GET /operator/console/actions/:actionId — full action detail */
@@ -510,4 +515,220 @@ export async function reviewAction(env: any, input: {
 /** POST /operator/console/actions/evaluate — manually trigger evaluation */
 export async function triggerActionEvaluation(env: any): Promise<ReturnType<typeof evaluateThreadsForAction>> {
   return evaluateThreadsForAction(env);
+}
+
+// ─── Phase 4 Completeness: Execute, Stats, Regenerate, History ────────────
+
+/**
+ * POST /operator/console/actions/execute — Mark an approved action as executed.
+ * Logs execution to the parent thread and optionally records execution notes.
+ */
+export async function executeAction(env: any, input: {
+  actionId: string;
+  executedBy?: string;
+  executionNotes?: string;
+}): Promise<ThreadAction | null> {
+  const kv = getKV(env);
+  const action = await kvGetAction(kv, input.actionId);
+  if (!action) return null;
+
+  // Only approved actions can be executed
+  if (action.status !== 'approved') {
+    throw new Error(`Cannot execute action in '${action.status}' status — must be 'approved'`);
+  }
+
+  action.status = 'executed';
+  action.reviewedAt = new Date().toISOString();
+  action.reviewedBy = input.executedBy || action.reviewedBy || 'operator';
+
+  await kvPutAction(kv, action);
+  await kvUpdateActionIndex(kv, action);
+
+  // Log execution to thread with details
+  const execDetail = input.executionNotes
+    ? `Action executed (${action.actionType}): ${input.executionNotes}`
+    : `Action executed: ${action.actionType} for ${action.accountNames.join(', ')}. Confidence was ${Math.round(action.confidence * 100)}%.`;
+
+  await appendToThread(env, action.threadId, {
+    source: 'operator',
+    content: execDetail,
+  }).catch(() => null);
+
+  return action;
+}
+
+/**
+ * GET /operator/console/actions/stats — Pipeline health metrics.
+ * Returns counts by status, urgency breakdown, average confidence, and conversion rate.
+ */
+export async function fetchActionStats(env: any): Promise<{
+  total: number;
+  byStatus: Record<string, number>;
+  byUrgency: Record<string, number>;
+  byActionType: Record<string, number>;
+  avgConfidenceApproved: number;
+  avgConfidenceRejected: number;
+  conversionRate: number;
+  recentActions: ActionIndexEntry[];
+}> {
+  const kv = getKV(env);
+  const raw = await kv.get('action:index:pending');
+  const entries: ActionIndexEntry[] = raw ? JSON.parse(raw) : [];
+
+  const byStatus: Record<string, number> = {};
+  const byUrgency: Record<string, number> = {};
+  const byActionType: Record<string, number> = {};
+
+  for (const e of entries) {
+    byStatus[e.status] = (byStatus[e.status] || 0) + 1;
+    byUrgency[e.urgency] = (byUrgency[e.urgency] || 0) + 1;
+    byActionType[e.actionType] = (byActionType[e.actionType] || 0) + 1;
+  }
+
+  // Calculate confidence averages from full action data (sample up to 20 most recent)
+  const recentIds = entries.slice(0, 20).map(e => e._id);
+  let approvedConfSum = 0, approvedCount = 0;
+  let rejectedConfSum = 0, rejectedCount = 0;
+
+  for (const id of recentIds) {
+    const action = await kvGetAction(kv, id);
+    if (!action) continue;
+    if (action.status === 'approved' || action.status === 'executed') {
+      approvedConfSum += action.confidence;
+      approvedCount++;
+    } else if (action.status === 'rejected') {
+      rejectedConfSum += action.confidence;
+      rejectedCount++;
+    }
+  }
+
+  const reviewed = approvedCount + rejectedCount;
+  const conversionRate = reviewed > 0 ? approvedCount / reviewed : 0;
+
+  return {
+    total: entries.length,
+    byStatus,
+    byUrgency,
+    byActionType,
+    avgConfidenceApproved: approvedCount > 0 ? Math.round((approvedConfSum / approvedCount) * 100) / 100 : 0,
+    avgConfidenceRejected: rejectedCount > 0 ? Math.round((rejectedConfSum / rejectedCount) * 100) / 100 : 0,
+    conversionRate: Math.round(conversionRate * 100) / 100,
+    recentActions: entries.slice(0, 10),
+  };
+}
+
+/**
+ * POST /operator/console/actions/regenerate — Re-generate outreach draft with optional feedback.
+ * Allows the operator to request a new angle after reviewing or rejecting a draft.
+ */
+export async function regenerateActionDraft(env: any, input: {
+  actionId: string;
+  feedback?: string;
+  newAngle?: string;
+}): Promise<ThreadAction | null> {
+  const kv = getKV(env);
+  const action = await kvGetAction(kv, input.actionId);
+  if (!action) return null;
+
+  // Can only regenerate drafts for actions that support it
+  if (action.actionType === 'research_deep_dive') {
+    throw new Error('Cannot generate outreach draft for research_deep_dive actions');
+  }
+
+  // Fetch parent thread for context
+  const thread = await fetchThread(env, action.threadId);
+  if (!thread) throw new Error(`Parent thread ${action.threadId} not found`);
+
+  const hasLlm = !!(env.LLM_API_KEY || env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY);
+  if (!hasLlm) throw new Error('LLM not configured — cannot regenerate draft');
+
+  // Build feedback context
+  const feedbackBlock = [
+    input.feedback ? `Operator feedback: "${input.feedback}"` : null,
+    input.newAngle ? `Requested angle: "${input.newAngle}"` : null,
+    action.draft ? `Previous subject line: "${action.draft.subject}"` : null,
+    action.draft?.outreachAngle ? `Previous angle: "${action.draft.outreachAngle}"` : null,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const result = await callLlm(env, [
+      {
+        role: 'system',
+        content: `You are an SDR outreach specialist at Sanity.io, a headless CMS platform. Re-generate a personalized outreach draft based on intelligence gathered and operator feedback on the previous attempt.
+
+Return valid JSON only with these keys:
+- "subject": email subject line (under 60 chars, specific, no hype)
+- "body": short email body (under 120 words, conversational, references specific evidence)
+- "callOpeningLine": phone opening if we call instead (1-2 sentences)
+- "outreachAngle": the strategic angle for this outreach (1 sentence)
+- "personaFraming": how we're positioning for this person's role (1 sentence)
+- "evidenceReference": the key evidence that makes this timely (1 sentence)
+
+Rules:
+- Take the operator's feedback seriously and shift the angle accordingly
+- Reference specific signals, technologies, or changes detected
+- No generic filler — connect their situation to a Sanity capability
+- Keep it human, short, consultative
+- MUST be meaningfully different from the previous draft`,
+      },
+      {
+        role: 'user',
+        content: `Re-generate outreach for this opportunity:
+
+Thread: "${thread.title}"
+Accounts: ${action.accountNames.join(', ')}
+Why now: ${action.whyNow}
+Evidence: ${action.evidence.join('; ')}
+${thread.summary ? `Thread summary: ${thread.summary}` : ''}
+
+${feedbackBlock ? `OPERATOR FEEDBACK:\n${feedbackBlock}\n` : ''}
+Recent intelligence:
+${thread.entries.slice(-10).map(e => `[${e.source}] ${e.content}`).join('\n')}`,
+      },
+    ], { maxTokens: 800, temperature: 0.4, json: true });
+
+    const parsed = JSON.parse(result.content);
+    action.draft = {
+      subject: parsed.subject || '',
+      body: parsed.body || '',
+      callOpeningLine: parsed.callOpeningLine || '',
+      outreachAngle: parsed.outreachAngle || '',
+      personaFraming: parsed.personaFraming || '',
+      evidenceReference: parsed.evidenceReference || '',
+    };
+
+    // Reset status back to pending_review after regeneration
+    action.status = 'pending_review';
+    action.reviewedAt = null;
+    action.reviewedBy = null;
+
+    await kvPutAction(kv, action);
+    await kvUpdateActionIndex(kv, action);
+
+    await appendToThread(env, action.threadId, {
+      source: 'action-bridge',
+      content: `Draft regenerated for ${action.actionType}${input.feedback ? ` (feedback: "${input.feedback}")` : ''}. New angle: ${action.draft.outreachAngle}`,
+    }).catch(() => null);
+
+    return action;
+  } catch (err: any) {
+    console.warn('[threadActionBridge] draft regeneration failed:', err?.message);
+    throw new Error(`Draft regeneration failed: ${err?.message}`);
+  }
+}
+
+/**
+ * GET /operator/console/actions/history — All actions including resolved.
+ * Returns the full index sorted by date, optionally filtered by status.
+ */
+export async function fetchActionHistory(env: any, statusFilter?: string): Promise<ActionIndexEntry[]> {
+  const kv = getKV(env);
+  const raw = await kv.get('action:index:pending');
+  const entries: ActionIndexEntry[] = raw ? JSON.parse(raw) : [];
+
+  if (statusFilter) {
+    return entries.filter(e => e.status === statusFilter);
+  }
+
+  return entries;
 }
