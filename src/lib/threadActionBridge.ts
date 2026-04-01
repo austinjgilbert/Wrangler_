@@ -113,6 +113,34 @@ async function kvUpdateActionIndex(kv: any, action: ThreadAction): Promise<void>
   await kv.put('action:index:pending', JSON.stringify(capped), { expirationTtl: 604800 });
 }
 
+// ─── Cleanup Helpers (Fix 4) ────────────────────────────────────────────────
+
+/**
+ * Prunes the action index of entries older than 7 days.
+ * Called before evaluation to keep the index lean and avoid tracking expired actions.
+ */
+async function cleanupExpiredActions(kv: any): Promise<number> {
+  const raw = await kv.get('action:index:pending');
+  const entries: ActionIndexEntry[] = raw ? JSON.parse(raw) : [];
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const filtered = entries.filter(entry => {
+    const createdTime = new Date(entry.createdAt);
+    return createdTime > sevenDaysAgo;
+  });
+
+  const removed = entries.length - filtered.length;
+
+  if (removed > 0) {
+    await kv.put('action:index:pending', JSON.stringify(filtered), { expirationTtl: 604800 });
+    console.log(`[threadActionBridge] cleaned up ${removed} expired action index entries`);
+  }
+
+  return removed;
+}
+
 // ─── Action Evaluation (LLM-scored) ────────────────────────────────────────
 
 async function evaluateThreadActionability(
@@ -189,7 +217,28 @@ ${entriesSummary}`,
       },
     ], { maxTokens: 500, temperature: 0.1, json: true });
 
-    const parsed = JSON.parse(result.content);
+    // FIX 1: Separate try/catch for JSON parsing with specific error handling
+    let parsed: any;
+    try {
+      parsed = JSON.parse(result.content);
+    } catch (parseErr: any) {
+      const contentPreview = result.content.substring(0, 200);
+      console.warn(`[threadActionBridge] JSON parse failed for evaluation. Raw content (first 200 chars): ${contentPreview}`);
+      // Fall back to heuristic evaluation instead of returning shouldAct=false
+      const signalEntries = thread.entries.filter(e => e.source === 'signal');
+      if (signalEntries.length >= 3) {
+        return {
+          shouldAct: true,
+          actionType: 'research_deep_dive',
+          urgency: 'medium',
+          confidence: 0.4,
+          whyNow: `${signalEntries.length} signals accumulated; LLM parsing failed, using heuristic`,
+          evidence: signalEntries.slice(-3).map(e => e.content),
+        };
+      }
+      return { shouldAct: false, actionType: 'research_deep_dive', urgency: 'low', confidence: 0, whyNow: '', evidence: [] };
+    }
+
     return {
       shouldAct: parsed.shouldAct === true && (parsed.confidence ?? 0) >= 0.4,
       actionType: parsed.actionType || 'research_deep_dive',
@@ -199,7 +248,7 @@ ${entriesSummary}`,
       evidence: Array.isArray(parsed.evidence) ? parsed.evidence : [],
     };
   } catch (err: any) {
-    console.warn('[threadActionBridge] evaluation LLM failed:', err?.message);
+    console.warn('[threadActionBridge] evaluation LLM call failed:', err?.message);
     return { shouldAct: false, actionType: 'research_deep_dive', urgency: 'low', confidence: 0, whyNow: '', evidence: [] };
   }
 }
@@ -320,6 +369,12 @@ export async function evaluateThreadsForAction(env: any): Promise<{
   actions: Array<{ actionId: string; threadTitle: string; actionType: string; urgency: string; confidence: number }>;
 }> {
   const kv = getKV(env);
+
+  // FIX 4: Run cleanup before evaluation to prune expired entries
+  await cleanupExpiredActions(kv).catch(err => {
+    console.warn('[threadActionBridge] cleanup failed:', err?.message);
+  });
+
   const threads = await fetchActiveThreads(env);
   const results: Array<{ actionId: string; threadTitle: string; actionType: string; urgency: string; confidence: number }> = [];
 
@@ -373,7 +428,7 @@ export async function evaluateThreadsForAction(env: any): Promise<{
     await kvPutAction(kv, action);
     await kvUpdateActionIndex(kv, action);
 
-    // Log action creation back to the thread
+    // FIX 3: Keep source as 'action-bridge' (consistent source string for the cron evaluation append)
     await appendToThread(env, thread._id, {
       source: 'action-bridge',
       content: `Action generated: ${evaluation.actionType} (${evaluation.urgency} urgency, ${Math.round(evaluation.confidence * 100)}% confidence). ${evaluation.whyNow}`,
@@ -405,9 +460,18 @@ export async function fetchPendingActions(env: any): Promise<ActionIndexEntry[]>
   const kv = getKV(env);
   const raw = await kv.get('action:index:pending');
   const entries: ActionIndexEntry[] = raw ? JSON.parse(raw) : [];
+
+  // FIX 2: Filter out expired actions by checking createdAt against 7-day TTL
+  // Since the index doesn't have expiresAt, use createdAt as the source of truth
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
   // Only return non-expired, pending actions
-  const now = new Date().toISOString();
-  return entries.filter(e => e.status === 'pending_review');
+  return entries.filter(e => {
+    if (e.status !== 'pending_review') return false;
+    const createdTime = new Date(e.createdAt);
+    return createdTime > sevenDaysAgo;
+  });
 }
 
 /** GET /operator/console/actions/:actionId — full action detail */
@@ -434,7 +498,7 @@ export async function reviewAction(env: any, input: {
   await kvPutAction(kv, action);
   await kvUpdateActionIndex(kv, action);
 
-  // Log decision back to thread
+  // FIX 3: Keep source as 'operator' (correct source for the review append)
   await appendToThread(env, action.threadId, {
     source: 'operator',
     content: `Action ${input.decision}: ${action.actionType} for ${action.accountNames.join(', ')}${input.feedback ? `. Feedback: ${input.feedback}` : ''}`,

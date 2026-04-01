@@ -14,9 +14,10 @@
  *    - Store brief in KV and push to Telegram
  * 3. Briefs are retrievable via /operator/console/calendar/briefs
  */
-
 import { callLlm } from './llm.ts';
 import { findThreadsForAccount, createThread, appendToThread, shouldCreateThread } from './intelligenceThreads.ts';
+// FIX 1: Top-level imports instead of dynamic imports inside functions
+import { fetchAccounts, fetchSignals, createMoltJob } from './sanity.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,8 @@ function getKV(env: any): KVNamespace {
 
 const BRIEF_PREFIX = 'brief:';
 const BRIEF_INDEX_KEY = 'brief:index:upcoming';
+// FIX 4: Briefs older than this are regenerated even if cached
+const BRIEF_REFRESH_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 async function kvGetBrief(kv: KVNamespace, eventId: string): Promise<MeetingBrief | null> {
   const raw = await kv.get(`${BRIEF_PREFIX}${eventId}`);
@@ -113,7 +116,13 @@ async function kvUpdateBriefIndex(kv: KVNamespace, brief: MeetingBrief): Promise
 
 // ─── Domain Extraction ──────────────────────────────────────────────────────
 
-const INTERNAL_DOMAINS = new Set(['gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com', 'me.com', 'aol.com', 'protonmail.com', 'proton.me']);
+// FIX 2: Expanded internal domains list with additional free email providers
+const INTERNAL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
+  'icloud.com', 'me.com', 'aol.com', 'protonmail.com', 'proton.me',
+  'live.com', 'msn.com', 'mail.com', 'zoho.com', 'yandex.com',
+  'fastmail.com', 'tutanota.com', 'gmx.com', 'gmx.net',
+]);
 
 function extractDomain(email: string): string {
   return email.split('@')[1]?.toLowerCase() || '';
@@ -135,11 +144,9 @@ function getSelfDomain(attendees: CalendarEvent['attendees']): string | undefine
 // ─── Account Matching ───────────────────────────────────────────────────────
 
 async function matchDomainsToAccounts(env: any, domains: string[]): Promise<Map<string, any>> {
-  // Fetch all accounts and match by domain
-  const { fetchAccounts } = await import('./sanity.ts');
   const accounts = await fetchAccounts(env);
   const domainMap = new Map<string, any>();
-  
+
   for (const acct of accounts) {
     const acctDomain = (acct.domain || acct.rootDomain || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
     if (acctDomain && domains.includes(acctDomain)) {
@@ -150,7 +157,6 @@ async function matchDomainsToAccounts(env: any, domains: string[]): Promise<Map<
 }
 
 async function getRecentSignalsForAccount(env: any, accountId: string): Promise<Array<{ signalType: string; strength: number; timestamp: string }>> {
-  const { fetchSignals } = await import('./sanity.ts');
   const allSignals = await fetchSignals(env);
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 days
   return allSignals
@@ -219,12 +225,26 @@ async function generateBriefMarkdown(env: any, event: CalendarEvent, intel: Atte
 
 // ─── Telegram Push ──────────────────────────────────────────────────────────
 
+// FIX 3: Sanitize markdown/HTML for safe Telegram display
+function sanitizeBriefForTelegram(markdown: string): string {
+  return markdown
+    .replace(/#{1,6}\s*/g, '')       // strip markdown headers
+    .replace(/\*\*/g, '')            // strip bold markers
+    .replace(/\*/g, '')              // strip italic markers
+    .replace(/_/g, '')               // strip underscore emphasis
+    .replace(/`{1,3}/g, '')          // strip code markers
+    .replace(/&/g, '&amp;')          // escape HTML entities
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 async function pushBriefToTelegram(env: any, brief: MeetingBrief): Promise<boolean> {
   const token = env.TELEGRAM_BOT_TOKEN;
   const chatId = env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return false;
 
   const knownCount = brief.attendeeIntel.filter(a => a.accountId).length;
+
   const lines = [
     `<b>📋 Pre-Meeting Brief</b>`,
     `<b>${brief.title}</b>`,
@@ -237,8 +257,8 @@ async function pushBriefToTelegram(env: any, brief: MeetingBrief): Promise<boole
     lines.push(`📡 Auto-research queued: ${brief.researchQueued.join(', ')}`);
   }
 
-  // Truncate brief for Telegram (4096 char limit)
-  const briefPreview = brief.briefMarkdown.slice(0, 2000).replace(/#/g, '').replace(/\*\*/g, '');
+  // FIX 3: Properly sanitize markdown for HTML parse_mode
+  const briefPreview = sanitizeBriefForTelegram(brief.briefMarkdown.slice(0, 2000));
   lines.push('', briefPreview);
 
   try {
@@ -252,8 +272,12 @@ async function pushBriefToTelegram(env: any, brief: MeetingBrief): Promise<boole
         disable_web_page_preview: true,
       }),
     });
+    if (!resp.ok) {
+      console.warn('[calendarPrep] Telegram push failed:', resp.status, await resp.text().catch(() => ''));
+    }
     return resp.ok;
-  } catch {
+  } catch (err: any) {
+    console.warn('[calendarPrep] Telegram push error:', err?.message);
     return false;
   }
 }
@@ -261,10 +285,8 @@ async function pushBriefToTelegram(env: any, brief: MeetingBrief): Promise<boole
 // ─── Auto-Research Queuing ──────────────────────────────────────────────────
 
 async function queueResearchForUnknown(env: any, domain: string, eventTitle: string): Promise<string | null> {
-  const { createMoltJob } = await import('./sanity.ts');
   const now = new Date().toISOString();
   const jobId = `molt.job.calendar-research.${domain.replace(/[^a-zA-Z0-9.-]/g, '-')}.${Date.now()}`;
-
   try {
     await createMoltJob(env, {
       _type: 'molt.job',
@@ -331,6 +353,7 @@ export async function processCalendarEvents(
 
   // Skip events with no external attendees
   const externalEvents = events.filter(e => (eventDomains.get(e.eventId)?.length || 0) > 0);
+
   if (externalEvents.length === 0) {
     return { processed: 0, briefs: [], errors: [] };
   }
@@ -340,11 +363,16 @@ export async function processCalendarEvents(
 
   for (const event of externalEvents) {
     try {
-      // Check if we already have a brief for this event
+      // FIX 4: Check if existing brief is fresh enough to reuse
       const existing = await kvGetBrief(kv, event.eventId);
       if (existing) {
-        briefs.push(existing);
-        continue;
+        const briefAgeMs = Date.now() - new Date(existing.generatedAt).getTime();
+        if (briefAgeMs < BRIEF_REFRESH_THRESHOLD_MS) {
+          briefs.push(existing);
+          continue;
+        }
+        // Brief is stale — regenerate below
+        console.log(`[calendarPrep] Regenerating stale brief for ${event.eventId} (age: ${Math.round(briefAgeMs / 60000)}m)`);
       }
 
       const selfDomain = getSelfDomain(event.attendees);
@@ -357,7 +385,6 @@ export async function processCalendarEvents(
         if (!domain || !isExternalBusiness(att.email, selfDomain)) continue;
 
         const account = accountMap.get(domain);
-
         if (account) {
           // Known account — pull signals and threads
           const signals = await getRecentSignalsForAccount(env, account._id);
@@ -414,7 +441,7 @@ export async function processCalendarEvents(
       try {
         const accountIds = dedupedIntel.filter(a => a.accountId).map(a => a.accountId!);
         const accountNames = dedupedIntel.filter(a => a.accountName).map(a => a.accountName!);
-        
+
         if (accountIds.length > 0) {
           const thread = await createThread(env, {
             query: `Pre-meeting prep: ${event.title}`,

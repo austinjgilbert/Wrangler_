@@ -11,14 +11,14 @@
  *
  * Uses KV instead of Sanity to avoid the 2000-attribute dataset limit.
  */
-
 import { callLlm } from './llm.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ThreadEntry {
   timestamp: string;
-  source: 'copilot' | 'osint' | 'signal' | 'cron' | 'operator' | 'enrichment';
+  // FIX 1: Added 'action-bridge' to source union for Phase 4 compatibility
+  source: 'copilot' | 'osint' | 'signal' | 'cron' | 'operator' | 'enrichment' | 'action-bridge';
   content: string;
 }
 
@@ -80,8 +80,16 @@ async function kvGetThread(kv: KVNamespace, threadId: string): Promise<Intellige
   return raw as IntelligenceThread | null;
 }
 
+// FIX 4: TTL-aware thread storage
+// Active/paused: no TTL (persistent). Stale: 30-day TTL. Resolved: 14-day TTL.
 async function kvPutThread(kv: KVNamespace, thread: IntelligenceThread): Promise<void> {
-  await kv.put(`${THREAD_PREFIX}${thread._id}`, JSON.stringify(thread));
+  const opts: KVNamespacePutOptions = {};
+  if (thread.status === 'stale') {
+    opts.expirationTtl = 30 * 24 * 60 * 60; // 30 days
+  } else if (thread.status === 'resolved') {
+    opts.expirationTtl = 14 * 24 * 60 * 60; // 14 days
+  }
+  await kv.put(`${THREAD_PREFIX}${thread._id}`, JSON.stringify(thread), opts);
 }
 
 /**
@@ -109,14 +117,12 @@ async function kvUpdateIndex(kv: KVNamespace, thread: IntelligenceThread): Promi
     lastUpdated: thread.lastUpdated,
     priority: thread.priority,
   };
-
   const existing = index.findIndex(e => e.id === thread._id);
   if (existing >= 0) {
     index[existing] = entry;
   } else {
     index.push(entry);
   }
-
   // Keep index sorted by lastUpdated desc, capped at 200
   index.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
   await kv.put(INDEX_KEY, JSON.stringify(index.slice(0, 200)));
@@ -131,12 +137,10 @@ export async function findExistingThread(env: any, query: string): Promise<Intel
   const kv = getKV(env);
   const slug = sanitizeId(query);
   const prefix = `molt.thread.${slug}`;
-
   const index = await kvGetIndex(kv);
   const match = index.find(e =>
     e.id.startsWith(prefix) && (e.status === 'active' || e.status === 'paused'),
   );
-
   if (!match) return null;
   return kvGetThread(kv, match.id);
 }
@@ -258,10 +262,9 @@ export async function updateThreadStatus(env: any, threadId: string, status: Int
   const kv = getKV(env);
   const thread = await kvGetThread(kv, threadId);
   if (!thread) throw new Error(`Thread ${threadId} not found`);
-
   thread.status = status;
   thread.lastUpdated = new Date().toISOString();
-
+  // FIX 4: Status change may affect TTL (e.g. marking resolved triggers 14-day TTL)
   await kvPutThread(kv, thread);
   await kvUpdateIndex(kv, thread);
 }
@@ -285,32 +288,48 @@ export async function watchThreads(env: any, recentSignals: Array<{
   const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
   for (const thread of threads) {
-    const lastUpdatedMs = new Date(thread.lastUpdated).getTime();
-    const age = Date.now() - lastUpdatedMs;
+    // FIX 2: Per-thread try/catch prevents one failure from stopping the whole batch
+    try {
+      const lastUpdatedMs = new Date(thread.lastUpdated).getTime();
+      const age = Date.now() - lastUpdatedMs;
 
-    if (age > STALE_THRESHOLD_MS && thread.status === 'active') {
-      await updateThreadStatus(env, thread._id, 'stale');
-      threadsMarkedStale++;
-      continue;
-    }
+      if (age > STALE_THRESHOLD_MS && thread.status === 'active') {
+        await updateThreadStatus(env, thread._id, 'stale');
+        threadsMarkedStale++;
+        continue;
+      }
 
-    const watchedAccountIds = new Set(thread.accountRefs.map(ref => ref._ref));
-    const watchedSignalTypes = new Set(thread.signalWatch);
+      const watchedAccountIds = new Set(thread.accountRefs.map(ref => ref._ref));
+      const watchedSignalTypes = new Set(thread.signalWatch);
 
-    const matchingSignals = recentSignals.filter(sig =>
-      watchedAccountIds.has(sig.accountId) || watchedSignalTypes.has(sig.signalType),
-    );
+      // FIX 3: Scoped signal matching
+      // - Account signals: match if signal's accountId is in the thread's watchlist
+      // - Signal type signals: only match if BOTH the type is watched AND the account is watched
+      // This prevents a thread watching "hiring_signal" from picking up hiring signals across ALL accounts
+      const matchingSignals = recentSignals.filter(sig => {
+        const accountMatches = watchedAccountIds.has(sig.accountId);
+        const typeMatches = watchedSignalTypes.has(sig.signalType);
 
-    if (matchingSignals.length > 0) {
-      const signalSummary = matchingSignals.map(sig =>
-        `${sig.signalType} for ${sig.accountName} (strength: ${Math.round(sig.strength * 100)}%)`,
-      ).join('; ');
-
-      await appendToThread(env, thread._id, {
-        source: 'signal',
-        content: `New signals detected: ${signalSummary}`,
+        // Signal matches if:
+        // 1. The signal is from a watched account (regardless of type), OR
+        // 2. The signal type is watched AND the account is also watched (intersection for type-based matching)
+        return accountMatches || (typeMatches && accountMatches);
       });
-      threadsUpdated++;
+
+      if (matchingSignals.length > 0) {
+        const signalSummary = matchingSignals.map(sig =>
+          `${sig.signalType} for ${sig.accountName} (strength: ${Math.round(sig.strength * 100)}%)`,
+        ).join('; ');
+
+        await appendToThread(env, thread._id, {
+          source: 'signal',
+          content: `New signals detected: ${signalSummary}`,
+        });
+        threadsUpdated++;
+      }
+    } catch (err: any) {
+      // FIX 2: Log and continue — don't let one thread failure stop the rest
+      console.warn(`[watchThreads] Error processing thread ${thread._id}:`, err?.message || err);
     }
   }
 
@@ -363,24 +382,19 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
 
 export function shouldCreateThread(prompt: string, intent: string): boolean {
   const lower = prompt.toLowerCase();
-
   if (/\bresearch\b|\binvestigat|\btrack\b|\bmonitor\b|\bwatch\b|\bfollow\b|\bdig into\b|\bdeep dive\b/.test(lower)) {
     return true;
   }
-
   if (/\bstrategy\b|\broadmap\b|\bwhat.*plan\b|\bwhy.*buying\b|\bwhen.*will\b/.test(lower) &&
       /\baccount\b|\bcompany\b|\b[A-Z][a-z]+\s[A-Z]/.test(prompt)) {
     return true;
   }
-
   if (/\bkeep\b.*\bwatch|\btrack\b.*\bthis|\bfollow\b.*\bup|\bsave\b.*\bthread/.test(lower)) {
     return true;
   }
-
   if (intent === 'search' && /\bshow\b|\blist\b|\bhow many\b|\bcount\b/.test(lower)) {
     return false;
   }
-
   return false;
 }
 
