@@ -7026,6 +7026,15 @@ const workerHandler = {
             );
             const threadResult = await watchThreads(env, recentSignals);
             console.log('[scheduled] thread watcher:', threadResult);
+
+            // Phase 4: evaluate threads for actionable opportunities
+            try {
+              const { evaluateThreadsForAction } = await import('./lib/threadActionBridge.ts');
+              const actionResult = await evaluateThreadsForAction(env);
+              console.log('[scheduled] action bridge:', actionResult.threadsEvaluated, 'evaluated,', actionResult.actionsCreated, 'actions created');
+            } catch (actionErr) {
+              console.warn('[scheduled] action bridge error:', actionErr?.message || actionErr);
+            }
           } catch (threadErr) {
             console.warn('[scheduled] thread watcher error:', threadErr?.message || threadErr);
           }
@@ -7876,6 +7885,33 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
             headers: { 'Content-Type': 'application/json' },
           });
 
+        // ── Thread-to-Action Bridge (Phase 4) ────────────────────────
+        } else if (url.pathname === '/operator/console/actions') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { fetchPendingActions } = await import('./lib/threadActionBridge.ts');
+          const actions = await fetchPendingActions(env);
+          return new Response(JSON.stringify({ ok: true, data: { actions } }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        } else if (url.pathname === '/operator/console/actions/review') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { reviewAction } = await import('./lib/threadActionBridge.ts');
+          const body = await request.json();
+          const result = await reviewAction(env, body);
+          if (!result) return new Response(JSON.stringify({ ok: false, error: 'Action not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify({ ok: true, data: result }), { headers: { 'Content-Type': 'application/json' } });
+        } else if (url.pathname === '/operator/console/actions/evaluate') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { triggerActionEvaluation } = await import('./lib/threadActionBridge.ts');
+          const result = await triggerActionEvaluation(env);
+          return new Response(JSON.stringify({ ok: true, data: result }), { headers: { 'Content-Type': 'application/json' } });
+        } else if (url.pathname.startsWith('/operator/console/actions/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const actionId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/actions\//, '') || '');
+          const { fetchAction } = await import('./lib/threadActionBridge.ts');
+          const action = await fetchAction(env, actionId);
+          if (!action) return new Response(JSON.stringify({ ok: false, error: 'Action not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify({ ok: true, data: action }), { headers: { 'Content-Type': 'application/json' } });
         } else if (url.pathname.startsWith('/operator/console/draft/')) {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const draftId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/draft\//, '') || '');
