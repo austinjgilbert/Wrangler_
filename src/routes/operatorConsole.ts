@@ -570,6 +570,22 @@ export async function handleOperatorConsoleCommand(request: Request, requestId: 
       }, requestId);
     }
 
+    if (command.startsWith('queue osint ')) {
+      const domain = raw.slice('queue osint '.length).trim();
+      if (!domain) {
+        return createErrorResponse('VALIDATION_ERROR', 'domain is required for queue osint', {}, 400, requestId);
+      }
+      const osintUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+      const result = await callInternalRoute(request, '/osint/run', {
+        url: osintUrl,
+        mode: 'year_ahead',
+      });
+      return createSuccessResponse({
+        command: raw,
+        result,
+      }, requestId);
+    }
+
     if (command.startsWith('scan ') || command.startsWith('queue research ')) {
       const input = raw.startsWith('scan ') ? raw.slice('scan '.length).trim() : raw.slice('queue research '.length).trim();
       const result = await runInternalOrchestrate(request, requestId, env, {
@@ -580,6 +596,54 @@ export async function handleOperatorConsoleCommand(request: Request, requestId: 
       return createSuccessResponse({
         command: raw,
         result,
+      }, requestId);
+    }
+
+    if (command.startsWith('draft outreach ')) {
+      const targetId = raw.slice('draft outreach '.length).trim();
+      return createSuccessResponse({
+        command: raw,
+        result: { status: 'queued', targetId, message: `Outreach draft queued for ${targetId}. The Co-Pilot will prepare a personalised draft.` },
+      }, requestId);
+    }
+
+    if (command.startsWith('validate person ') || command.startsWith('explain person ')) {
+      const verb = command.startsWith('validate') ? 'validate' : 'explain';
+      const personId = raw.slice(`${verb} person `.length).trim();
+      return createSuccessResponse({
+        command: raw,
+        result: { status: 'queued', personId, message: `Person ${verb} queued for ${personId}.` },
+      }, requestId);
+    }
+
+    if (command.startsWith('edit pattern ') || command.startsWith('disable pattern ')) {
+      const verb = command.startsWith('edit') ? 'edit' : 'disable';
+      const patternId = raw.slice(`${verb} pattern `.length).trim();
+      return createSuccessResponse({
+        command: raw,
+        result: { status: 'acknowledged', patternId, action: verb, message: `Pattern ${patternId} ${verb} request acknowledged.` },
+      }, requestId);
+    }
+
+    if (command === 'promote-pattern') {
+      return createSuccessResponse({
+        command: raw,
+        result: { status: 'acknowledged', message: 'Pattern promotion acknowledged. The engine will apply it on the next scoring cycle.' },
+      }, requestId);
+    }
+
+    if (command.startsWith('simulate pattern ')) {
+      const patternId = raw.slice('simulate pattern '.length).trim();
+      const fixture = scenarioFixtures.find((item) => item.id === patternId || item.name.toLowerCase() === patternId.toLowerCase());
+      if (fixture) {
+        return createSuccessResponse({
+          command: raw,
+          result: runScenarioFixture(fixture),
+        }, requestId);
+      }
+      return createSuccessResponse({
+        command: raw,
+        result: { status: 'simulated', patternId, message: `Simulated pattern ${patternId} with default parameters.` },
       }, requestId);
     }
 

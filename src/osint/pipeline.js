@@ -645,26 +645,45 @@ function extractInitiatives(extractions, allSources, rootDomain, dateRange) {
 /**
  * Generate executive summary
  */
-function generateExecutiveSummary(initiatives, companyName, dateRange) {
+function generateExecutiveSummary(initiatives, companyName, dateRange, timelineAnalysis = {}, benchmarking = {}) {
   const summary = [];
   const now = new Date();
   const endDate = new Date(dateRange.end);
-  const yearRange = now.getFullYear() === endDate.getFullYear() 
+  const yearRange = now.getFullYear() === endDate.getFullYear()
     ? `${now.getFullYear()}`
     : `${now.getFullYear()}-${endDate.getFullYear()}`;
-  
+
   if (initiatives.length === 0) {
     summary.push(`No specific initiatives identified for ${companyName} in the next 12 months.`);
     return summary;
   }
-  
+
   summary.push(`${companyName} has ${initiatives.length} key initiative${initiatives.length > 1 ? 's' : ''} planned for the next 12 months (${yearRange}).`);
-  
+
   const top3 = initiatives.slice(0, 3);
   for (const init of top3) {
     summary.push(`${init.title} (${init.timeHorizon} timeline, ${init.confidence} confidence)`);
   }
-  
+
+  // Add timeline insights if historical data is available
+  if (timelineAnalysis.historicalCount > 0) {
+    const rate = timelineAnalysis.completionRate || 0;
+    summary.push(`Historical execution: ${rate}% completion rate across ${timelineAnalysis.historicalCount} prior initiative${timelineAnalysis.historicalCount > 1 ? 's' : ''}.`);
+    if (timelineAnalysis.delayedCount > 0) {
+      summary.push(`${timelineAnalysis.delayedCount} initiative${timelineAnalysis.delayedCount > 1 ? 's' : ''} carried over from the previous period.`);
+    }
+  }
+
+  // Add benchmarking insight if available
+  if (benchmarking.industryBenchmark && benchmarking.industryBenchmark.sampleSize > 0) {
+    const avg = benchmarking.industryBenchmark.averageInitiativeCount || 0;
+    if (avg > 0) {
+      const delta = initiatives.length - avg;
+      const direction = delta >= 0 ? 'above' : 'below';
+      summary.push(`Initiative count is ${Math.abs(delta).toFixed(0)} ${direction} the industry average of ${avg.toFixed(1)}.`);
+    }
+  }
+
   return summary;
 }
 
@@ -1568,12 +1587,18 @@ export async function runOsintPipeline(context) {
       await jobStateDO.updateState({ stage: 1, progress: 20 });
     }
     
+    // Stage 1.5: Crawl prioritized common pages (investor, sustainability, careers, etc.)
+    const crawledPages = await stage1_5_CrawlCommonPages(context, discoveredPages);
+    if (jobStateDO) {
+      await jobStateDO.updateState({ stage: 1, progress: 25 });
+    }
+
     // Stage 2: Search web
     const searchResults = await stage2_SearchWeb(context);
     if (jobStateDO) {
       await jobStateDO.updateState({ stage: 2, progress: 35 });
     }
-    
+
     // Stage 3: Select top sources
     const topSources = await stage3_SelectTopSources(context, searchResults);
     if (jobStateDO) {
@@ -1598,7 +1623,8 @@ export async function runOsintPipeline(context) {
       discoveredPages,
       searchResults,
       topSources,
-      extractions
+      extractions,
+      crawledPages
     );
     if (jobStateDO) {
       await jobStateDO.updateState({ stage: 6, progress: 90 });
