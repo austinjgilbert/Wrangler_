@@ -117,11 +117,12 @@ async function sanityQuery(env: any, query: string, params: Record<string, any> 
 export async function findExistingThread(env: any, query: string): Promise<IntelligenceThread | null> {
   // Normalize: first 60 chars lowercase, stripped of punctuation
   const slug = sanitizeId(query);
-  // Search for active threads whose _id contains the same slug
+  // Search for active threads whose _id starts with the same slug prefix
+  const prefix = `molt.thread.${slug}`;
   const result = await sanityQuery(
     env,
-    '*[_type == "molt.intelligenceThread" && status in ["active", "paused"] && _id match $pattern] | order(lastUpdated desc)[0]',
-    { pattern: `molt.thread.${slug}*` },
+    '*[_type == "molt.intelligenceThread" && status in ["active", "paused"] && _id > $prefixStart && _id < $prefixEnd] | order(lastUpdated desc)[0]',
+    { prefixStart: prefix, prefixEnd: prefix + '￿' },
   );
   return result || null;
 }
@@ -149,11 +150,12 @@ export async function createThread(env: any, input: ThreadCreateInput): Promise<
     _id: generateThreadId(input.query),
     title: input.query.length > 80 ? input.query.slice(0, 77) + '...' : input.query,
     query: input.query,
-    accountRefs: (input.accountIds || []).map(id => ({ _type: 'reference', _ref: id })),
+    accountRefs: (input.accountIds || []).map((id, i) => ({ _key: `ref-${i}`, _type: 'reference', _ref: id })),
     accountNames: input.accountNames || [],
     signalWatch: input.signalWatch || [],
     entries: [
       {
+        _key: `entry-${Date.now().toString(36)}`,
         timestamp: now,
         source: 'copilot',
         content: input.initialResponse,
@@ -179,7 +181,11 @@ export async function appendToThread(
   entry: Omit<ThreadEntry, 'timestamp'>,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const fullEntry = { ...entry, timestamp: now };
+  const fullEntry = {
+    _key: `entry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    ...entry,
+    timestamp: now,
+  };
 
   await sanityMutate(env, [{
     patch: {
