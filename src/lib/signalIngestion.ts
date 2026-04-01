@@ -56,7 +56,7 @@ export function normalizeSignal(input: NormalizeSignalInput): SignalEvent {
     baseStrength,
     signalType,
     timestamp,
-    now: observedAt,
+    now: timestamp,
   });
   const id = input.id || buildSignalId(dedupeKey);
   const observedAt = timestamp;
