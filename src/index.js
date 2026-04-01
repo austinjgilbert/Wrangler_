@@ -7009,6 +7009,21 @@ const workerHandler = {
           const { handleOpportunitiesDaily } = await import('./routes/opportunities.ts');
           return await handleOpportunitiesDaily(req, requestId, env);
         }
+        if (path === '/intelligence/correlate') {
+          const { runAutonomousIntelligenceCycle } = await import('./lib/autonomousIntelligence.ts');
+          const result = await runAutonomousIntelligenceCycle(env);
+          return new Response(JSON.stringify({ ok: true, data: {
+            compoundSignals: result.correlation.compoundSignals.length,
+            autoResearchQueued: result.researchQueued.length,
+            telegramSent: result.telegramSent,
+            summary: result.correlation.summary,
+          }}), { headers: { 'Content-Type': 'application/json' } });
+        }
+        if (path === '/intelligence/morning-brief') {
+          const { generateMorningBriefing } = await import('./lib/autonomousIntelligence.ts');
+          const result = await generateMorningBriefing(env);
+          return new Response(JSON.stringify({ ok: true, data: result }), { headers: { 'Content-Type': 'application/json' } });
+        }
         return null;
       } catch (error) {
         console.error('[scheduled]', path, error?.message || error);
@@ -7020,6 +7035,7 @@ const workerHandler = {
     if (cron === '*/15 * * * *') {
       ctx.waitUntil(runRoute('/molt/jobs/run', {}));
       ctx.waitUntil(runRoute('/enrich/process', {}));
+      ctx.waitUntil(runRoute('/intelligence/correlate', {}));
     } else if (cron === '0 */6 * * *') {
       ctx.waitUntil(runRoute('/dq/scan', {}));
       ctx.waitUntil(runRoute('/enrich/run', {}));
@@ -7068,6 +7084,7 @@ const workerHandler = {
     } else if (cron === '30 13 * * *') {
       ctx.waitUntil(runRoute('/analytics/operator-brief', {}));
       ctx.waitUntil(runRoute('/opportunities/daily', { date: now.slice(0, 10) }));
+      ctx.waitUntil(runRoute('/intelligence/morning-brief', {}));
     } else if (cron === '45 13 * * *') {
       ctx.waitUntil(runRoute('/analytics/nightly-intelligence', { date: now }));
     } else {
@@ -7777,6 +7794,21 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else if (url.pathname === '/operator/console/diagnostics') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
           return await handleOperatorConsoleDiagnostics(request, requestId, env);
+        } else if (url.pathname === '/operator/console/intelligence/correlate') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { runAutonomousIntelligenceCycle } = await import('./lib/autonomousIntelligence.ts');
+          const result = await runAutonomousIntelligenceCycle(env);
+          return createSuccessResponse({
+            compoundSignals: result.correlation.compoundSignals,
+            autoResearchQueued: result.researchQueued,
+            telegramSent: result.telegramSent,
+            summary: result.correlation.summary,
+          }, requestId);
+        } else if (url.pathname === '/operator/console/intelligence/morning-brief') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { generateMorningBriefing } = await import('./lib/autonomousIntelligence.ts');
+          const result = await generateMorningBriefing(env);
+          return createSuccessResponse(result, requestId);
         } else if (url.pathname.startsWith('/operator/console/draft/')) {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const draftId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/draft\//, '') || '');
