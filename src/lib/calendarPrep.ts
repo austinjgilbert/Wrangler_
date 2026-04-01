@@ -204,11 +204,10 @@ async function generateBriefMarkdown(env: any, event: CalendarEvent, intel: Atte
     ].join('\n');
   }
 
-  const llmResponse = await callLlm(env, {
-    systemPrompt: `You are a pre-meeting intelligence analyst. Given CRM data, signals, and active investigation threads about the companies attending a meeting, produce a concise, actionable brief. Focus on: (1) what the company does and their current tech landscape, (2) recent signals that indicate intent or change, (3) active investigation threads, (4) suggested talking points and questions. Keep it under 400 words. Use markdown.`,
-    userPrompt: `Generate a pre-meeting brief for this meeting:\n\n${contextLines.join('\n')}`,
-    maxTokens: 800,
-  });
+  const llmResponse = await callLlm(env, [
+    { role: 'system', content: 'You are a pre-meeting intelligence analyst. Given CRM data, signals, and active investigation threads about the companies attending a meeting, produce a concise, actionable brief. Focus on: (1) what the company does and their current tech landscape, (2) recent signals that indicate intent or change, (3) active investigation threads, (4) suggested talking points and questions. Keep it under 400 words. Use markdown.' },
+    { role: 'user', content: `Generate a pre-meeting brief for this meeting:\n\n${contextLines.join('\n')}` },
+  ], { maxTokens: 800 });
 
   return [
     `# Pre-Meeting Brief: ${event.title}`,
