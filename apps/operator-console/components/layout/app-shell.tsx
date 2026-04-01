@@ -18,6 +18,7 @@ export function AppShell(props: {
   onAssistantToggle: () => void;
   onCommandBarSearch: () => void;
   statusMessage?: string | null;
+  lastSynced?: string | null;
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
   onRefresh?: () => void;
@@ -28,6 +29,7 @@ export function AppShell(props: {
       <CommandBar
         onSearchClick={props.onCommandBarSearch}
         statusMessage={props.statusMessage}
+        lastSynced={props.lastSynced}
         searchQuery={props.searchQuery}
         onSearchQueryChange={props.onSearchQueryChange}
         onRefresh={props.onRefresh}

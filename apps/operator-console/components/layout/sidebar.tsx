@@ -21,11 +21,14 @@ export function Sidebar(props: {
       className="flex w-[var(--sidebar-width)] flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)]"
       style={{ width: 'var(--sidebar-width)' }}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-[var(--border)] px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white font-semibold text-sm">
-          IO
+      <div className="flex h-14 items-center gap-2.5 border-b border-[var(--border)] px-4">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent)] text-white font-bold text-xs tracking-tight">
+          W
         </div>
-        <span className="font-semibold text-[var(--text)]">Intelligence</span>
+        <div>
+          <div className="text-sm font-semibold leading-none text-[var(--text)]">Wrangler</div>
+          <div className="mt-0.5 text-[10px] leading-none text-[var(--muted)]">Intelligence OS</div>
+        </div>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
         {items.map((item) => {

@@ -1,10 +1,40 @@
 'use client';
 
-import { Command, Loader2, PanelRightOpen, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Command, Loader2, PanelRightOpen, RefreshCw, Search } from 'lucide-react';
+
+function useLastSyncedLabel(lastSynced?: string | null): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lastSynced) {
+      setLabel(null);
+      return;
+    }
+
+    function compute() {
+      const diffMs = Date.now() - new Date(lastSynced!).getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      if (diffSec < 10) return 'Synced just now';
+      if (diffSec < 60) return `Synced ${diffSec}s ago`;
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `Synced ${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      return `Synced ${diffHr}h ago`;
+    }
+
+    setLabel(compute());
+    const interval = setInterval(() => setLabel(compute()), 15_000);
+    return () => clearInterval(interval);
+  }, [lastSynced]);
+
+  return label;
+}
 
 export function CommandBar(props: {
   onSearchClick: () => void;
   statusMessage?: string | null;
+  lastSynced?: string | null;
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
   onRefresh?: () => void;
@@ -12,6 +42,8 @@ export function CommandBar(props: {
   assistantOpen?: boolean;
   isLoading?: boolean;
 }) {
+  const syncedLabel = useLastSyncedLabel(props.lastSynced);
+
   return (
     <header
       className="flex h-[var(--command-bar-height)] shrink-0 items-center gap-4 border-b border-[var(--border)] bg-[var(--panel)] px-4"
@@ -58,8 +90,15 @@ export function CommandBar(props: {
           Assistant
         </button>
       )}
-      {props.statusMessage && (
-        <span className="hidden truncate text-xs text-[var(--muted)] sm:inline">{props.statusMessage}</span>
+      {(props.statusMessage || syncedLabel) && (
+        <div className="hidden items-center gap-1.5 sm:flex">
+          {syncedLabel && !props.isLoading && (
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--success,#22c55e)]" />
+          )}
+          <span className="truncate text-xs text-[var(--muted)]">
+            {props.statusMessage || syncedLabel}
+          </span>
+        </div>
       )}
     </header>
   );

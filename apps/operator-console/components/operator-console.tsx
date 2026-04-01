@@ -84,26 +84,17 @@ type SectionId =
   | 'capabilities'
   | 'settings';
 
+// Core navigation — 9 focused views covering the full SDR execution loop
 const SIDEBAR_ITEMS: Array<{ id: SectionId; label: string; icon: ComponentType<{ className?: string }> }> = [
-  { id: 'overview', label: 'Overview', icon: Gauge },
-  { id: 'workspace', label: 'Workspace', icon: LayoutDashboard },
-  { id: 'accounts', label: 'Accounts', icon: Building2 },
-  { id: 'people', label: 'People', icon: UserRound },
-  { id: 'signals', label: 'Signals', icon: Radio },
-  { id: 'patterns', label: 'Patterns', icon: Brain },
-  { id: 'pattern-discovery', label: 'Pattern Discovery', icon: Sparkles },
-  { id: 'graph', label: 'Graph', icon: Network },
-  { id: 'timeline', label: 'Timeline', icon: Clock },
-  { id: 'actions', label: 'Actions', icon: Bolt },
-  { id: 'research', label: 'Research', icon: Microscope },
-  { id: 'jobs', label: 'Jobs', icon: Settings },
-  { id: 'metrics', label: 'Metrics', icon: Activity },
-  { id: 'territory', label: 'Territory', icon: Layers },
-  { id: 'outcomes', label: 'Outcomes', icon: TrendingUp },
-  { id: 'intelligence-map', label: 'Intelligence Map', icon: Map },
-  { id: 'system-lab', label: 'System Lab', icon: Beaker },
-  { id: 'capabilities', label: 'Capabilities', icon: Sparkles },
-  { id: 'settings', label: 'Settings', icon: Cog },
+  { id: 'overview',   label: 'Overview',  icon: Gauge },
+  { id: 'actions',    label: 'Actions',   icon: Bolt },
+  { id: 'accounts',   label: 'Accounts',  icon: Building2 },
+  { id: 'people',     label: 'People',    icon: UserRound },
+  { id: 'research',   label: 'Research',  icon: Microscope },
+  { id: 'patterns',   label: 'Patterns',  icon: Brain },
+  { id: 'jobs',       label: 'Jobs',      icon: Settings },
+  { id: 'metrics',    label: 'Metrics',   icon: Activity },
+  { id: 'system-lab', label: 'System Lab',icon: Beaker },
 ];
 
 const COMMAND_SUGGESTIONS = [
@@ -155,6 +146,14 @@ export function OperatorConsole() {
     },
   ]);
   const [pendingConfirmation, setPendingConfirmation] = useState<{ command: string; message: string; source: 'command' | 'copilot' } | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = `toast-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
   const [copilotQueryResult, setCopilotQueryResult] = useState<CopilotQueryResult | null>(null);
   const [functionRegistry, setFunctionRegistry] = useState<FunctionDefinition[]>([]);
   const [agentRegistry, setAgentRegistry] = useState<AgentDefinition[]>([]);
@@ -226,6 +225,7 @@ export function OperatorConsole() {
       const next = await fetchSnapshot();
       setSnapshot(next);
       setError(null);
+      setLastSynced(new Date().toISOString());
       if (!selectedAccountId && next.entities.accounts.length > 0) {
         setSelectedAccountId(next.entities.accounts[0].id);
       }
@@ -291,12 +291,13 @@ export function OperatorConsole() {
       return;
     }
     setBusy(true);
-    setStatusMessage(`Running: ${command}`);
+    setStatusMessage(`Running: ${command}…`);
     try {
       const result = await runCommand(command);
       setCommandResult(result);
-      setStatusMessage(`Completed: ${command}`);
-      if (command.startsWith('scan ') || command.startsWith('queue research ')) {
+      setStatusMessage(`✓ ${command}`);
+      addToast(`✓ ${command}`, 'success');
+      if (command.startsWith('scan ') || command.startsWith('queue research ') || command.startsWith('queue osint ')) {
         setSelectedSection('jobs');
       }
       if (command.includes('action')) {
@@ -304,7 +305,9 @@ export function OperatorConsole() {
       }
       await loadSnapshot(false);
     } catch (nextError: any) {
-      setStatusMessage(nextError.message || `Command failed: ${command}`);
+      const msg = nextError.message || `Command failed: ${command}`;
+      setStatusMessage(msg);
+      addToast(msg, 'error');
     } finally {
       setBusy(false);
     }
@@ -534,8 +537,12 @@ export function OperatorConsole() {
           ))}
         </div>
         {filteredAccounts.length > 12 && (
-          <button type="button" className="mt-2 text-xs text-[var(--muted)] hover:text-[var(--text)]">
-            View all →
+          <button
+            type="button"
+            onClick={() => setSelectedSection('accounts')}
+            className="mt-2 text-xs text-[var(--muted)] transition hover:text-[var(--accent)]"
+          >
+            View all {filteredAccounts.length} accounts →
           </button>
         )}
         <div className="card mt-4 p-3">
@@ -555,8 +562,16 @@ export function OperatorConsole() {
             Loading Intelligence OS…
           </div>
         ) : error ? (
-          <div className="flex h-full min-h-[400px] items-center justify-center text-sm text-[var(--error)]">
-            {error}
+          <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-4">
+            <div className="text-sm text-[var(--error)]">{error}</div>
+            <button
+              type="button"
+              onClick={() => void loadSnapshot()}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </button>
           </div>
         ) : snapshot ? (
           <Workspace
@@ -632,6 +647,23 @@ export function OperatorConsole() {
 
   return (
     <>
+      {/* Toast notifications */}
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lg pointer-events-auto transition-all ${
+              toast.type === 'error'
+                ? 'bg-[var(--error)] text-white'
+                : toast.type === 'info'
+                  ? 'bg-[var(--highlight)] text-white'
+                  : 'bg-[var(--success)] text-white'
+            }`}
+          >
+            {toast.message}
+          </div>
+        ))}
+      </div>
       <CommandPalette
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
@@ -653,6 +685,7 @@ export function OperatorConsole() {
         onAssistantToggle={() => setCopilotOpen((o) => !o)}
         onCommandBarSearch={() => setCommandPaletteOpen(true)}
         statusMessage={statusMessage ?? undefined}
+        lastSynced={lastSynced}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         onRefresh={loadSnapshot}
@@ -736,11 +769,11 @@ function Workspace(props: {
     case 'accounts':
       return <AccountsView {...props} />;
     case 'people':
-      return <PeopleView snapshot={props.snapshot} onOpenAccount={props.onOpenAccount} selectedPersonId={props.selectedPersonId} setSelectedPersonId={props.setSelectedPersonId} />;
+      return <PeopleView snapshot={props.snapshot} onOpenAccount={props.onOpenAccount} onCommand={props.onCommand} selectedPersonId={props.selectedPersonId} setSelectedPersonId={props.setSelectedPersonId} />;
     case 'signals':
       return <SignalsView snapshot={props.snapshot} onOpenAccount={props.onOpenAccount} />;
     case 'patterns':
-      return <PatternsView snapshot={props.snapshot} />;
+      return <PatternsView snapshot={props.snapshot} onCommand={props.onCommand} />;
     case 'pattern-discovery':
       return (
         <PatternDiscoveryView
@@ -881,20 +914,22 @@ function OverviewView(props: {
         </Panel>
 
         <Panel title="Signals Timeline" subtitle="Fast context for what changed most recently">
-          <div className="space-y-3">
+          <div className="space-y-2">
             {props.snapshot.overview.signalTimeline.slice(0, 10).map((signal) => (
-              <div key={signal.id} className="rounded-2xl border border-[var(--border)] px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium">{signal.accountName}</div>
-                    <div className="text-xs text-[var(--muted)]">{signal.signalType}</div>
+              <div key={signal.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-[var(--text)]">{signal.accountName}</span>
+                    <span className="ml-2 text-xs text-[var(--muted)]">· {signal.signalType}</span>
                   </div>
-                  <div className="text-xs text-[var(--muted)]">{formatTime(signal.timestamp)}</div>
+                  <span className="shrink-0 text-xs text-[var(--muted)]">{formatRelativeTime(signal.timestamp)}</span>
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)]">
-                  <Badge tone={signal.uncertaintyState === 'likely' ? 'warning' : 'neutral'}>{signal.uncertaintyState}</Badge>
-                  <span>{signal.source}</span>
-                  <span>{signal.strength}</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge tone={signal.uncertaintyState === 'confirmed' ? 'success' : signal.uncertaintyState === 'likely' ? 'warning' : 'neutral'}>
+                    {signal.uncertaintyState}
+                  </Badge>
+                  <span className="text-xs text-[var(--muted)]">{signal.source}</span>
+                  <span className="text-xs font-mono text-[var(--muted)]">{(Number(signal.strength) * 100).toFixed(0)}%</span>
                 </div>
               </div>
             ))}
@@ -1058,8 +1093,17 @@ function AccountsView(props: {
               <div className="mt-4 text-sm text-[var(--muted)]">{detail.account.description || 'No account description yet.'}</div>
             </Panel>
 
-            <Panel title="Right-side Triggers" subtitle="Fast operator actions">
+            <Panel title="Quick Actions" subtitle="Fast operator actions for this account">
               <div className="grid gap-2 md:grid-cols-2">
+                {/* OSINT year-ahead intelligence — primary enrichment action */}
+                <button
+                  type="button"
+                  onClick={() => void props.onCommand(`queue osint ${detail.account.domain || detail.account.id}`)}
+                  className="card rounded-xl border-[var(--accent)]/30 bg-[var(--accent-muted)] px-4 py-3 text-left text-sm transition hover:border-[var(--accent)]/60"
+                >
+                  <div className="font-semibold text-[var(--accent)]">Run OSINT</div>
+                  <div className="mt-0.5 text-xs text-[var(--text-secondary)]">Year-ahead intelligence pipeline</div>
+                </button>
                 {detail.controls.map((control) => (
                   <button
                     key={control.id}
@@ -1130,6 +1174,7 @@ function AccountsView(props: {
 function PeopleView(props: {
   snapshot: ConsoleSnapshot;
   onOpenAccount: (accountId: string | null) => void;
+  onCommand: (command: string) => Promise<void>;
   selectedPersonId: string | null;
   setSelectedPersonId: (value: string | null) => void;
 }) {
@@ -1178,9 +1223,9 @@ function PeopleView(props: {
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <ActionButton label="Open account" onClick={() => props.onOpenAccount(selectedPerson.accountId)} />
-                <ActionButton label="Draft outreach" onClick={() => props.onOpenAccount(selectedPerson.accountId)} />
-                <ActionButton label="Validate title" onClick={() => props.setSelectedPersonId(selectedPerson.id)} />
-                <ActionButton label="Show why they matter" onClick={() => props.onOpenAccount(selectedPerson.accountId)} />
+                <ActionButton label="Draft outreach" onClick={() => props.onCommand(`draft outreach ${selectedPerson.accountId || selectedPerson.id}`)} />
+                <ActionButton label="Validate title" onClick={() => props.onCommand(`validate person ${selectedPerson.id}`)} />
+                <ActionButton label="Why they matter" onClick={() => props.onCommand(`explain person ${selectedPerson.id}`)} />
               </div>
             </div>
           ) : (
@@ -1221,31 +1266,42 @@ function SignalsView(props: { snapshot: ConsoleSnapshot; onOpenAccount: (account
   );
 }
 
-function PatternsView(props: { snapshot: ConsoleSnapshot }) {
+function PatternsView(props: { snapshot: ConsoleSnapshot; onCommand: (command: string) => Promise<void> }) {
   return (
     <div className="space-y-4">
       <Header eyebrow="Pattern Engine" title="Active Patterns" description="Pattern visibility, confidence, lifecycle state, and recommended moves." />
-      <div className="grid gap-3 md:grid-cols-2">
-        {props.snapshot.patterns.active.map((pattern) => (
-          <Panel key={pattern.id} title={pattern.type} subtitle={pattern.lifecycleState}>
-            <div className="space-y-3 text-sm">
-              <div className="text-[var(--muted)]">{pattern.summary || 'No summary available.'}</div>
-              <div className="flex flex-wrap gap-2">
-                <Badge>{pattern.matchFrequency} matches</Badge>
-                <Badge>{Math.round(pattern.conversionAssociation * 100) / 100} conversion assoc.</Badge>
-                <Badge>{pattern.owner || 'unowned'}</Badge>
+      {props.snapshot.patterns.active.length === 0 ? (
+        <EmptyState message="No active patterns yet. Run 'generate sdr actions' or 'run nightly jobs' to begin building the pattern engine." />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {props.snapshot.patterns.active.map((pattern) => (
+            <Panel key={pattern.id} title={pattern.type} subtitle={pattern.lifecycleState}>
+              <div className="space-y-3 text-sm">
+                <div className="text-[var(--muted)]">{pattern.summary || 'No summary available.'}</div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge>{pattern.matchFrequency} matches</Badge>
+                  <Badge tone={pattern.conversionAssociation > 0.5 ? 'success' : 'neutral'}>
+                    {Math.round(pattern.conversionAssociation * 100)}% conversion
+                  </Badge>
+                  <Badge>{pattern.owner || 'unowned'}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {(pattern.recommendedMoves || []).slice(0, 3).map((move) => (
+                    <div key={move} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)]">
+                      → {move}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <ActionButton label="Generate actions" onClick={() => props.onCommand('generate sdr actions')} />
+                  <ActionButton label="Preview strategy" onClick={() => props.onCommand('preview strategy')} />
+                  <ActionButton label="Simulate" onClick={() => props.onCommand(`simulate pattern ${pattern.id}`)} />
+                </div>
               </div>
-              <div className="space-y-2">
-                {(pattern.recommendedMoves || []).slice(0, 3).map((move) => (
-                  <div key={move} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)]">
-                    {move}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Panel>
-        ))}
-      </div>
+            </Panel>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1257,7 +1313,17 @@ function ActionsView(props: {
 }) {
   return (
     <div className="space-y-4">
-      <Header eyebrow="Execution Queue" title="Today’s Actions" description="The most important page: evidence-backed actions ready for SDR execution." />
+      <Header eyebrow="Execution Queue" title="Today's Actions" description="Evidence-backed actions ranked by opportunity score and signal strength." />
+      {props.snapshot.actions.queue.actions.length === 0 && (
+        <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
+          <div className="text-sm font-medium text-[var(--text-secondary)]">No actions in queue</div>
+          <div className="mt-1 text-xs text-[var(--muted)]">The engine needs signals and patterns to generate ranked actions.</div>
+          <div className="mt-4 flex justify-center gap-2">
+            <ActionButton label="Generate actions" onClick={() => props.onCommand('generate sdr actions')} />
+            <ActionButton label="Run nightly jobs" onClick={() => props.onCommand('run nightly jobs')} />
+          </div>
+        </div>
+      )}
       <div className="space-y-3">
         {props.snapshot.actions.queue.actions.map((action) => (
           <Panel key={action.actionCandidateId} title={`${action.rank}. ${action.account}`} subtitle={`${action.action} • ${action.pattern}`}>
@@ -1585,10 +1651,10 @@ function SystemLabView(props: {
                   <Badge>{pattern.lifecycleState}</Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <ActionButton label="View pattern" onClick={() => props.onCommand('preview strategy')} />
-                  <ActionButton label="Edit pattern" onClick={() => props.onCommand('preview strategy')} />
-                  <ActionButton label="Disable pattern" onClick={() => props.onCommand('queue anti drift maintenance')} />
-                  <ActionButton label="Simulate pattern" onClick={() => props.onRunSimulation()} />
+                  <ActionButton label="Preview" onClick={() => props.onCommand('preview strategy')} />
+                  <ActionButton label="Edit" onClick={() => props.onCommand(`edit pattern ${pattern.id}`)} />
+                  <ActionButton label="Disable" onClick={() => props.onCommand(`disable pattern ${pattern.id}`)} />
+                  <ActionButton label="Simulate" onClick={() => props.onRunSimulation()} />
                 </div>
               </div>
             ))}
@@ -2007,14 +2073,30 @@ function Badge(props: { children: ReactNode; tone?: 'neutral' | 'success' | 'war
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}>{props.children}</span>;
 }
 
-function ActionButton(props: { label: string; onClick: () => void | Promise<void> }) {
+function ActionButton(props: { label: string; onClick: () => void | Promise<void>; variant?: 'default' | 'danger' }) {
+  const [localBusy, setLocalBusy] = useState(false);
+  const dangerClass = props.variant === 'danger' ? 'border-[var(--error)]/30 text-[var(--error)] hover:bg-[var(--error-muted)]' : '';
   return (
     <button
       type="button"
-      onClick={() => void props.onClick()}
-      className="pill text-xs font-medium"
+      disabled={localBusy}
+      onClick={async () => {
+        if (localBusy) return;
+        setLocalBusy(true);
+        try {
+          await props.onClick();
+        } finally {
+          setLocalBusy(false);
+        }
+      }}
+      className={`pill text-xs font-medium transition ${dangerClass} ${localBusy ? 'cursor-not-allowed opacity-60' : ''}`}
     >
-      {props.label}
+      {localBusy ? (
+        <span className="flex items-center gap-1.5">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {props.label}
+        </span>
+      ) : props.label}
     </button>
   );
 }
@@ -2230,6 +2312,22 @@ function CopilotPanel(props: {
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
+}
+
+function formatRelativeTime(value: string) {
+  try {
+    const diffMs = Date.now() - new Date(value).getTime();
+    if (diffMs < 60_000) return 'just now';
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(value).toLocaleDateString();
+  } catch {
+    return value;
+  }
 }
 
 function inferPersonRole(title?: string | null) {
