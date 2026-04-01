@@ -52,6 +52,7 @@ export function normalizeSignal(input: NormalizeSignalInput): SignalEvent {
     timestamp,
     metadata: input.metadata || {},
   });
+  const observedAt = timestamp;
   const strength = calculateDecayedSignalStrength({
     baseStrength,
     signalType,
@@ -59,7 +60,6 @@ export function normalizeSignal(input: NormalizeSignalInput): SignalEvent {
     now: timestamp,
   });
   const id = input.id || buildSignalId(dedupeKey);
-  const observedAt = timestamp;
   const staleAfter = resolveSignalStaleAfter(signalType, observedAt);
 
   return {
