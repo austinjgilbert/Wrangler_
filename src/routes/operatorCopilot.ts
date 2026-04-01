@@ -118,15 +118,12 @@ export async function handleOperatorCopilotQuery(request: Request, requestId: st
           accountNames: targets.accountNames,
           signalWatch: targets.signalWatch,
           priority: targets.accountIds.length > 0 ? 70 : 50,
-          // Only store a lightweight summary, not the full results (Sanity 2000-attr limit)
-          data: result.results ? { summary: result.response?.slice(0, 500), intent: result.intent } : undefined,
         });
         threadId = thread._id;
       }
     } catch (threadErr: any) {
-      // Surface error for debugging — remove after verified working
+      // Don't fail the query if thread creation fails
       console.warn('[copilot] thread creation failed:', threadErr?.message);
-      threadId = 'ERROR: ' + (threadErr?.message || 'unknown');
     }
 
     return createSuccessResponse({

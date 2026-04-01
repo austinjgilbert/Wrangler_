@@ -5,13 +5,13 @@
  * accumulate context over time. New signals, OSINT results, and
  * operator interactions all append to matching threads.
  *
- * Sanity document type: molt.intelligenceThread
+ * Storage: Cloudflare KV (MOLTBOOK_ACTIVITY_KV)
+ * Key pattern: thread:{id}
+ * Index key:  thread:index:active  (list of active thread IDs)
  *
- * IMPORTANT: Uses a FLAT document structure (JSON strings for arrays)
- * to avoid exceeding Sanity's 2000 dataset-wide attribute limit.
+ * Uses KV instead of Sanity to avoid the 2000-attribute dataset limit.
  */
 
-import { fetchDocumentsByType } from './sanity.ts';
 import { callLlm } from './llm.ts';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -64,78 +64,62 @@ function generateThreadId(query: string): string {
   return `molt.thread.${slug}.${ts}-${rand}`;
 }
 
-// ─── Sanity helpers (direct client calls) ───────────────────────────────────
+// ─── KV helpers ─────────────────────────────────────────────────────────────
 
-async function getSanityClient(env: any) {
-  const projectId = env.SANITY_PROJECT_ID;
-  const token = env.SANITY_TOKEN || env.SANITY_API_TOKEN;
-  const dataset = env.SANITY_DATASET || 'production';
-  if (!projectId || !token) throw new Error('Sanity not configured');
-  return { projectId, token, dataset };
+function getKV(env: any): KVNamespace {
+  const kv = env.MOLTBOOK_ACTIVITY_KV;
+  if (!kv) throw new Error('MOLTBOOK_ACTIVITY_KV not bound');
+  return kv;
 }
 
-async function sanityMutate(env: any, mutations: any[]): Promise<any> {
-  const { projectId, token, dataset } = await getSanityClient(env);
-  const url = `https://${projectId}.api.sanity.io/v2024-01-01/data/mutate/${dataset}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ mutations }),
-  });
-  if (!resp.ok) {
-    const body = await resp.text();
-    throw new Error(`Sanity mutate failed: ${resp.status} ${body.slice(0, 200)}`);
-  }
-  return resp.json();
+const THREAD_PREFIX = 'thread:';
+const INDEX_KEY = 'thread:index:all';
+
+async function kvGetThread(kv: KVNamespace, threadId: string): Promise<IntelligenceThread | null> {
+  const raw = await kv.get(`${THREAD_PREFIX}${threadId}`, 'json');
+  return raw as IntelligenceThread | null;
 }
 
-async function sanityQuery(env: any, query: string, params: Record<string, any> = {}): Promise<any> {
-  const { projectId, token, dataset } = await getSanityClient(env);
-  const encodedQuery = encodeURIComponent(query);
-  const paramString = Object.entries(params)
-    .map(([k, v]) => `$${k}=${encodeURIComponent(JSON.stringify(v))}`)
-    .join('&');
-  const url = `https://${projectId}.apicdn.sanity.io/v2024-01-01/data/query/${dataset}?query=${encodedQuery}${paramString ? '&' + paramString : ''}`;
-  const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!resp.ok) {
-    const body = await resp.text();
-    throw new Error(`Sanity query failed: ${resp.status} ${body.slice(0, 200)}`);
-  }
-  const data = await resp.json();
-  return data.result;
+async function kvPutThread(kv: KVNamespace, thread: IntelligenceThread): Promise<void> {
+  await kv.put(`${THREAD_PREFIX}${thread._id}`, JSON.stringify(thread));
 }
-
-// ─── Flat document <-> typed thread conversion ─────────────────────────────
 
 /**
- * Convert a flat Sanity document (JSON string fields) to a typed IntelligenceThread.
+ * Maintain a lightweight index of all thread IDs + metadata for listing.
  */
-function docToThread(doc: any): IntelligenceThread {
-  return {
-    _type: 'molt.intelligenceThread',
-    _id: doc._id,
-    title: doc.title || '',
-    query: doc.query || '',
-    accountRefs: safeJsonParse(doc.accountIdsJson, []).map((id: string) => ({ _type: 'reference' as const, _ref: id })),
-    accountNames: safeJsonParse(doc.accountNamesJson, []),
-    signalWatch: safeJsonParse(doc.signalWatchJson, []),
-    entries: safeJsonParse(doc.entriesJson, []),
-    status: doc.status || 'active',
-    lastUpdated: doc.lastUpdated || doc._updatedAt || '',
-    createdAt: doc.createdAt || doc._createdAt || '',
-    priority: Number(doc.priority || 50),
-    summary: doc.summary || undefined,
-  };
+interface ThreadIndexEntry {
+  id: string;
+  title: string;
+  status: string;
+  lastUpdated: string;
+  priority: number;
 }
 
-function safeJsonParse(str: any, fallback: any): any {
-  if (!str || typeof str !== 'string') return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+async function kvGetIndex(kv: KVNamespace): Promise<ThreadIndexEntry[]> {
+  const raw = await kv.get(INDEX_KEY, 'json');
+  return (raw as ThreadIndexEntry[]) || [];
+}
+
+async function kvUpdateIndex(kv: KVNamespace, thread: IntelligenceThread): Promise<void> {
+  const index = await kvGetIndex(kv);
+  const entry: ThreadIndexEntry = {
+    id: thread._id,
+    title: thread.title,
+    status: thread.status,
+    lastUpdated: thread.lastUpdated,
+    priority: thread.priority,
+  };
+
+  const existing = index.findIndex(e => e.id === thread._id);
+  if (existing >= 0) {
+    index[existing] = entry;
+  } else {
+    index.push(entry);
+  }
+
+  // Keep index sorted by lastUpdated desc, capped at 200
+  index.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+  await kv.put(INDEX_KEY, JSON.stringify(index.slice(0, 200)));
 }
 
 // ─── Core Thread Operations ─────────────────────────────────────────────────
@@ -144,14 +128,17 @@ function safeJsonParse(str: any, fallback: any): any {
  * Find an existing active thread with a matching query (for deduplication).
  */
 export async function findExistingThread(env: any, query: string): Promise<IntelligenceThread | null> {
+  const kv = getKV(env);
   const slug = sanitizeId(query);
   const prefix = `molt.thread.${slug}`;
-  const result = await sanityQuery(
-    env,
-    '*[_type == "molt.intelligenceThread" && status in ["active", "paused"] && _id > $prefixStart && _id < $prefixEnd] | order(lastUpdated desc)[0]',
-    { prefixStart: prefix, prefixEnd: prefix + '\uffff' },
+
+  const index = await kvGetIndex(kv);
+  const match = index.find(e =>
+    e.id.startsWith(prefix) && (e.status === 'active' || e.status === 'paused'),
   );
-  return result ? docToThread(result) : null;
+
+  if (!match) return null;
+  return kvGetThread(kv, match.id);
 }
 
 /**
@@ -159,6 +146,8 @@ export async function findExistingThread(env: any, query: string): Promise<Intel
  * If an existing active thread with the same query exists, appends to it instead.
  */
 export async function createThread(env: any, input: ThreadCreateInput): Promise<IntelligenceThread> {
+  const kv = getKV(env);
+
   // Check for existing thread first (deduplication)
   const existing = await findExistingThread(env, input.query).catch(() => null);
   if (existing) {
@@ -170,42 +159,26 @@ export async function createThread(env: any, input: ThreadCreateInput): Promise<
   }
 
   const now = new Date().toISOString();
-  const firstEntry: ThreadEntry = { timestamp: now, source: 'copilot', content: input.initialResponse };
-  const threadId = generateThreadId(input.query);
-
-  // FLAT document — all arrays stored as JSON strings to avoid new Sanity attribute paths
-  const doc: Record<string, any> = {
+  const thread: IntelligenceThread = {
     _type: 'molt.intelligenceThread',
-    _id: threadId,
+    _id: generateThreadId(input.query),
     title: input.query.length > 80 ? input.query.slice(0, 77) + '...' : input.query,
     query: input.query,
-    accountNamesJson: JSON.stringify(input.accountNames || []),
-    accountIdsJson: JSON.stringify(input.accountIds || []),
-    signalWatchJson: JSON.stringify(input.signalWatch || []),
-    entriesJson: JSON.stringify([firstEntry]),
-    entryCount: 1,
+    accountRefs: (input.accountIds || []).map(id => ({ _type: 'reference' as const, _ref: id })),
+    accountNames: input.accountNames || [],
+    signalWatch: input.signalWatch || [],
+    entries: [
+      { timestamp: now, source: 'copilot', content: input.initialResponse },
+    ],
     status: 'active',
     lastUpdated: now,
     createdAt: now,
     priority: input.priority || 50,
   };
 
-  await sanityMutate(env, [{ createOrReplace: doc }]);
-
-  return {
-    _type: 'molt.intelligenceThread',
-    _id: threadId,
-    title: doc.title,
-    query: input.query,
-    accountRefs: [],
-    accountNames: input.accountNames || [],
-    signalWatch: input.signalWatch || [],
-    entries: [firstEntry],
-    status: 'active',
-    lastUpdated: now,
-    createdAt: now,
-    priority: doc.priority,
-  };
+  await kvPutThread(kv, thread);
+  await kvUpdateIndex(kv, thread);
+  return thread;
 }
 
 /**
@@ -216,92 +189,85 @@ export async function appendToThread(
   threadId: string,
   entry: Omit<ThreadEntry, 'timestamp'>,
 ): Promise<void> {
-  const now = new Date().toISOString();
-  const fullEntry: ThreadEntry = { ...entry, timestamp: now };
-
-  // Read current entries, append, and write back as JSON string
-  const thread = await fetchThread(env, threadId);
+  const kv = getKV(env);
+  const thread = await kvGetThread(kv, threadId);
   if (!thread) throw new Error(`Thread ${threadId} not found for append`);
 
-  const entries = [...thread.entries, fullEntry];
+  const now = new Date().toISOString();
+  thread.entries.push({ ...entry, timestamp: now });
+  thread.lastUpdated = now;
 
-  await sanityMutate(env, [{
-    patch: {
-      id: threadId,
-      set: {
-        entriesJson: JSON.stringify(entries),
-        entryCount: entries.length,
-        lastUpdated: now,
-      },
-    },
-  }]);
+  // Cap entries at 100 to keep KV value size manageable
+  if (thread.entries.length > 100) {
+    thread.entries = thread.entries.slice(-100);
+  }
+
+  await kvPutThread(kv, thread);
+  await kvUpdateIndex(kv, thread);
 }
 
 /**
  * Fetch all active intelligence threads.
  */
 export async function fetchActiveThreads(env: any): Promise<IntelligenceThread[]> {
-  const result = await sanityQuery(
-    env,
-    '*[_type == "molt.intelligenceThread" && status in ["active", "stale"]] | order(lastUpdated desc)[0...50]',
-  );
-  return Array.isArray(result) ? result.map(docToThread) : [];
+  const kv = getKV(env);
+  const index = await kvGetIndex(kv);
+  const activeIds = index
+    .filter(e => e.status === 'active' || e.status === 'stale')
+    .slice(0, 50)
+    .map(e => e.id);
+
+  const threads: IntelligenceThread[] = [];
+  for (const id of activeIds) {
+    const t = await kvGetThread(kv, id);
+    if (t) threads.push(t);
+  }
+  return threads;
 }
 
 /**
  * Fetch a single thread by ID.
  */
 export async function fetchThread(env: any, threadId: string): Promise<IntelligenceThread | null> {
-  const result = await sanityQuery(
-    env,
-    '*[_type == "molt.intelligenceThread" && _id == $id][0]',
-    { id: threadId },
-  );
-  return result ? docToThread(result) : null;
+  const kv = getKV(env);
+  return kvGetThread(kv, threadId);
 }
 
 /**
  * Find threads that watch a given account.
  */
 export async function findThreadsForAccount(env: any, accountId: string): Promise<IntelligenceThread[]> {
-  // Since accountIds are stored as JSON string, we search with string contains
-  const result = await sanityQuery(
-    env,
-    '*[_type == "molt.intelligenceThread" && status == "active" && accountIdsJson match $accountId] | order(priority desc)[0...20]',
-    { accountId },
+  const threads = await fetchActiveThreads(env);
+  return threads.filter(t =>
+    t.accountRefs.some(ref => ref._ref === accountId),
   );
-  return Array.isArray(result) ? result.map(docToThread) : [];
 }
 
 /**
  * Find threads that watch a given signal type.
  */
 export async function findThreadsForSignalType(env: any, signalType: string): Promise<IntelligenceThread[]> {
-  const result = await sanityQuery(
-    env,
-    '*[_type == "molt.intelligenceThread" && status == "active" && signalWatchJson match $signalType] | order(priority desc)[0...20]',
-    { signalType },
-  );
-  return Array.isArray(result) ? result.map(docToThread) : [];
+  const threads = await fetchActiveThreads(env);
+  return threads.filter(t => t.signalWatch.includes(signalType));
 }
 
 /**
  * Update thread status.
  */
 export async function updateThreadStatus(env: any, threadId: string, status: IntelligenceThread['status']): Promise<void> {
-  await sanityMutate(env, [{
-    patch: {
-      id: threadId,
-      set: { status, lastUpdated: new Date().toISOString() },
-    },
-  }]);
+  const kv = getKV(env);
+  const thread = await kvGetThread(kv, threadId);
+  if (!thread) throw new Error(`Thread ${threadId} not found`);
+
+  thread.status = status;
+  thread.lastUpdated = new Date().toISOString();
+
+  await kvPutThread(kv, thread);
+  await kvUpdateIndex(kv, thread);
 }
 
 // ─── Thread Watcher (runs on 15-min cron) ───────────────────────────────────
 
-/**
- * Check active threads for staleness and new matching signals.
- */
 export async function watchThreads(env: any, recentSignals: Array<{
   signalType: string;
   accountId: string;
@@ -316,7 +282,7 @@ export async function watchThreads(env: any, recentSignals: Array<{
   let threadsUpdated = 0;
   let threadsMarkedStale = 0;
 
-  const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
   for (const thread of threads) {
     const lastUpdatedMs = new Date(thread.lastUpdated).getTime();
@@ -328,7 +294,6 @@ export async function watchThreads(env: any, recentSignals: Array<{
       continue;
     }
 
-    // Check if any recent signals match this thread's watch criteria
     const watchedAccountIds = new Set(thread.accountRefs.map(ref => ref._ref));
     const watchedSignalTypes = new Set(thread.signalWatch);
 
@@ -354,9 +319,6 @@ export async function watchThreads(env: any, recentSignals: Array<{
 
 // ─── LLM-Powered Thread Synthesis ───────────────────────────────────────────
 
-/**
- * Synthesize a thread's accumulated entries into an updated summary.
- */
 export async function synthesizeThread(env: any, threadId: string): Promise<string> {
   const thread = await fetchThread(env, threadId);
   if (!thread) return 'Thread not found.';
@@ -383,13 +345,12 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
       },
     ], { maxTokens: 400, temperature: 0.2 });
 
-    // Save summary back
-    await sanityMutate(env, [{
-      patch: {
-        id: threadId,
-        set: { summary: result.content, lastUpdated: new Date().toISOString() },
-      },
-    }]);
+    // Save summary back to KV
+    const kv = getKV(env);
+    thread.summary = result.content;
+    thread.lastUpdated = new Date().toISOString();
+    await kvPutThread(kv, thread);
+    await kvUpdateIndex(kv, thread);
 
     return result.content;
   } catch (err: any) {
@@ -400,9 +361,6 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
 
 // ─── Copilot Integration: Should This Query Become a Thread? ────────────────
 
-/**
- * Determine if a copilot query should spawn an intelligence thread.
- */
 export function shouldCreateThread(prompt: string, intent: string): boolean {
   const lower = prompt.toLowerCase();
 
@@ -426,9 +384,6 @@ export function shouldCreateThread(prompt: string, intent: string): boolean {
   return false;
 }
 
-/**
- * Extract account references and signal types to watch from a copilot response.
- */
 export function extractThreadWatchTargets(response: any): {
   accountIds: string[];
   accountNames: string[];
