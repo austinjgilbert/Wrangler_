@@ -7844,6 +7844,38 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const threadId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/threads\//, '') || '');
           return await handleThreadDetail(request, requestId, env, threadId);
+        
+        // ── Calendar-Driven Research (Phase 3) ────────────────────────
+        } else if (url.pathname === '/operator/console/calendar/sync') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const { processCalendarEvents } = await import('./lib/calendarPrep.ts');
+          const body = await request.json();
+          const events = Array.isArray(body.events) ? body.events : [];
+          const result = await processCalendarEvents(env, events);
+          return new Response(JSON.stringify({ ok: true, data: result }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        } else if (url.pathname === '/operator/console/calendar/briefs') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const { fetchUpcomingBriefs } = await import('./lib/calendarPrep.ts');
+          const briefs = await fetchUpcomingBriefs(env);
+          return new Response(JSON.stringify({ ok: true, data: { briefs } }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        } else if (url.pathname.startsWith('/operator/console/calendar/briefs/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const eventId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/calendar\/briefs\//, '') || '');
+          const { fetchBrief } = await import('./lib/calendarPrep.ts');
+          const brief = await fetchBrief(env, eventId);
+          if (!brief) {
+            return new Response(JSON.stringify({ ok: false, error: 'Brief not found' }), {
+              status: 404, headers: { 'Content-Type': 'application/json' },
+            });
+          }
+          return new Response(JSON.stringify({ ok: true, data: brief }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+
         } else if (url.pathname.startsWith('/operator/console/draft/')) {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const draftId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/draft\//, '') || '');
