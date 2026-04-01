@@ -6,6 +6,9 @@
  * operator interactions all append to matching threads.
  *
  * Sanity document type: molt.intelligenceThread
+ *
+ * IMPORTANT: Uses a FLAT document structure (JSON strings for arrays)
+ * to avoid exceeding Sanity's 2000 dataset-wide attribute limit.
  */
 
 import { fetchDocumentsByType } from './sanity.ts';
@@ -17,7 +20,6 @@ export interface ThreadEntry {
   timestamp: string;
   source: 'copilot' | 'osint' | 'signal' | 'cron' | 'operator' | 'enrichment';
   content: string;
-  data?: any;
 }
 
 export interface IntelligenceThread {
@@ -43,7 +45,6 @@ export interface ThreadCreateInput {
   accountNames?: string[];
   signalWatch?: string[];
   priority?: number;
-  data?: any;
 }
 
 // ─── Thread ID generation ───────────────────────────────────────────────────
@@ -67,7 +68,7 @@ function generateThreadId(query: string): string {
 
 async function getSanityClient(env: any) {
   const projectId = env.SANITY_PROJECT_ID;
-  const token = env.SANITY_TOKEN;
+  const token = env.SANITY_TOKEN || env.SANITY_API_TOKEN;
   const dataset = env.SANITY_DATASET || 'production';
   if (!projectId || !token) throw new Error('Sanity not configured');
   return { projectId, token, dataset };
@@ -109,22 +110,48 @@ async function sanityQuery(env: any, query: string, params: Record<string, any> 
   return data.result;
 }
 
+// ─── Flat document <-> typed thread conversion ─────────────────────────────
+
+/**
+ * Convert a flat Sanity document (JSON string fields) to a typed IntelligenceThread.
+ */
+function docToThread(doc: any): IntelligenceThread {
+  return {
+    _type: 'molt.intelligenceThread',
+    _id: doc._id,
+    title: doc.title || '',
+    query: doc.query || '',
+    accountRefs: safeJsonParse(doc.accountIdsJson, []).map((id: string) => ({ _type: 'reference' as const, _ref: id })),
+    accountNames: safeJsonParse(doc.accountNamesJson, []),
+    signalWatch: safeJsonParse(doc.signalWatchJson, []),
+    entries: safeJsonParse(doc.entriesJson, []),
+    status: doc.status || 'active',
+    lastUpdated: doc.lastUpdated || doc._updatedAt || '',
+    createdAt: doc.createdAt || doc._createdAt || '',
+    priority: Number(doc.priority || 50),
+    summary: doc.summary || undefined,
+  };
+}
+
+function safeJsonParse(str: any, fallback: any): any {
+  if (!str || typeof str !== 'string') return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 // ─── Core Thread Operations ─────────────────────────────────────────────────
 
 /**
  * Find an existing active thread with a matching query (for deduplication).
  */
 export async function findExistingThread(env: any, query: string): Promise<IntelligenceThread | null> {
-  // Normalize: first 60 chars lowercase, stripped of punctuation
   const slug = sanitizeId(query);
-  // Search for active threads whose _id starts with the same slug prefix
   const prefix = `molt.thread.${slug}`;
   const result = await sanityQuery(
     env,
     '*[_type == "molt.intelligenceThread" && status in ["active", "paused"] && _id > $prefixStart && _id < $prefixEnd] | order(lastUpdated desc)[0]',
-    { prefixStart: prefix, prefixEnd: prefix + '￿' },
+    { prefixStart: prefix, prefixEnd: prefix + '\uffff' },
   );
-  return result || null;
+  return result ? docToThread(result) : null;
 }
 
 /**
@@ -135,41 +162,50 @@ export async function createThread(env: any, input: ThreadCreateInput): Promise<
   // Check for existing thread first (deduplication)
   const existing = await findExistingThread(env, input.query).catch(() => null);
   if (existing) {
-    // Append the new response to the existing thread instead of creating a duplicate
     await appendToThread(env, existing._id, {
       source: 'copilot',
       content: input.initialResponse,
-      data: input.data || undefined,
     });
     return existing;
   }
 
   const now = new Date().toISOString();
-  const thread: IntelligenceThread = {
+  const firstEntry: ThreadEntry = { timestamp: now, source: 'copilot', content: input.initialResponse };
+  const threadId = generateThreadId(input.query);
+
+  // FLAT document — all arrays stored as JSON strings to avoid new Sanity attribute paths
+  const doc: Record<string, any> = {
     _type: 'molt.intelligenceThread',
-    _id: generateThreadId(input.query),
+    _id: threadId,
     title: input.query.length > 80 ? input.query.slice(0, 77) + '...' : input.query,
     query: input.query,
-    accountRefs: (input.accountIds || []).map((id, i) => ({ _key: `ref-${i}`, _type: 'reference', _ref: id })),
-    accountNames: input.accountNames || [],
-    signalWatch: input.signalWatch || [],
-    entries: [
-      {
-        _key: `entry-${Date.now().toString(36)}`,
-        timestamp: now,
-        source: 'copilot',
-        content: input.initialResponse,
-        data: input.data || undefined,
-      },
-    ],
+    accountNamesJson: JSON.stringify(input.accountNames || []),
+    accountIdsJson: JSON.stringify(input.accountIds || []),
+    signalWatchJson: JSON.stringify(input.signalWatch || []),
+    entriesJson: JSON.stringify([firstEntry]),
+    entryCount: 1,
     status: 'active',
     lastUpdated: now,
     createdAt: now,
     priority: input.priority || 50,
   };
 
-  await sanityMutate(env, [{ createOrReplace: thread }]);
-  return thread;
+  await sanityMutate(env, [{ createOrReplace: doc }]);
+
+  return {
+    _type: 'molt.intelligenceThread',
+    _id: threadId,
+    title: doc.title,
+    query: input.query,
+    accountRefs: [],
+    accountNames: input.accountNames || [],
+    signalWatch: input.signalWatch || [],
+    entries: [firstEntry],
+    status: 'active',
+    lastUpdated: now,
+    createdAt: now,
+    priority: doc.priority,
+  };
 }
 
 /**
@@ -181,20 +217,22 @@ export async function appendToThread(
   entry: Omit<ThreadEntry, 'timestamp'>,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const fullEntry = {
-    _key: `entry-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    ...entry,
-    timestamp: now,
-  };
+  const fullEntry: ThreadEntry = { ...entry, timestamp: now };
+
+  // Read current entries, append, and write back as JSON string
+  const thread = await fetchThread(env, threadId);
+  if (!thread) throw new Error(`Thread ${threadId} not found for append`);
+
+  const entries = [...thread.entries, fullEntry];
 
   await sanityMutate(env, [{
     patch: {
       id: threadId,
-      insert: {
-        after: 'entries[-1]',
-        items: [fullEntry],
+      set: {
+        entriesJson: JSON.stringify(entries),
+        entryCount: entries.length,
+        lastUpdated: now,
       },
-      set: { lastUpdated: now },
     },
   }]);
 }
@@ -207,7 +245,7 @@ export async function fetchActiveThreads(env: any): Promise<IntelligenceThread[]
     env,
     '*[_type == "molt.intelligenceThread" && status in ["active", "stale"]] | order(lastUpdated desc)[0...50]',
   );
-  return Array.isArray(result) ? result : [];
+  return Array.isArray(result) ? result.map(docToThread) : [];
 }
 
 /**
@@ -219,19 +257,20 @@ export async function fetchThread(env: any, threadId: string): Promise<Intellige
     '*[_type == "molt.intelligenceThread" && _id == $id][0]',
     { id: threadId },
   );
-  return result || null;
+  return result ? docToThread(result) : null;
 }
 
 /**
  * Find threads that watch a given account.
  */
 export async function findThreadsForAccount(env: any, accountId: string): Promise<IntelligenceThread[]> {
+  // Since accountIds are stored as JSON string, we search with string contains
   const result = await sanityQuery(
     env,
-    '*[_type == "molt.intelligenceThread" && status == "active" && $accountId in accountRefs[]._ref] | order(priority desc)[0...20]',
+    '*[_type == "molt.intelligenceThread" && status == "active" && accountIdsJson match $accountId] | order(priority desc)[0...20]',
     { accountId },
   );
-  return Array.isArray(result) ? result : [];
+  return Array.isArray(result) ? result.map(docToThread) : [];
 }
 
 /**
@@ -240,10 +279,10 @@ export async function findThreadsForAccount(env: any, accountId: string): Promis
 export async function findThreadsForSignalType(env: any, signalType: string): Promise<IntelligenceThread[]> {
   const result = await sanityQuery(
     env,
-    '*[_type == "molt.intelligenceThread" && status == "active" && $signalType in signalWatch] | order(priority desc)[0...20]',
+    '*[_type == "molt.intelligenceThread" && status == "active" && signalWatchJson match $signalType] | order(priority desc)[0...20]',
     { signalType },
   );
-  return Array.isArray(result) ? result : [];
+  return Array.isArray(result) ? result.map(docToThread) : [];
 }
 
 /**
@@ -262,7 +301,6 @@ export async function updateThreadStatus(env: any, threadId: string, status: Int
 
 /**
  * Check active threads for staleness and new matching signals.
- * Called by the 15-minute cron.
  */
 export async function watchThreads(env: any, recentSignals: Array<{
   signalType: string;
@@ -278,10 +316,9 @@ export async function watchThreads(env: any, recentSignals: Array<{
   let threadsUpdated = 0;
   let threadsMarkedStale = 0;
 
-  const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days with no updates
+  const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   for (const thread of threads) {
-    // Check for staleness
     const lastUpdatedMs = new Date(thread.lastUpdated).getTime();
     const age = Date.now() - lastUpdatedMs;
 
@@ -300,7 +337,6 @@ export async function watchThreads(env: any, recentSignals: Array<{
     );
 
     if (matchingSignals.length > 0) {
-      // Append a summary of matching signals to the thread
       const signalSummary = matchingSignals.map(sig =>
         `${sig.signalType} for ${sig.accountName} (strength: ${Math.round(sig.strength * 100)}%)`,
       ).join('; ');
@@ -308,7 +344,6 @@ export async function watchThreads(env: any, recentSignals: Array<{
       await appendToThread(env, thread._id, {
         source: 'signal',
         content: `New signals detected: ${signalSummary}`,
-        data: { signals: matchingSignals.slice(0, 10) },
       });
       threadsUpdated++;
     }
@@ -321,7 +356,6 @@ export async function watchThreads(env: any, recentSignals: Array<{
 
 /**
  * Synthesize a thread's accumulated entries into an updated summary.
- * Called when a thread has new entries or when the operator asks for a recap.
  */
 export async function synthesizeThread(env: any, threadId: string): Promise<string> {
   const thread = await fetchThread(env, threadId);
@@ -333,7 +367,7 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
   }
 
   const entriesSummary = thread.entries
-    .slice(-20) // Last 20 entries
+    .slice(-20)
     .map(e => `[${e.timestamp}] (${e.source}) ${e.content}`)
     .join('\n');
 
@@ -349,7 +383,7 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
       },
     ], { maxTokens: 400, temperature: 0.2 });
 
-    // Save the summary back to the thread
+    // Save summary back
     await sanityMutate(env, [{
       patch: {
         id: threadId,
@@ -368,29 +402,23 @@ export async function synthesizeThread(env: any, threadId: string): Promise<stri
 
 /**
  * Determine if a copilot query should spawn an intelligence thread.
- * Research-oriented questions (about specific accounts or investigations)
- * become threads. Quick lookups do not.
  */
 export function shouldCreateThread(prompt: string, intent: string): boolean {
   const lower = prompt.toLowerCase();
 
-  // Explicit thread triggers
   if (/\bresearch\b|\binvestigat|\btrack\b|\bmonitor\b|\bwatch\b|\bfollow\b|\bdig into\b|\bdeep dive\b/.test(lower)) {
     return true;
   }
 
-  // Account-specific strategic questions
   if (/\bstrategy\b|\broadmap\b|\bwhat.*plan\b|\bwhy.*buying\b|\bwhen.*will\b/.test(lower) &&
       /\baccount\b|\bcompany\b|\b[A-Z][a-z]+\s[A-Z]/.test(prompt)) {
     return true;
   }
 
-  // Explicit "keep watching" or "track this"
   if (/\bkeep\b.*\bwatch|\btrack\b.*\bthis|\bfollow\b.*\bup|\bsave\b.*\bthread/.test(lower)) {
     return true;
   }
 
-  // Quick lookups should NOT create threads
   if (intent === 'search' && /\bshow\b|\blist\b|\bhow many\b|\bcount\b/.test(lower)) {
     return false;
   }
@@ -410,7 +438,6 @@ export function extractThreadWatchTargets(response: any): {
   const accountNames: string[] = [];
   const signalWatch: string[] = [];
 
-  // Extract from results if present
   if (response?.results) {
     const results = response.results;
     if (Array.isArray(results.accounts)) {
@@ -424,7 +451,6 @@ export function extractThreadWatchTargets(response: any): {
         if (action.patternMatch) signalWatch.push(action.patternMatch);
       }
     }
-    // Handle topOpportunities or topPriorityAccounts
     for (const key of ['topOpportunities', 'topPriorityAccounts']) {
       if (Array.isArray(results[key])) {
         for (const item of results[key]) {
