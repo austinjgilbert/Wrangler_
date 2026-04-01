@@ -7012,6 +7012,23 @@ const workerHandler = {
         if (path === '/intelligence/correlate') {
           const { runAutonomousIntelligenceCycle } = await import('./lib/autonomousIntelligence.ts');
           const result = await runAutonomousIntelligenceCycle(env);
+          // Also run thread watcher with the recent signals from the correlation
+          try {
+            const { watchThreads } = await import('./lib/intelligenceThreads.ts');
+            const recentSignals = (result.correlation?.compoundSignals || []).flatMap(cs =>
+              cs.accountIds.map((id, i) => ({
+                signalType: cs.clusterType.split(':').pop() || 'unknown',
+                accountId: id,
+                accountName: cs.accountNames[i] || id,
+                strength: cs.strength,
+                timestamp: cs.detectedAt,
+              }))
+            );
+            const threadResult = await watchThreads(env, recentSignals);
+            console.log('[scheduled] thread watcher:', threadResult);
+          } catch (threadErr) {
+            console.warn('[scheduled] thread watcher error:', threadErr?.message || threadErr);
+          }
           return new Response(JSON.stringify({ ok: true, data: {
             compoundSignals: result.correlation.compoundSignals.length,
             autoResearchQueued: result.researchQueued.length,
@@ -7754,6 +7771,10 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           handleOperatorCopilotExplain,
           handleOperatorCopilotQuery,
           handleOperatorCopilotState,
+          handleThreadsList,
+          handleThreadDetail,
+          handleThreadSynthesize,
+          handleThreadAction,
         } = await import('./routes/operatorCopilot.ts');
         const {
           handleOperatorAgents,
@@ -7809,6 +7830,20 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
           const { generateMorningBriefing } = await import('./lib/autonomousIntelligence.ts');
           const result = await generateMorningBriefing(env);
           return createSuccessResponse(result, requestId);
+        } else if (url.pathname === '/operator/console/threads') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleThreadsList(request, requestId, env);
+        } else if (url.pathname === '/operator/console/threads/action') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleThreadAction(request, requestId, env);
+        } else if (url.pathname.startsWith('/operator/console/threads/synthesize/')) {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          const threadId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/threads\/synthesize\//, '') || '');
+          return await handleThreadSynthesize(request, requestId, env, threadId);
+        } else if (url.pathname.startsWith('/operator/console/threads/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const threadId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/threads\//, '') || '');
+          return await handleThreadDetail(request, requestId, env, threadId);
         } else if (url.pathname.startsWith('/operator/console/draft/')) {
           { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
           const draftId = decodeURIComponent(url.pathname.replace(/^\/operator\/console\/draft\//, '') || '');

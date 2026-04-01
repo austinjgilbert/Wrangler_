@@ -559,6 +559,26 @@ export async function runQueuedJobs({
         });
       }
 
+      if (job.jobType === 'auto-research') {
+        // Auto-research: trigger gap-fill pipeline for the account
+        const domain = job.payload?.domain;
+        const entityRef = job.inputRefs?.[0]?._ref || null;
+        if (domain || entityRef) {
+          const accountKey = entityRef
+            ? (entityRef.startsWith('account-') ? entityRef.replace('account-', '') : entityRef)
+            : domain;
+          const { triggerGapFill } = await import('../services/gap-fill-orchestrator.js');
+          await triggerGapFill({
+            env,
+            accountKey,
+            domain,
+            trigger: 'auto-research',
+          }).catch((err: any) => {
+            logger.warn('auto-research.gap-fill-failed', { domain, error: err?.message });
+          });
+        }
+      }
+
       await updateMoltJob(env, job._id, { status: 'done', leaseExpiresAt: null, updatedAt: new Date().toISOString() });
       logger.info('job.completed', { jobId: job._id, jobType: job.jobType });
       results.push({ id: job._id, status: 'done' });

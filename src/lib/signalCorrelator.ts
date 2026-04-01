@@ -264,8 +264,9 @@ async function synthesizeWithLLM(
       },
     ], { maxTokens: 300, temperature: 0.2 });
     return result.content;
-  } catch {
-    return `Detected ${compoundSignals.length} signal cluster(s). ${autoResearchCandidates.length} account(s) flagged for auto-research.`;
+  } catch (err: any) {
+    console.warn('[signalCorrelator] LLM synthesis failed, using fallback:', err?.message);
+    return `Detected ${compoundSignals.length} signal cluster(s). ${autoResearchCandidates.length} account(s) flagged for auto-research. (LLM summary unavailable)`;
   }
 }
 
@@ -292,11 +293,15 @@ export async function runSignalCorrelation(env: any): Promise<CorrelationResult>
   // Synthesize a brief
   const summary = await synthesizeWithLLM(env, compoundSignals, autoResearchCandidates);
 
-  // Persist a notification for each high-strength compound signal
+  // Persist a notification for each high-strength compound signal (deduplicated per day)
+  const today = ranAt.slice(0, 10); // YYYY-MM-DD
   for (const cs of compoundSignals.filter(c => c.strength >= 0.6)) {
+    // Deterministic ID: same cluster type + same set of accounts + same day = same notification (upsert, no duplicates)
+    const accountHash = cs.accountIds.slice().sort().join(',').slice(0, 80).replace(/[^a-zA-Z0-9._-]/g, '-');
+    const notifId = `molt.notification.compound.${cs.clusterType.replace(/[^a-zA-Z0-9._-]/g, '-')}.${accountHash}.${today}`;
     await createMoltNotification(env, {
       _type: 'molt.notification',
-      _id: `molt.notification.compound.${cs.clusterType.replace(/[^a-zA-Z0-9._-]/g, '-')}.${Date.now()}`,
+      _id: notifId,
       type: 'compound_signal',
       message: cs.description,
       payload: cs,

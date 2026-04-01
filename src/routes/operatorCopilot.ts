@@ -11,6 +11,16 @@ import {
   fetchPeople,
   fetchSignals,
 } from '../lib/sanity.ts';
+import {
+  createThread,
+  fetchActiveThreads,
+  fetchThread,
+  appendToThread,
+  updateThreadStatus,
+  synthesizeThread,
+  shouldCreateThread,
+  extractThreadWatchTargets,
+} from '../lib/intelligenceThreads.ts';
 
 export async function handleOperatorCopilotState(request: Request, requestId: string, env: any) {
   try {
@@ -94,9 +104,112 @@ export async function handleOperatorCopilotQuery(request: Request, requestId: st
       prompt,
       context: body.context || {},
     });
-    return createSuccessResponse(result, requestId);
+
+    // Auto-create intelligence thread for research-type queries
+    let threadId: string | null = null;
+    try {
+      const intent = result.intent || 'search';
+      if (shouldCreateThread(prompt, intent)) {
+        const targets = extractThreadWatchTargets(result);
+        const thread = await createThread(env, {
+          query: prompt,
+          initialResponse: result.response || 'Processing...',
+          accountIds: targets.accountIds,
+          accountNames: targets.accountNames,
+          signalWatch: targets.signalWatch,
+          priority: targets.accountIds.length > 0 ? 70 : 50,
+          data: result.results || undefined,
+        });
+        threadId = thread._id;
+      }
+    } catch (threadErr: any) {
+      // Don't fail the query if thread creation fails
+      console.warn('[copilot] thread creation failed:', threadErr?.message);
+    }
+
+    return createSuccessResponse({
+      ...result,
+      threadId, // null if no thread created, ID if one was
+    }, requestId);
   } catch (error: any) {
     return createErrorResponse('OPERATOR_COPILOT_QUERY_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+// ─── Thread Management Endpoints ────────────────────────────────────────────
+
+export async function handleThreadsList(request: Request, requestId: string, env: any) {
+  try {
+    const threads = await fetchActiveThreads(env);
+    return createSuccessResponse({
+      threads: threads.map(t => ({
+        id: t._id,
+        title: t.title,
+        status: t.status,
+        accountNames: t.accountNames,
+        entryCount: t.entries?.length || 0,
+        lastUpdated: t.lastUpdated,
+        priority: t.priority,
+        summary: t.summary || null,
+      })),
+    }, requestId);
+  } catch (error: any) {
+    return createErrorResponse('THREAD_LIST_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+export async function handleThreadDetail(request: Request, requestId: string, env: any, threadId: string) {
+  try {
+    const thread = await fetchThread(env, threadId);
+    if (!thread) {
+      return createErrorResponse('NOT_FOUND', 'Thread not found', { threadId }, 404, requestId);
+    }
+    return createSuccessResponse(thread, requestId);
+  } catch (error: any) {
+    return createErrorResponse('THREAD_DETAIL_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+export async function handleThreadSynthesize(request: Request, requestId: string, env: any, threadId: string) {
+  try {
+    const summary = await synthesizeThread(env, threadId);
+    return createSuccessResponse({ threadId, summary }, requestId);
+  } catch (error: any) {
+    return createErrorResponse('THREAD_SYNTHESIZE_ERROR', error.message, {}, 500, requestId);
+  }
+}
+
+export async function handleThreadAction(request: Request, requestId: string, env: any) {
+  try {
+    const body = (await request.json()) as Record<string, any>;
+    const threadId = String(body.threadId || '').trim();
+    const action = String(body.action || '').trim();
+    if (!threadId || !action) {
+      return createErrorResponse('VALIDATION_ERROR', 'threadId and action are required', {}, 400, requestId);
+    }
+
+    if (action === 'pause') {
+      await updateThreadStatus(env, threadId, 'paused');
+      return createSuccessResponse({ threadId, status: 'paused' }, requestId);
+    }
+    if (action === 'resume') {
+      await updateThreadStatus(env, threadId, 'active');
+      return createSuccessResponse({ threadId, status: 'active' }, requestId);
+    }
+    if (action === 'resolve') {
+      await updateThreadStatus(env, threadId, 'resolved');
+      return createSuccessResponse({ threadId, status: 'resolved' }, requestId);
+    }
+    if (action === 'append') {
+      const content = String(body.content || '').trim();
+      if (!content) return createErrorResponse('VALIDATION_ERROR', 'content is required for append', {}, 400, requestId);
+      await appendToThread(env, threadId, { source: 'operator', content });
+      return createSuccessResponse({ threadId, appended: true }, requestId);
+    }
+
+    return createErrorResponse('VALIDATION_ERROR', `Unknown action: ${action}`, {}, 400, requestId);
+  } catch (error: any) {
+    return createErrorResponse('THREAD_ACTION_ERROR', error.message, {}, 500, requestId);
   }
 }
 

@@ -52,7 +52,7 @@ async function getRecentResearchJobs(env: any): Promise<Set<string>> {
   const recentDomains = new Set<string>();
 
   for (const job of jobs) {
-    if ((job.jobType === 'osint' || job.jobType === 'enrich.account') && job.createdAt > cutoff) {
+    if ((job.jobType === 'osint' || job.jobType === 'enrich.account' || job.jobType === 'auto-research') && job.createdAt > cutoff) {
       // Extract domain from inputRefs or payload
       const domain = job.payload?.domain || job.payload?.url || '';
       if (domain) recentDomains.add(domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, ''));
