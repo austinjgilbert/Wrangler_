@@ -7956,6 +7956,42 @@ async function routeRequest(request, url, requestId, env, rateLimiter = null, me
         } else {
           return createErrorResponse('NOT_FOUND', 'Operator console endpoint not found', { path: url.pathname }, 404, requestId);
         }
+      // ── Chat Module (upgraded copilot) ──────────────────────────────
+      } else if (url.pathname.startsWith('/api/chat/')) {
+        const { checkMoltApiKey } = await import('./utils/molt-auth.js');
+        const auth = checkAdminToken(request, env) || checkMoltApiKey(request, env, requestId).allowed;
+        if (!auth) {
+          return checkMoltApiKey(request, env, requestId).errorResponse || createErrorResponse('UNAUTHORIZED', 'Admin token required', {}, 401, requestId);
+        }
+
+        const {
+          handleChatMessage,
+          handleChatStream,
+          handleChatFeedback,
+          handleGetSession,
+          handleGetAudit,
+        } = await import('./routes/chatRoutes.ts');
+
+        if (url.pathname === '/api/chat/message') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleChatMessage(request, requestId, env);
+        } else if (url.pathname === '/api/chat/stream') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleChatStream(request, requestId, env);
+        } else if (url.pathname === '/api/chat/feedback') {
+          { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
+          return await handleChatFeedback(request, requestId, env);
+        } else if (url.pathname === '/api/chat/audit') {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          return await handleGetAudit(request, requestId, env);
+        } else if (url.pathname.startsWith('/api/chat/session/')) {
+          { const _m = requireMethod(request, 'GET', requestId); if (_m) return _m; }
+          const sessionId = decodeURIComponent(url.pathname.replace(/^\/api\/chat\/session\//, '') || '');
+          return await handleGetSession(request, requestId, env, sessionId);
+        } else {
+          return createErrorResponse('NOT_FOUND', 'Chat endpoint not found', { path: url.pathname }, 404, requestId);
+        }
+
       } else if (url.pathname.startsWith('/analytics/')) {
         if (url.pathname === '/analytics/compare') {
           { const _m = requireMethod(request, 'POST', requestId); if (_m) return _m; }
