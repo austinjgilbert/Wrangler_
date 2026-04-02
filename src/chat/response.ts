@@ -26,6 +26,9 @@ import type {
   SourceAttribution,
 } from './types.ts';
 
+/** Model for response generation — Haiku for speed, Sonnet for quality */
+const RESPONSE_MODEL = 'claude-3-5-haiku-20241022';
+
 // ─── System Prompts ─────────────────────────────────────────────────────────
 
 const BASE_SYSTEM_PROMPT = `You are Wrangler_, an AI sales intelligence assistant for SDRs.
@@ -298,6 +301,7 @@ export async function generateResponse(
     ], {
       temperature: 0.3,
       maxTokens: 2048,
+      model: RESPONSE_MODEL,
     });
 
     const generationTimeMs = Date.now() - genStart;
@@ -355,6 +359,7 @@ export function generateStreamingResponse(
         ], {
           temperature: 0.3,
           maxTokens: 2048,
+          model: RESPONSE_MODEL,
         });
 
         const generationTimeMs = Date.now() - genStart;
