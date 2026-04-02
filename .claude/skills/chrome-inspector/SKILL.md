@@ -1166,3 +1166,244 @@ All notifications use Slack mrkdwn with:
 **Total skill size:** ~260KB across 12 files
 
 ---
+
+
+---
+
+## Part 19: Live Scan Pipeline Orchestration
+
+Reference: `references/live_pipeline.py`
+
+### When to Execute
+
+Run this pipeline when the user says:
+- "scan this page"
+- "scan this tab"
+- "prospect scan"
+- "ingest this"
+- "add this to Sanity"
+
+### Pipeline Steps
+
+Execute these steps in order. Stop and report on failure.
+
+#### Step 1 — Capture Chrome Tab
+
+```
+tab = mcp__Control_Chrome__get_current_tab()
+page_text = mcp__Control_Chrome__get_page_content(tab_id=tab.id)
+```
+
+Save `tab.url`, `tab.title`, and `page_text`.
+
+#### Step 2 — Classify Page
+
+Match `tab.url` against PAGE_TYPES (see live_pipeline.py):
+
+| URL Pattern | Page Type | Source | Entity Type |
+|---|---|---|---|
+| `linkedin.com/company/` | linkedin_company | linkedin | account |
+| `linkedin.com/in/` | linkedin_person | linkedin | contact |
+| `linkedin.com/sales/` | linkedin_sales_nav | linkedin | contact |
+| `crunchbase.com/organization/` | crunchbase_org | crunchbase | account |
+| `crunchbase.com/person/` | crunchbase_person | crunchbase | contact |
+| `app.apollo.io/` | apollo_person | apollo | contact |
+| `app.commonroom.io/` | common_room | common_room | account |
+| `lightning.force.com/.*Account` | salesforce_account | salesforce | account |
+| `lightning.force.com/.*Contact` | salesforce_contact | salesforce | contact |
+| `g2.com/products/` | g2_company | g2 | account |
+| `glassdoor.com/` | glassdoor | glassdoor | account |
+| (fallback) | company_website | company_website | account |
+
+#### Step 3 — Extract Fields
+
+Use Claude reasoning over `page_text` to extract structured fields.
+
+**Account fields** (extract what's available):
+`legalName`, `domain`, `industry`, `subIndustry`, `headcount`, `hqCity`, `hqState`, `hqCountry`, `foundedYear`, `description`, `ceo`, `revenueRange`, `fundingTotal`, `fundingStage`, `techStack`, `websiteUrl`, `linkedinUrl`, `twitterHandle`, `stockTicker`, `competitors`, `customers`, `tags`
+
+**Contact fields** (extract what's available):
+`fullName`, `firstName`, `lastName`, `email`, `title`, `seniority`, `department`, `phone`, `linkedinUrl`, `twitterHandle`, `company`, `companyDomain`, `location`, `bio`
+
+Rules:
+- Only extract fields with clear evidence in the text
+- Normalize `headcount` to integer
+- Strip protocol/www from `domain`
+- Use seniority values: `c_suite`, `vp`, `director`, `manager`, `senior`, `mid`, `junior`, `intern`
+- Return as JSON dict, omit fields with no evidence
+
+#### Step 4 — Build Signal
+
+```python
+signal = {
+    "source": classification.source,
+    "timestamp": now_iso,
+    "scanned_at": now_iso,
+    "url": tab.url,
+    "entity_type": classification.entity_type,
+    "entity_hint": {
+        # account: { domain, name }
+        # contact: { email, name, company, domain }
+    },
+    "fields": extracted_fields,
+}
+```
+
+#### Step 5 — Resolve Entity in Sanity
+
+Run GROQ queries in priority order. Stop at first match.
+
+**Account resolution** (try in order):
+```groq
+// 1. Domain match (0.98 confidence)
+*[_type == "account" && domain.value == $domain][0]
+
+// 2. Salesforce ID match (0.99)
+*[_type == "account" && salesforceId.value == $sfId][0]
+
+// 3. Name exact match (0.85)
+*[_type == "account" && legalName.value == $name][0]
+```
+
+**Contact resolution** (try in order):
+```groq
+// 1. Email match (0.97)
+*[_type == "contact" && email.value == $email][0]
+
+// 2. Name + company domain match (0.85)
+*[_type == "contact" && fullName.value == $name && companyDomain.value == $domain][0]
+```
+
+MCP call:
+```
+mcp__e17eda47__query_documents(
+    resource={projectId: "ql62wkk2", dataset: "production"},
+    query=<groq_query>,
+    params=<params>,
+    single=true
+)
+```
+
+#### Step 6 — Generate Entity ID
+
+Deterministic IDs using slugify (strips periods, lowercases, spaces→hyphens):
+
+- Account: `account-{slugify(domain)}` → e.g. `account-rapid7com`
+- Contact: `contact-{slugify(name)}-{slugify(domain)}` → e.g. `contact-corey-thomas-rapid7com`
+
+#### Step 7 — Fuse Fields
+
+Every field wrapped as `confidenceField`:
+```json
+{
+    "_type": "confidenceField",
+    "value": <any>,
+    "confidence": <0-1>,
+    "certain": <bool>,
+    "source": "<source_name>",
+    "sources": ["<source1>", "<source2>"],
+    "updated": "<ISO timestamp>",
+    "conflictingValues": []
+}
+```
+
+**Source trust tiers:**
+- Tier 1: salesforce=0.90, company_website=0.85, common_room=0.85, bigquery=0.95
+- Tier 2: linkedin=0.75, crunchbase=0.72, apollo=0.70
+- Tier 3: g2=0.65, glassdoor=0.60, slack=0.40, gmail=0.35
+- Tier 4: inferred=0.25
+
+**Confidence formula:** `base_trust + authority_bonus(0.05) + corroboration_bonus(0.03/source)`
+
+**Conflict resolution (in order):**
+1. Values match → corroborate (boost confidence)
+2. New source is authoritative for field, existing is not → accept new
+3. Existing source is authoritative, new is not → reject new
+4. Confidence margin > 0.15 → higher wins
+5. Otherwise → FLAG for human review (add to `conflictingValues`)
+
+**Field authority map** (top 3 sources per field — see `FIELD_AUTHORITY` in live_pipeline.py):
+- `legalName`: salesforce, company_website, crunchbase
+- `domain`: company_website, salesforce, crunchbase
+- `headcount`: linkedin, salesforce, crunchbase
+- `email`: salesforce, apollo, gmail
+- `title`: linkedin, salesforce, apollo
+
+#### Step 8 — Build Document
+
+Build the full Sanity document with:
+- All fused fields
+- Preserved existing fields not in this signal
+- `metadata`: `{ fusionVersion, lastFusedAt, signalCount, requiresReview }`
+- `signalSummary`: `{ sources[], uncertainFields[], lastSignalAt }`
+
+#### Step 9 — Persist to Sanity
+
+**New entity:**
+```
+mcp__e17eda47__create_documents_from_json(
+    resource={projectId: "ql62wkk2", dataset: "production"},
+    documents=[document]
+)
+```
+
+**Existing entity (update):**
+```
+mcp__e17eda47__patch_document_from_json(
+    resource={projectId: "ql62wkk2", dataset: "production"},
+    documentId=entity_id,
+    patch={ set: { ...fused_fields, metadata, signalSummary } }
+)
+```
+
+#### Step 10 — Log Fusion Event
+
+```
+event = {
+    _type: "fusionEvent",
+    _id: "fusion-{entity_id}-{timestamp}",
+    entitySanityId, entityType, eventType,
+    source, sourceUrl, fieldsAffected[],
+    conflicts[], fieldCount, timestamp
+}
+
+mcp__e17eda47__create_documents_from_json(
+    resource={projectId: "ql62wkk2", dataset: "production"},
+    documents=[event]
+)
+```
+
+#### Step 11 — Slack Notification
+
+```
+mcp__5e5b2f2c__slack_send_message_draft(
+    channel="U079FFJ9D63",
+    text=<formatted message>
+)
+```
+
+Message format:
+```
+🆕 *Account: Rapid7, Inc.*          (or 🔄 for updates)
+Source: `company_website` • Fields: 13
+<url|View source page>
+⚠️ Conflicts: headcount, legalName   (if any)
+🔴 *Requires human review*           (if flagged)
+```
+
+### Error Handling
+
+- If Chrome tab read fails → report "Cannot read tab. Is Chrome connected?"
+- If page_text is empty → still classify by URL, extract from title
+- If no entity resolution match → create new entity (initial_fuse)
+- If Sanity upsert fails → report error, do NOT log fusionEvent
+- If Slack fails → log warning but don't fail the pipeline
+
+### Quick Reference
+
+```
+Sanity Project: ql62wkk2
+Dataset: production
+Slack DM: U079FFJ9D63
+ID format: account-{slug} / contact-{name}-{domain}
+```
