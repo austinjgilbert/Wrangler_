@@ -7228,6 +7228,7 @@ const KNOWN_PATH_PREFIXES = [
   '/sdr/', '/accountability/', '/user-patterns/', '/account-page', '/accounts/', '/account-plan/', '/system/',
   '/operator/console',
   '/memory',
+  '/api/chat/',
 ];
 
 function isKnownPath(pathname) {
