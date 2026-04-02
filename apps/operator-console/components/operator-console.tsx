@@ -26,6 +26,7 @@ import {
   LayoutDashboard,
   Loader2,
   Map,
+  MessageSquare,
   Microscope,
   Network,
   PanelRightClose,
@@ -38,6 +39,7 @@ import {
   TrendingUp,
   UserRound,
 } from 'lucide-react';
+import { ChatPanel } from '@/components/chat/chat-panel';
 import { getDiscoveredPatternsFromSnapshot } from '@/lib/pattern-discovery-data';
 import { getStrategicMapSnapshotFromSnapshot } from '@/lib/intelligence-map-data';
 import {
@@ -66,6 +68,7 @@ import type {
 type SectionId =
   | 'overview'
   | 'workspace'
+  | 'chat'
   | 'accounts'
   | 'people'
   | 'signals'
@@ -87,6 +90,7 @@ type SectionId =
 // Core navigation — 9 focused views covering the full SDR execution loop
 const SIDEBAR_ITEMS: Array<{ id: SectionId; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: 'overview',   label: 'Overview',  icon: Gauge },
+  { id: 'chat',       label: 'Chat',      icon: MessageSquare },
   { id: 'actions',    label: 'Actions',   icon: Bolt },
   { id: 'accounts',   label: 'Accounts',  icon: Building2 },
   { id: 'people',     label: 'People',    icon: UserRound },
@@ -754,6 +758,12 @@ function Workspace(props: {
   switch (props.section) {
     case 'overview':
       return <OverviewView {...props} />;
+    case 'chat':
+      return (
+        <div className="flex h-[calc(100vh-var(--command-bar-height)-3rem)] -m-6 -mb-6">
+          <ChatPanel />
+        </div>
+      );
     case 'workspace':
       return (
         <WorkspaceView
