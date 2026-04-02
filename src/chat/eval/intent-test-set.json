@@ -1,0 +1,402 @@
+[
+  {
+    "id": "q001",
+    "query": "What's happening with Acme Corp?",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Acme Corp"],
+    "difficulty": "easy",
+    "notes": "Canonical example — direct account name with explicit 'what's happening' framing"
+  },
+  {
+    "id": "q002",
+    "query": "Tell me about DataFlow",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "easy",
+    "notes": "Classic 'tell me about' trigger phrase with company name"
+  },
+  {
+    "id": "q003",
+    "query": "Pull up nike.com",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["nike.com"],
+    "difficulty": "easy",
+    "notes": "Domain name instead of company name; 'pull up' is common SDR shorthand"
+  },
+  {
+    "id": "q004",
+    "query": "Give me the rundown on Stripe",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Stripe"],
+    "difficulty": "easy",
+    "notes": "Casual SDR phrasing — 'rundown' signals account overview request"
+  },
+  {
+    "id": "q005",
+    "query": "What do we know about Salesforce?",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Salesforce"],
+    "difficulty": "easy",
+    "notes": "Explicit account inquiry with 'we know about' framing"
+  },
+  {
+    "id": "q006",
+    "query": "Acme",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Acme"],
+    "difficulty": "medium",
+    "notes": "Bare company name only — requires inference that this is an account lookup"
+  },
+  {
+    "id": "q007",
+    "query": "hubspot.com",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["hubspot.com"],
+    "difficulty": "medium",
+    "notes": "Domain name with no verb or framing — pure entity lookup"
+  },
+  {
+    "id": "q008",
+    "query": "What's their latest funding round?",
+    "expected_intent": "account_lookup",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Pronoun 'their' — requires context from prior conversation; no explicit company name"
+  },
+  {
+    "id": "q009",
+    "query": "Compare Acme and DataFlow",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Acme", "DataFlow"],
+    "difficulty": "hard",
+    "notes": "Multi-entity account lookup; 'compare' is not a standard trigger word but implies account data for both"
+  },
+  {
+    "id": "q010",
+    "query": "Acme just posted a job for a VP of Sales — what else is going on with them and are there any signals I should know about?",
+    "expected_intent": "account_lookup",
+    "expected_entities": ["Acme"],
+    "difficulty": "hard",
+    "notes": "Multi-intent: account_lookup + signal_check; long-form SDR query with embedded signal question"
+  },
+  {
+    "id": "q011",
+    "query": "Good morning",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Canonical greeting — strong signal for daily briefing"
+  },
+  {
+    "id": "q012",
+    "query": "What should I do today?",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Explicit daily prioritization request"
+  },
+  {
+    "id": "q013",
+    "query": "Top priorities",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Short-form priority request — common SDR shorthand"
+  },
+  {
+    "id": "q014",
+    "query": "Give me my morning briefing",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Explicit briefing request with 'morning' keyword"
+  },
+  {
+    "id": "q015",
+    "query": "What's on my plate today?",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Idiomatic daily workload question — clear morning briefing intent"
+  },
+  {
+    "id": "q016",
+    "query": "What's new?",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Ambiguous — could be morning_briefing or signal_check; no time anchor or account context"
+  },
+  {
+    "id": "q017",
+    "query": "Catch me up",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Implicit briefing request — 'catch me up' without context defaults to daily summary"
+  },
+  {
+    "id": "q018",
+    "query": "gm",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Abbreviated 'good morning' — common in Slack/chat contexts; requires abbreviation recognition"
+  },
+  {
+    "id": "q019",
+    "query": "What should I focus on this week?",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "hard",
+    "notes": "Weekly scope instead of daily — could be morning_briefing or signal_check; no specific account"
+  },
+  {
+    "id": "q020",
+    "query": "I've got 3 hours before my first call — what should I be doing and who should I reach out to first?",
+    "expected_intent": "morning_briefing",
+    "expected_entities": [],
+    "difficulty": "hard",
+    "notes": "Multi-intent: morning_briefing + person_lookup; time-constrained prioritization with outreach component"
+  },
+  {
+    "id": "q021",
+    "query": "Any new signals?",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Canonical signal check — explicit 'signals' keyword"
+  },
+  {
+    "id": "q022",
+    "query": "What signals in fintech this week?",
+    "expected_intent": "signal_check",
+    "expected_entities": ["fintech"],
+    "difficulty": "easy",
+    "notes": "Vertical-scoped signal check with time window; 'signals' keyword present"
+  },
+  {
+    "id": "q023",
+    "query": "Anything happening with my accounts?",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Portfolio-wide signal check — 'my accounts' scopes to user's book of business"
+  },
+  {
+    "id": "q024",
+    "query": "Show me recent buying signals",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Explicit signal type ('buying signals') — clear intent"
+  },
+  {
+    "id": "q025",
+    "query": "Any job postings or funding news I should know about?",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Specific signal types enumerated (job postings, funding) — clear signal_check"
+  },
+  {
+    "id": "q026",
+    "query": "Anything interesting lately?",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Vague temporal signal check — 'interesting' is implicit; could be morning_briefing"
+  },
+  {
+    "id": "q027",
+    "query": "What's moving in enterprise SaaS?",
+    "expected_intent": "signal_check",
+    "expected_entities": ["enterprise SaaS"],
+    "difficulty": "medium",
+    "notes": "Vertical signal check without 'signals' keyword — 'moving' implies activity/signals"
+  },
+  {
+    "id": "q028",
+    "query": "Any noise from my top 10?",
+    "expected_intent": "signal_check",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "SDR slang — 'noise' = signals, 'top 10' = priority accounts; requires domain knowledge"
+  },
+  {
+    "id": "q029",
+    "query": "Acme's been quiet — anything change?",
+    "expected_intent": "signal_check",
+    "expected_entities": ["Acme"],
+    "difficulty": "hard",
+    "notes": "Account-scoped signal check framed as absence of activity; could be account_lookup"
+  },
+  {
+    "id": "q030",
+    "query": "I'm about to call DataFlow — any last-minute intel or signals before I dial?",
+    "expected_intent": "signal_check",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "hard",
+    "notes": "Multi-intent: signal_check + meeting_prep; pre-call context request with urgency framing"
+  },
+  {
+    "id": "q031",
+    "query": "Tell me about Sarah Chen at Acme",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["Sarah Chen", "Acme"],
+    "difficulty": "easy",
+    "notes": "Canonical person lookup — full name + company"
+  },
+  {
+    "id": "q032",
+    "query": "Who's the CTO at DataFlow?",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "easy",
+    "notes": "Role-based person lookup — title query at named company"
+  },
+  {
+    "id": "q033",
+    "query": "Who should I call?",
+    "expected_intent": "person_lookup",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Outreach prioritization — implicit person lookup for best contact"
+  },
+  {
+    "id": "q034",
+    "query": "Pull up Marcus Webb",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["Marcus Webb"],
+    "difficulty": "easy",
+    "notes": "Direct person lookup by full name — 'pull up' is SDR shorthand"
+  },
+  {
+    "id": "q035",
+    "query": "Who's the decision maker at Stripe?",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["Stripe"],
+    "difficulty": "easy",
+    "notes": "Sales-specific role query — 'decision maker' is SDR vocabulary"
+  },
+  {
+    "id": "q036",
+    "query": "What's the deal with their new VP?",
+    "expected_intent": "person_lookup",
+    "expected_entities": [],
+    "difficulty": "medium",
+    "notes": "Pronoun 'their' + partial role reference — requires prior context for company; implicit person lookup"
+  },
+  {
+    "id": "q037",
+    "query": "Sarah at Acme",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["Sarah", "Acme"],
+    "difficulty": "medium",
+    "notes": "First name only — partial name requires fuzzy matching; no explicit lookup verb"
+  },
+  {
+    "id": "q038",
+    "query": "Who do I know at HubSpot?",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["HubSpot"],
+    "difficulty": "medium",
+    "notes": "Relationship-scoped person lookup — 'who do I know' implies contact/connection query"
+  },
+  {
+    "id": "q039",
+    "query": "Who at DataFlow should I talk to about their CMS migration?",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "hard",
+    "notes": "Multi-intent: person_lookup + signal_check (CMS migration = signal); role inference from use case"
+  },
+  {
+    "id": "q040",
+    "query": "I'm meeting with Acme tomorrow — who's going to be in the room and what do I need to know about each of them?",
+    "expected_intent": "person_lookup",
+    "expected_entities": ["Acme"],
+    "difficulty": "hard",
+    "notes": "Multi-intent: person_lookup + meeting_prep; attendee research for upcoming meeting"
+  },
+  {
+    "id": "q041",
+    "query": "Prep me for my meeting with Acme tomorrow",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Acme"],
+    "difficulty": "easy",
+    "notes": "Canonical meeting prep — explicit 'prep me' + company + time reference"
+  },
+  {
+    "id": "q042",
+    "query": "I have a call with Sarah Chen at 2pm",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Sarah Chen"],
+    "difficulty": "easy",
+    "notes": "Meeting announcement with person + time — implicit prep request"
+  },
+  {
+    "id": "q043",
+    "query": "Brief me for Tuesday",
+    "expected_intent": "meeting_prep",
+    "expected_entities": [],
+    "difficulty": "easy",
+    "notes": "Explicit 'brief me' with day reference — clear meeting prep intent"
+  },
+  {
+    "id": "q044",
+    "query": "What do I need to know before my Stripe call?",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Stripe"],
+    "difficulty": "easy",
+    "notes": "Pre-call prep question — 'before my call' is a strong meeting_prep signal"
+  },
+  {
+    "id": "q045",
+    "query": "Help me prep for DataFlow",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "easy",
+    "notes": "Explicit 'prep' verb with company name — clear intent"
+  },
+  {
+    "id": "q046",
+    "query": "I've got Acme in an hour",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Acme"],
+    "difficulty": "medium",
+    "notes": "Implicit prep request — time pressure ('in an hour') implies need for briefing without explicit ask"
+  },
+  {
+    "id": "q047",
+    "query": "Acme call tomorrow at 10",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Acme"],
+    "difficulty": "medium",
+    "notes": "Telegraphic SDR style — no verb, just company + meeting context; requires inference"
+  },
+  {
+    "id": "q048",
+    "query": "What's the latest on DataFlow before I jump on with them?",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["DataFlow"],
+    "difficulty": "medium",
+    "notes": "Pre-meeting intel request — 'before I jump on' signals meeting_prep; could be account_lookup"
+  },
+  {
+    "id": "q049",
+    "query": "Prep me for Acme — what signals do they have and who's the right person to push on the deal?",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["Acme"],
+    "difficulty": "hard",
+    "notes": "Multi-intent: meeting_prep + signal_check + person_lookup; compound prep request"
+  },
+  {
+    "id": "q050",
+    "query": "I have a discovery call with a fintech company next week — what should I know going in?",
+    "expected_intent": "meeting_prep",
+    "expected_entities": ["fintech"],
+    "difficulty": "hard",
+    "notes": "Vague meeting prep — no specific company name, only vertical; 'discovery call' is SDR vocabulary"
+  }
+]
