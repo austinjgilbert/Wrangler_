@@ -14,6 +14,7 @@ import { structureTool } from 'sanity/structure';
 import { visionTool } from '@sanity/vision';
 import { schemaTypes } from './schemas';
 import { deskStructure, getDefaultDocumentNode } from './deskStructure';
+import { chatTool } from './plugins/chat-tool';
 
 /** Simple static icon for Dashboard; must be serializable (no hooks/external deps). */
 function AccountDataSetIcon() {
@@ -41,6 +42,7 @@ export default defineConfig({
     visionTool({
       defaultApiVersion: '2024-01-01',
     }),
+    chatTool(),
   ],
 
   schema: {
