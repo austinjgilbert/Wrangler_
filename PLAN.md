@@ -1,6 +1,6 @@
 # PLAN.md — Wrangler_ Coordination Document
 
-> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 15:05 UTC by @dev (coordinator).
+> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 15:15 UTC by @dev (coordinator).
 
 ---
 
@@ -340,7 +340,7 @@ git push origin feature/chat-v1
 
 4. **`sanity build` needs RAM** — Dev sandbox doesn't have enough memory. Deploy from local machine.
 
-5. **Chat routes 404 on production** — Worker was redeployed from `main` which doesn't have chat code. Must deploy from `feature/chat-v1` or merge first. This is the current blocker.
+5. **Chat routes 404 on production** — ✅ RESOLVED. Worker redeployed from `feature/chat-v1`, chat endpoints now live. Verified with real query returning data in ~1s.
 
 ---
 
@@ -350,14 +350,15 @@ git push origin feature/chat-v1
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| 1 | **Deploy Worker from feature/chat-v1** | Austin | ⏳ **BLOCKER** — `npx wrangler deploy` from feature branch (or merge to main first) |
-| 2 | Deploy Studio with Chat Tool | Austin | ⏳ `cd sanity && npm install && npm run deploy` |
-| 3 | Live smoke test chat in actual Studio | Austin + Agent A | ⏳ Blocked on #1 + #2 |
-| 4 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Agent A | ✅ Done — all origins work, headers correct |
-| 5 | Live data validation — confirm GROQ dereferences resolve | Agent A | ⏳ Blocked on #1 (can't test against 404s) |
-| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ Blocked on #3 (or do before #1) |
-| 7 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #6 |
-| 8 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
+| 1 | **Deploy Worker from feature/chat-v1** | Austin | ✅ Done — chat routes live, verified ~1s response |
+| 2 | Deploy Studio with Chat Tool | Austin | ✅ Done — Chat Tool should be visible in Studio |
+| 3 | Austin verifies Chat tab appears in Studio | Austin | ⏳ Next |
+| 4 | Live smoke test chat in actual Studio UI | Austin + Agent A | ⏳ Blocked on #3 |
+| 5 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Agent A | ✅ Done — all origins work, headers correct |
+| 6 | Live data validation — confirm GROQ dereferences resolve | Agent A | ✅ Done — real data flowing (Buc Ees, BDA Inc) |
+| 7 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After smoke test |
+| 8 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #7 |
+| 9 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
 
 ---
 
