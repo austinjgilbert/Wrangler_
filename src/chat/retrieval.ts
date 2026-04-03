@@ -312,7 +312,6 @@ async function retrieveForAccountLookup(
       people: (Array.isArray(people) ? people : []).map((p: any) => ({
         name: p.name,
         title: p.currentTitle || p.title,
-        email: p.email || null,
         linkedinUrl: p.linkedinUrl || null,
       })),
     },
@@ -343,8 +342,8 @@ async function retrieveForMorningBriefing(env: any): Promise<RetrievalResult> {
       ] | order(opportunityScore desc)[0...${MAX_ACTIONS}]{
         _id, _type, _updatedAt,
         actionType, opportunityScore, confidence,
-        patternMatch, whyNow, accountName,
-        account
+        patternMatch, whyNow,
+        "accountName": account->companyName
       }`,
     ).catch(() => []),
 
@@ -354,7 +353,8 @@ async function retrieveForMorningBriefing(env: any): Promise<RetrievalResult> {
       `*[_type == "signal" && timestamp >= $cutoff] | order(timestamp desc)[0...${MAX_SIGNALS}]{
         _id, _type, _updatedAt,
         signalType, strength, timestamp,
-        summary, accountName, account
+        summary,
+        "accountName": account->companyName
       }`,
       { cutoff: overnightCutoff },
     ).catch(() => []),
@@ -393,14 +393,14 @@ async function retrieveForMorningBriefing(env: any): Promise<RetrievalResult> {
         confidence: a.confidence,
         pattern: a.patternMatch,
         whyNow: a.whyNow,
-        account: a.accountName || a.account?._ref,
+        account: a.accountName || null,
       })),
       overnightSignals: safeSignals.map((s: any) => ({
         type: s.signalType,
         strength: s.strength,
         timestamp: s.timestamp,
         summary: s.summary || null,
-        account: s.accountName || s.account?._ref,
+        account: s.accountName || null,
       })),
     },
     sources,
@@ -480,7 +480,8 @@ async function retrieveForSignalCheck(
   const signalQuery = `*[${filterClauses.join(' && ')}] | order(timestamp desc, strength desc)[0...${MAX_SIGNALS * 2}]{
     _id, _type, _updatedAt,
     signalType, strength, timestamp,
-    summary, source, accountName, account
+    summary, source,
+    "accountName": account->companyName
   }`;
 
   const [signals, signalStats] = await Promise.all([
@@ -527,7 +528,7 @@ async function retrieveForSignalCheck(
         strength: s.strength,
         timestamp: s.timestamp,
         summary: s.summary || null,
-        account: s.accountName || s.account?._ref,
+        account: s.accountName || null,
         source: s.source || null,
       })),
     },
@@ -561,9 +562,9 @@ async function retrieveForPersonLookup(
       client,
       `*[_type == "person" && name match $namePattern][0]{
         _id, _type, _updatedAt, _createdAt,
-        name, currentTitle, title, email, linkedinUrl,
+        name, currentTitle, title, linkedinUrl,
         companyRef, currentCompany,
-        bio, summary, notes
+        about
       }`,
       { namePattern: `*${personEntity.text}*` },
     );
@@ -604,7 +605,8 @@ async function retrieveForPersonLookup(
       `*[_type == "signal" && person._ref == $personId] | order(timestamp desc)[0...${MAX_SIGNALS}]{
         _id, _type, _updatedAt,
         signalType, strength, timestamp,
-        summary, accountName
+        summary,
+        "accountName": account->companyName
       }`,
       { personId: person._id },
     ).catch(() => []),
@@ -624,10 +626,8 @@ async function retrieveForPersonLookup(
         id: person._id,
         name: person.name,
         title: person.currentTitle || person.title || null,
-        email: person.email || null,
         linkedinUrl: person.linkedinUrl || null,
-        bio: person.bio || person.summary || null,
-        notes: person.notes || null,
+        bio: person.about || null,
       },
       account: account
         ? {
@@ -678,9 +678,9 @@ async function retrieveForMeetingPrep(
       `*[_type == "account" && domain == $domain][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
-        opportunityScore, industry, employeeCount,
-        profileCompleteness, technologyStack,
-        description, summary
+        opportunityScore, industry,
+        "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
+        profileCompleteness, technologyStack
       }`,
       { domain: domainEntity.text },
     );
@@ -692,9 +692,9 @@ async function retrieveForMeetingPrep(
       `*[_type == "account" && (name == $name || companyName == $name)][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
-        opportunityScore, industry, employeeCount,
-        profileCompleteness, technologyStack,
-        description, summary
+        opportunityScore, industry,
+        "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
+        profileCompleteness, technologyStack
       }`,
       { name: accountEntity.text },
     );
@@ -717,9 +717,9 @@ async function retrieveForMeetingPrep(
           `*[_type == "account" && _id == $accountId][0]{
             _id, _type, _updatedAt, _createdAt,
             companyName, name, domain, rootDomain,
-            opportunityScore, industry, employeeCount,
-            profileCompleteness, technologyStack,
-            description, summary
+            opportunityScore, industry,
+            "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
+            profileCompleteness, technologyStack
           }`,
           { accountId: accountRef },
         );
@@ -773,8 +773,8 @@ async function retrieveForMeetingPrep(
       client,
       `*[_type == "person" && (companyRef._ref == $accountId || currentCompany == $accountId)][0...${MAX_PEOPLE}]{
         _id, _type, _updatedAt,
-        name, currentTitle, title, email, linkedinUrl,
-        bio, summary
+        name, currentTitle, title, linkedinUrl,
+        about
       }`,
       { accountId: account._id },
     ).catch(() => []),
@@ -828,10 +828,9 @@ async function retrieveForMeetingPrep(
         domain: account.domain || account.rootDomain,
         opportunityScore: account.opportunityScore || 0,
         industry: account.industry || null,
-        employeeCount: account.employeeCount || null,
+        employeeCount: account.employeeCount || null, // NOTE: string from schema (benchmarks.estimatedEmployees)
         completeness: account.profileCompleteness?.score || null,
         technologyStack: account.technologyStack || null,
-        description: account.description || account.summary || null,
       },
       signals: safeSignals.map((s: any) => ({
         type: s.signalType,
@@ -849,9 +848,8 @@ async function retrieveForMeetingPrep(
       people: safePeople.map((p: any) => ({
         name: p.name,
         title: p.currentTitle || p.title || null,
-        email: p.email || null,
         linkedinUrl: p.linkedinUrl || null,
-        bio: p.bio || p.summary || null,
+        bio: p.about || null,
       })),
       talkingPoints,
       relevantPatterns: safePatterns.map((p: any) => ({
