@@ -187,10 +187,10 @@ async function retrieveForAccountLookup(
       `*[_type == "account" && domain == $domain][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
-        opportunityScore, industry, employeeCount,
+        opportunityScore, industry,
+        "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
         profileCompleteness,
-        technologyStack,
-        description, summary
+        technologyStack
       }`,
       { domain: domainEntity.text },
     );
@@ -207,10 +207,10 @@ async function retrieveForAccountLookup(
       )][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
-        opportunityScore, industry, employeeCount,
+        opportunityScore, industry,
+        "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
         profileCompleteness,
-        technologyStack,
-        description, summary
+        technologyStack
       }`,
       {
         name: accountEntity.text,
@@ -241,7 +241,8 @@ async function retrieveForAccountLookup(
       `*[_type == "signal" && account._ref == $accountId] | order(timestamp desc)[0...${MAX_SIGNALS}]{
         _id, _type, _updatedAt,
         signalType, strength, timestamp,
-        summary, source, accountName
+        summary, source,
+        "accountName": account->companyName
       }`,
       { accountId: account._id },
     ).catch(() => []),
@@ -253,7 +254,7 @@ async function retrieveForAccountLookup(
       ] | order(opportunityScore desc)[0...${MAX_ACTIONS}]{
         _id, _type, _updatedAt,
         actionType, opportunityScore, confidence,
-        patternMatch, whyNow, status, lifecycleStatus
+        patternMatch, whyNow, lifecycleStatus
       }`,
       { accountId: account._id },
     ).catch(() => []),
@@ -262,7 +263,7 @@ async function retrieveForAccountLookup(
       client,
       `*[_type == "person" && (companyRef._ref == $accountId || currentCompany == $accountId)][0...${MAX_PEOPLE}]{
         _id, _type, _updatedAt,
-        name, currentTitle, title, linkedinUrl, email
+        name, currentTitle, title, linkedinUrl
       }`,
       { accountId: account._id },
     ).catch(() => []),
@@ -289,10 +290,9 @@ async function retrieveForAccountLookup(
         domain: account.domain || account.rootDomain,
         opportunityScore: account.opportunityScore || 0,
         industry: account.industry || null,
-        employeeCount: account.employeeCount || null,
+        employeeCount: account.employeeCount || null, // NOTE: string from schema (benchmarks.estimatedEmployees)
         completeness: account.profileCompleteness?.score || null,
         technologyStack: account.technologyStack || null,
-        description: account.description || account.summary || null,
       },
       signals: safeSignals.map((s: any) => ({
         type: s.signalType,
@@ -307,7 +307,7 @@ async function retrieveForAccountLookup(
         confidence: a.confidence,
         pattern: a.patternMatch,
         whyNow: a.whyNow,
-        status: a.status || a.lifecycleStatus,
+        status: a.lifecycleStatus,
       })),
       people: (Array.isArray(people) ? people : []).map((p: any) => ({
         name: p.name,
