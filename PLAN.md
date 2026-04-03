@@ -1,6 +1,6 @@
 # PLAN.md — Wrangler_ Coordination Document
 
-> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03.
+> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 15:05 UTC by @dev (coordinator).
 
 ---
 
@@ -340,25 +340,24 @@ git push origin feature/chat-v1
 
 4. **`sanity build` needs RAM** — Dev sandbox doesn't have enough memory. Deploy from local machine.
 
-5. **Type gaps** — Some dashboard views rely on shape assumptions from `ConsoleSnapshot` that may not match what the Worker actually returns. Needs end-to-end testing.
+5. **Chat routes 404 on production** — Worker was redeployed from `main` which doesn't have chat code. Must deploy from `feature/chat-v1` or merge first. This is the current blocker.
 
 ---
 
 ## 12. What's Next (Priority Order)
 
+> **Critical discovery (2026-04-03):** Chat endpoints return 404 on production. The Worker was redeployed from `main` which doesn't have chat code. Austin must deploy Worker from `feature/chat-v1` (or merge first).
+
 | # | Task | Owner | Status |
 |---|---|---|---|
-| 1 | Deploy Studio with Chat Tool | Austin | ⏳ `cd sanity && npm run deploy` |
-| 2 | Live smoke test chat in actual Studio | Austin + Agent A | ⏳ Blocked on #1 |
-| 3 | End-to-end test operator console against live Worker | Agent B | ⏳ After deploy |
-| 4 | Consolidate chat page to NDJSON protocol | Agent B | ⏳ After chat stable |
-| 5 | Delete old monolith + root page.tsx | Either agent | ⏳ Cleanup |
-| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After smoke tests |
-| 7 | Redeploy worker from `main` | Austin | ⏳ After merge |
-| 8 | Command palette (Cmd+K) | Agent B | ⏳ Future |
-| 9 | Action execution from pipeline/detail | Agent B | ⏳ Future |
-| 10 | Real-time WebSocket (replace polling) | Agent B | ⏳ Future |
-| 11 | V2: persistent history, semantic search, more intents | Agent A | ⏳ Future |
+| 1 | **Deploy Worker from feature/chat-v1** | Austin | ⏳ **BLOCKER** — `npx wrangler deploy` from feature branch (or merge to main first) |
+| 2 | Deploy Studio with Chat Tool | Austin | ⏳ `cd sanity && npm install && npm run deploy` |
+| 3 | Live smoke test chat in actual Studio | Austin + Agent A | ⏳ Blocked on #1 + #2 |
+| 4 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Agent A | ✅ Done — all origins work, headers correct |
+| 5 | Live data validation — confirm GROQ dereferences resolve | Agent A | ⏳ Blocked on #1 (can't test against 404s) |
+| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ Blocked on #3 (or do before #1) |
+| 7 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #6 |
+| 8 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
 
 ---
 
