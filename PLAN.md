@@ -1,6 +1,6 @@
 # PLAN.md — Wrangler_ Coordination Document
 
-> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 15:15 UTC by @dev (coordinator).
+> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 16:00 UTC by @dev (coordinator).
 
 ---
 
@@ -12,8 +12,10 @@
 
 | Surface | Purpose | Users | Status |
 |---|---|---|---|
-| **Sanity Studio** | Chat-first conversational interface | SDRs doing daily work | Chat Tool plugin built, pending deploy |
-| **Operator Console** | Full dashboard for power users / ops | Admins, ops, builders | Route-based rebuild complete, 10 pages |
+| **SDK App (Operator Console)** | Chat-first command center — THE product | SDRs doing daily work | ✅ Chat as home screen, entity links, nav suggestions |
+| **Sanity Studio** | Backend data management + AI overlay (future) | Admins, ops, builders | Chat Tool plugin built, lower priority |
+
+> **Key decision (2026-04-03):** Austin directed that the SDK App is the product. Users can't access Studio. Everything must be in the app. Chat is the home screen and command center.
 
 **Key facts:**
 - Chat backend is **LIVE on production** at `https://website-scanner.austin-gilbert.workers.dev`
