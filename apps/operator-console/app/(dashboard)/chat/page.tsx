@@ -20,7 +20,15 @@ import {
   ExternalLink,
   StopCircle,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useChat, type ChatMessage, type Source } from '@/lib/use-chat';
+import {
+  extractEntityRefs,
+  matchBoldEntity,
+  suggestionNavHref,
+  type EntityRef,
+} from '@/lib/entity-linker';
 
 /* ─── Conversation Starters ─────────────────────────────────────────────── */
 
@@ -34,7 +42,7 @@ const STARTERS = [
 
 /* ─── Lightweight Markdown Renderer ─────────────────────────────────────── */
 
-function renderMarkdown(text: string): React.ReactNode[] {
+function renderMarkdown(text: string, entities: EntityRef[] = []): React.ReactNode[] {
   const lines = text.split('\n');
   const nodes: React.ReactNode[] = [];
   let listItems: string[] = [];
@@ -46,7 +54,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
         <ul key={`list-${listKey++}`} className="list-disc list-inside space-y-1 my-2">
           {listItems.map((item, i) => (
             <li key={i} className="text-[var(--text)] text-[13px] leading-relaxed">
-              {renderInline(item)}
+              {renderInline(item, entities)}
             </li>
           ))}
         </ul>,
@@ -64,7 +72,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       flushList();
       nodes.push(
         <h4 key={i} className="text-[13px] font-semibold text-[var(--text)] mt-3 mb-1">
-          {renderInline(h3Match[1])}
+          {renderInline(h3Match[1], entities)}
         </h4>,
       );
       continue;
@@ -75,7 +83,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       flushList();
       nodes.push(
         <h3 key={i} className="text-[14px] font-semibold text-[var(--text)] mt-4 mb-1">
-          {renderInline(h2Match[1])}
+          {renderInline(h2Match[1], entities)}
         </h3>,
       );
       continue;
@@ -86,7 +94,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       flushList();
       nodes.push(
         <h2 key={i} className="text-[15px] font-bold text-[var(--text)] mt-4 mb-2">
-          {renderInline(h1Match[1])}
+          {renderInline(h1Match[1], entities)}
         </h2>,
       );
       continue;
@@ -116,7 +124,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
     flushList();
     nodes.push(
       <p key={i} className="text-[13px] text-[var(--text)] leading-relaxed my-1">
-        {renderInline(line)}
+        {renderInline(line, entities)}
       </p>,
     );
   }
@@ -126,7 +134,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 
 /** Render inline markdown: **bold**, *italic*, `code`, [links](url) */
-function renderInline(text: string): React.ReactNode {
+function renderInline(text: string, entities: EntityRef[] = []): React.ReactNode {
   // Split on inline patterns
   const parts: React.ReactNode[] = [];
   let remaining = text;
@@ -137,11 +145,26 @@ function renderInline(text: string): React.ReactNode {
     const boldMatch = remaining.match(/^(.*?)\*\*(.+?)\*\*(.*)/s);
     if (boldMatch) {
       if (boldMatch[1]) parts.push(boldMatch[1]);
-      parts.push(
-        <strong key={key++} className="font-semibold text-[var(--text)]">
-          {boldMatch[2]}
-        </strong>,
-      );
+
+      // Check if the bold text matches a known entity → render as Link
+      const entity = matchBoldEntity(boldMatch[2], entities);
+      if (entity) {
+        parts.push(
+          <Link
+            key={key++}
+            href={entity.href}
+            className="font-semibold text-[var(--accent)] hover:underline"
+          >
+            {boldMatch[2]}
+          </Link>,
+        );
+      } else {
+        parts.push(
+          <strong key={key++} className="font-semibold text-[var(--text)]">
+            {boldMatch[2]}
+          </strong>,
+        );
+      }
       remaining = boldMatch[3];
       continue;
     }
@@ -232,24 +255,35 @@ function SourcesSection({ sources }: { sources: Source[] }) {
 
 function SuggestionChips({
   suggestions,
+  entities,
   onSelect,
+  onNavigate,
 }: {
   suggestions: string[];
+  entities: EntityRef[];
   onSelect: (text: string) => void;
+  onNavigate: (href: string) => void;
 }) {
   if (!suggestions.length) return null;
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {suggestions.map((s, i) => (
-        <button
-          key={i}
-          onClick={() => onSelect(s)}
-          className="px-3 py-1.5 rounded-lg text-[12px] bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/20 hover:border-[var(--accent-secondary)]/50 transition-colors cursor-pointer"
-        >
-          {s}
-        </button>
-      ))}
+      {suggestions.map((s, i) => {
+        const navHref = suggestionNavHref(s, entities);
+        return (
+          <button
+            key={i}
+            onClick={() => (navHref ? onNavigate(navHref) : onSelect(s))}
+            className={`px-3 py-1.5 rounded-lg text-[12px] transition-colors cursor-pointer ${
+              navHref
+                ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/20 hover:border-[var(--accent)]/50'
+                : 'bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/20 hover:border-[var(--accent-secondary)]/50'
+            }`}
+          >
+            {s}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -310,13 +344,16 @@ function StreamingDots() {
 function MessageBubble({
   message,
   onSuggestionSelect,
+  onNavigate,
   onFeedback,
 }: {
   message: ChatMessage;
   onSuggestionSelect: (text: string) => void;
+  onNavigate: (href: string) => void;
   onFeedback: (messageId: string, rating: 'up' | 'down') => void;
 }) {
   const isUser = message.role === 'user';
+  const entities = !isUser && message.sources ? extractEntityRefs(message.sources) : [];
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
@@ -348,7 +385,7 @@ function MessageBubble({
           ) : (
             <div className="space-y-0">
               {message.content ? (
-                renderMarkdown(message.content)
+                renderMarkdown(message.content, entities)
               ) : message.isStreaming ? (
                 <p className="text-[13px] text-[var(--muted)]">Thinking…</p>
               ) : null}
@@ -366,7 +403,9 @@ function MessageBubble({
         {!isUser && !message.isStreaming && message.suggestions && (
           <SuggestionChips
             suggestions={message.suggestions}
+            entities={entities}
             onSelect={onSuggestionSelect}
+            onNavigate={onNavigate}
           />
         )}
 
@@ -402,6 +441,7 @@ export default function ChatPage() {
     cancelStream,
   } = useChat();
 
+  const router = useRouter();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -442,6 +482,10 @@ export default function ChatPage() {
 
   function handleSuggestionSelect(text: string) {
     sendMessage(text);
+  }
+
+  function handleNavigate(href: string) {
+    router.push(href);
   }
 
   return (
@@ -485,6 +529,7 @@ export default function ChatPage() {
                 key={msg.id}
                 message={msg}
                 onSuggestionSelect={handleSuggestionSelect}
+                onNavigate={handleNavigate}
                 onFeedback={submitFeedback}
               />
             ))}

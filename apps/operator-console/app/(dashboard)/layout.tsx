@@ -46,13 +46,13 @@ export function useSnapshot() {
 /* ─── Navigation Items ──────────────────────────────────────────────────── */
 
 const NAV = [
+  { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/accounts', label: 'Accounts', icon: Building2 },
   { href: '/signals', label: 'Signals', icon: Zap },
   { href: '/pipeline', label: 'Pipeline', icon: GitBranch },
   { href: '/patterns', label: 'Patterns', icon: Search },
   { href: '/research', label: 'Research', icon: FileText },
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/system', label: 'System', icon: FlaskConical },
 ] as const;
 
