@@ -1,51 +1,71 @@
-# PLAN.md — Wrangler_ Chat System Coordination Document
+# PLAN.md — Wrangler_ Coordination Document
 
-> **Read this file before making any changes.** This is the shared coordination doc for all agents (Miriad engineering, Claude Code, Claude workspace). Last updated: 2026-04-03 14:45 UTC by @dev (coordinator).
+> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03.
 
 ---
 
 ## 1. Project Overview
 
-**Wrangler_** is a 64K-line Cloudflare Worker powering AI-driven SDR (Sales Development Rep) intelligence. It ingests signals, scores accounts, manages actions, and orchestrates outreach — all backed by Sanity CMS.
+**Wrangler_** is a 64K-line Cloudflare Worker powering AI-driven SDR intelligence. It ingests signals, scores accounts, manages actions, and orchestrates outreach — all backed by Sanity CMS.
 
-**What we're building now:** A chat-first conversational interface embedded as a **Sanity Studio Tool plugin**. SDRs ask natural-language questions ("prep me for my Acme meeting", "any new signals?") and get grounded, source-attributed answers from their live CRM data.
+**Two UI surfaces:**
+
+| Surface | Purpose | Users | Status |
+|---|---|---|---|
+| **Sanity Studio** | Chat-first conversational interface | SDRs doing daily work | Chat Tool plugin built, pending deploy |
+| **Operator Console** | Full dashboard for power users / ops | Admins, ops, builders | Route-based rebuild complete, 10 pages |
 
 **Key facts:**
-- The Sanity Studio at sanity.io **IS the app** — there are no separate frontends
 - Chat backend is **LIVE on production** at `https://website-scanner.austin-gilbert.workers.dev`
-- All chat code lives on the `feature/chat-v1` branch
+- All work is on the `feature/chat-v1` branch
+- Sanity CMS: project `nlqb7zmk`, dataset `production`, 60+ schema types
 - The chat module is a clean addition — it does not modify existing Wrangler_ code
+- The operator console is a complementary power-user dashboard — it does not modify chat or worker code
 
 ---
 
-## 2. Architecture Summary
+## 2. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Sanity Studio (sanity.io)                              │
-│  └─ Chat Tool Plugin (sanity/plugins/chat-tool/)        │
-│     └─ useChat.ts → POST /api/chat/stream (NDJSON)      │
-└──────────────────────┬──────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Sanity Studio (sanity.io)                                 │
+│  └─ Chat Tool Plugin (sanity/plugins/chat-tool/)           │
+│     └─ useChat.ts → POST /api/chat/stream (NDJSON)         │
+└──────────────────────┬─────────────────────────────────────┘
                        │ HTTPS + X-API-Key
                        ▼
-┌─────────────────────────────────────────────────────────┐
-│  Cloudflare Worker (src/index.js — 8,200 lines)         │
-│  └─ /api/chat/* routes (src/routes/chatRoutes.ts)       │
-│     └─ Chat Module (src/chat/ — 8 files, ~3,500 lines)  │
-│        ├─ intent.ts    → classify user query             │
-│        ├─ retrieval.ts → GROQ queries to Sanity          │
-│        ├─ context.ts   → multi-turn state (KV-backed)    │
-│        ├─ response.ts  → Claude 3.5 Haiku generation     │
-│        ├─ audit.ts     → interaction logging              │
-│        └─ bridge.ts    → wraps existing Wrangler_ services│
-└──────────────────────┬──────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Cloudflare Worker (src/index.js — 8,200 lines)            │
+│  ├─ /api/chat/* routes (src/routes/chatRoutes.ts)          │
+│  │  └─ Chat Module (src/chat/ — 8 files, ~3,500 lines)    │
+│  └─ /api/console/* routes (existing handler endpoints)     │
+└──────────────────────┬─────────────────────────────────────┘
                        │ GROQ API
                        ▼
-┌─────────────────────────────────────────────────────────┐
-│  Sanity CMS                                             │
-│  Project: nlqb7zmk | Dataset: production                │
-│  60+ schema types (accounts, signals, actions, people…) │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Sanity CMS                                                │
+│  Project: nlqb7zmk | Dataset: production                   │
+│  60+ schema types (accounts, signals, actions, people…)    │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│  Operator Console (Next.js 16 / App Router)                │
+│  └─ app/(dashboard)/ — route group with shared layout      │
+│     ├─ layout.tsx     → SnapshotContext, sidebar, cmd bar   │
+│     ├─ overview/      → KPIs, top actions, signals, health  │
+│     ├─ accounts/      → searchable account list              │
+│     ├─ accounts/[id]/ → account detail                       │
+│     ├─ signals/       → filterable signal feed               │
+│     ├─ pipeline/      → action candidates (list + board)     │
+│     ├─ chat/          → chat UI (copilot streaming)          │
+│     ├─ patterns/      → pattern discovery cards              │
+│     ├─ research/      → briefs + drafts                      │
+│     └─ system/        → engine, patterns, autopilot, diag    │
+│  lib/api.ts           → client-side API layer                │
+│  lib/types.ts         → ConsoleSnapshot, AccountDetail, etc. │
+│  app/api/console/*    → Next.js API routes → Worker proxy    │
+│  app/api/chat/*       → proxy to Worker /api/chat/*          │
+└────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Technology | Details |
@@ -55,26 +75,69 @@
 | Chat module | TypeScript | `src/chat/` — 8 files, ~3,500 lines |
 | Chat routes | TypeScript | `src/routes/chatRoutes.ts` — 238 lines, 5 endpoints |
 | Studio plugin | React/TypeScript | `sanity/plugins/chat-tool/` — 4 files, ~950 lines |
+| Operator console | Next.js 16 / React 19 | `apps/operator-console/` — App Router, Tailwind, Radix UI |
 | LLM | Claude 3.5 Haiku | Fast responses (~2-3s), rule-based intent classification |
 | Conversation state | Cloudflare KV | `MOLTBOOK_ACTIVITY_KV` binding |
 | Auth | API key | `X-API-Key` header validated against `MOLT_API_KEY` |
 
 ---
 
-## 3. File Map — What's Where
+## 3. Ownership Boundaries
+
+> **Critical: each agent must stay in its lane.**
+
+### Agent A — Chat Module & Studio Plugin
+
+**Owns:**
+- `src/chat/` — chat backend (intent, retrieval, context, response, audit, bridge)
+- `src/routes/chatRoutes.ts` — chat HTTP endpoints
+- `sanity/plugins/chat-tool/` — Studio chat plugin (4 files)
+- `tests/unit/chat-module.test.ts` — chat tests
+- `src/chat/eval/` — intent evaluation harness
+
+**Does NOT touch:**
+- `apps/operator-console/app/(dashboard)/` — dashboard pages
+- `apps/operator-console/globals.css` — design system
+- `src/handlers/`, `src/services/`, `src/lib/` — existing Wrangler_ code (except via bridge.ts)
+- `src/index.js` — main worker (except the routing block at line ~7959)
+
+### Agent B — Operator Console
+
+**Owns:**
+- `apps/operator-console/app/(dashboard)/` — all dashboard route pages and layout
+- `apps/operator-console/globals.css` — design tokens
+- `apps/operator-console/components/dashboard/` — dashboard-specific components (future)
+- `apps/operator-console/components/shared/` — shared UI components (future)
+
+**Does NOT touch:**
+- `src/chat/` or `src/routes/chatRoutes.ts` — chat backend
+- `sanity/plugins/` — Studio plugins
+- `src/index.js` — main worker
+- `src/handlers/`, `src/services/`, `src/lib/` — existing Wrangler_ code
+
+### Shared (coordinate before changing)
+- `apps/operator-console/lib/api.ts` — client-side API layer
+- `apps/operator-console/lib/types.ts` — TypeScript types
+- `apps/operator-console/lib/server-proxy.ts` — server-side proxy
+- `apps/operator-console/app/api/` — Next.js API routes
+- `PLAN.md` — this file
+
+---
+
+## 4. File Map
 
 ### Chat Backend (`src/chat/`)
 
 | File | Lines | Purpose |
 |---|---|---|
 | `types.ts` | 163 | Type definitions — intents, messages, sessions, sources |
-| `intent.ts` | 571 | Intent classifier — 5 intents, keyword + entity-aware resolution, no LLM needed |
+| `intent.ts` | 571 | Intent classifier — 5 intents, keyword + entity-aware resolution |
 | `retrieval.ts` | 908 | GROQ queries for each intent — parallel execution, field projections |
-| `context.ts` | 399 | Multi-turn conversation state — KV-backed, pronoun resolution, session management |
-| `response.ts` | 460 | LLM response generation — Claude 3.5 Haiku, system prompts, source formatting |
+| `context.ts` | 399 | Multi-turn conversation state — KV-backed, pronoun resolution |
+| `response.ts` | 460 | LLM response generation — Claude 3.5 Haiku, system prompts |
 | `audit.ts` | 240 | Interaction logging — every query/response logged, feedback capture |
-| `bridge.ts` | 216 | Service bridge — wraps existing Wrangler_ services so chat never imports handlers directly |
-| `index.ts` | 597 | Pipeline orchestrator — ties intent → retrieval → context → response → audit |
+| `bridge.ts` | 216 | Service bridge — wraps existing Wrangler_ services |
+| `index.ts` | 597 | Pipeline orchestrator — intent → retrieval → context → response → audit |
 
 ### Chat Routes (`src/routes/`)
 
@@ -87,121 +150,129 @@
 | File | Lines | Purpose |
 |---|---|---|
 | `index.tsx` | 53 | Plugin definition — `definePlugin`, registers Chat as a Studio Tool |
-| `ChatTool.tsx` | ~365 | Main chat UI — message list, input, starter prompts, scroll behavior |
-| `ChatMessage.tsx` | ~293 | Message bubble — markdown rendering, source attribution, feedback buttons |
-| `useChat.ts` | 289 | React hook — NDJSON streaming, state management, feedback submission |
+| `ChatTool.tsx` | ~365 | Main chat UI — message list, input, starter prompts |
+| `ChatMessage.tsx` | ~293 | Message bubble — markdown, source attribution, feedback |
+| `useChat.ts` | 289 | React hook — NDJSON streaming, state management, feedback |
 
-### Tests (`tests/`)
+### Operator Console Dashboard (`apps/operator-console/app/(dashboard)/`)
+
+| Route | File | Purpose |
+|---|---|---|
+| `/overview` | `overview/page.tsx` | KPI cards, top actions, signal feed, system health, jobs |
+| `/accounts` | `accounts/page.tsx` | Searchable/sortable account table, completion bars, tech tags |
+| `/accounts/[id]` | `accounts/[id]/page.tsx` | Account detail: signals, people, actions, research, enrichment |
+| `/signals` | `signals/page.tsx` | Signal feed with type/source filters, sort toggle |
+| `/pipeline` | `pipeline/page.tsx` | Action candidates: list view + kanban board (by draft status) |
+| `/chat` | `chat/page.tsx` | Chat UI with SSE streaming, starter chips, message history |
+| `/patterns` | `patterns/page.tsx` | Pattern cards with lifecycle badges, conversion metrics |
+| `/research` | `research/page.tsx` | Tabbed briefs/drafts with expandable content |
+| `/system` | `system/page.tsx` | 4-tab lab: overview, patterns, autopilot, diagnostics |
+| (layout) | `layout.tsx` | SnapshotContext, sidebar nav, command bar, assistant panel |
+
+### Operator Console Support Files
 
 | File | Lines | Purpose |
 |---|---|---|
-| `tests/unit/chat-module.test.ts` | 863 | 69 Vitest tests — intent classification, retrieval, context, response, audit |
+| `lib/api.ts` | 162 | Client-side API — fetchSnapshot, fetchAccountDetail, runCommand, streamCopilotQuery, etc. |
+| `lib/types.ts` | 582 | ConsoleSnapshot, AccountDetail, CopilotState, patterns, clusters, outcomes |
+| `lib/server-proxy.ts` | 38 | Server-side proxy to CF Worker (workerBaseUrl, workerHeaders, proxyToWorker) |
+| `globals.css` | 161 | Dark theme design system — surfaces, accents, semantic colors, layout tokens |
+| `components/chat/` | ~4 files | Chat components from Agent A (chat-panel, chat-message, chat-input, suggestion-chips) |
+| `components/operator-console.tsx` | ~2000 | Old monolith (DEPRECATED — kept for reference, no longer imported) |
 
-### Eval (`src/chat/eval/`)
+### Tests & Eval
 
 | File | Lines | Purpose |
 |---|---|---|
-| `run-intent-eval.mjs` | 556 | Intent accuracy eval harness — runs against live worker |
-| `intent-test-set.json` | 402 | 50 test queries with expected intents and entities |
-
-### Docs (on Miriad board, NOT in repo)
-
-| Path | Purpose |
-|---|---|
-| `/docs/chat-app/00-master-plan.md` | Full 641-line master plan — phases, architecture, decisions |
-| `/docs/sanity-schema-audit.md` | Schema audit results — field mismatches found |
+| `tests/unit/chat-module.test.ts` | 863 | 69 Vitest tests — intent, retrieval, context, response, audit |
+| `src/chat/eval/run-intent-eval.mjs` | 556 | Intent accuracy eval harness |
+| `src/chat/eval/intent-test-set.json` | 402 | 50 test queries with expected intents/entities |
 
 ---
 
-## 4. Current Status
+## 5. Current Status
 
-| Component | Status | Notes |
-|---|---|---|
-| Chat backend (5 intents) | ✅ LIVE | Deployed to production, real Sanity data flowing |
-| Intent classifier | ✅ 90% accuracy | 45/50 test queries, entity-aware resolution |
-| Multi-turn conversations | ✅ Built | KV-backed, pronoun resolution |
-| Streaming responses | ✅ Real NDJSON | Token-by-token from Haiku |
-| Source attribution | ✅ Built | Every response includes sources |
-| Audit log + feedback | ✅ Built | Full interaction logging |
-| Sanity Studio Chat Tool | ✅ Built | 4 files, ~950 lines, committed |
-| Deploy prep | ✅ Done | .env, scripts, gitignore, validation |
-| UI polish | ✅ Done | Starters, keyboard, auto-focus |
-| Schema audit | ✅ Done | Found field mismatches, fix in progress |
-| Retrieval field fixes | ✅ Done | GROQ queries aligned with actual schema fields (commit `5a2a15d`) |
-| Studio deploy | ⏳ Next | Austin deploys with `cd sanity && npm run deploy` |
-
----
-
-## 5. Known Issues / Active Concerns
-
-1. **retrieval.ts field mismatches** — ✅ FIXED (commit `5a2a15d`). GROQ queries now aligned with actual Sanity schema fields. Note: fix is on `feature/chat-v1` only — production worker still has older retrieval code until merge + redeploy.
-
-2. **`sanity build` needs more RAM** — The dev sandbox doesn't have enough memory for the Sanity Studio build. Deploy from a local machine instead.
-
-3. **Worker bundle size** — 385KB gzip. Well within Cloudflare's limits. Not a concern.
-
-4. **CORS — needs live verification** — Worker CORS is set to `*`, which should allow Studio at `sanity.io` to call `website-scanner.austin-gilbert.workers.dev`. Needs verification on actual deploy.
-
-5. **GROQ dereference validation** — Queries use patterns like `account->companyName`. These need to be confirmed against live production Sanity data (not just schema definitions).
+| Component | Status | Owner | Notes |
+|---|---|---|---|
+| Chat backend (5 intents) | ✅ LIVE | Agent A | Deployed, real Sanity data flowing |
+| Intent classifier | ✅ 90% accuracy | Agent A | 45/50 test queries pass |
+| Multi-turn conversations | ✅ Built | Agent A | KV-backed, pronoun resolution |
+| Streaming responses | ✅ Real NDJSON | Agent A | Token-by-token from Haiku |
+| Source attribution | ✅ Built | Agent A | Every response includes sources |
+| Audit log + feedback | ✅ Built | Agent A | Full interaction logging |
+| Sanity Studio Chat Tool | ✅ Built | Agent A | 4 files, ~950 lines |
+| Retrieval field fixes | ✅ Fixed | Agent A | GROQ aligned with actual schema |
+| Deploy prep | ✅ Done | Agent A | .env, scripts, gitignore |
+| Operator console rebuild | ✅ Built | Agent B | 10 pages, ~2,900 lines, route-based |
+| Dashboard layout + context | ✅ Built | Agent B | SnapshotContext, sidebar, command bar |
+| Studio deploy | ⏳ Next | Austin | `cd sanity && npm run deploy` |
+| End-to-end testing | ⏳ Pending | Both | Console ↔ Worker ↔ Sanity |
 
 ---
 
-## 6. Five Core Intents
+## 6. Five Core Chat Intents
 
 | Intent | Trigger Examples | What It Does |
 |---|---|---|
-| `morning_briefing` | "good morning", "what should I do today?", "daily briefing" | Top actions, overnight signals, priorities |
-| `account_lookup` | "tell me about Acme", "what's happening with DataFlow?" | Account overview, signals, actions, people |
-| `signal_check` | "any new signals?", "what's changed?", "latest activity" | Recent signals ranked by strength |
-| `person_lookup` | "who is Sarah Chen?", "who should I call?" | Contact details, role, associated signals |
-| `meeting_prep` | "prep me for my meeting with Acme", "meeting brief for DataFlow" | Account brief, key people, talking points |
+| `morning_briefing` | "good morning", "daily briefing" | Top actions, overnight signals, priorities |
+| `account_lookup` | "tell me about Acme" | Account overview, signals, actions, people |
+| `signal_check` | "any new signals?" | Recent signals ranked by strength |
+| `person_lookup` | "who is Sarah Chen?" | Contact details, role, associated signals |
+| `meeting_prep` | "prep me for my Acme meeting" | Account brief, key people, talking points |
 
-Intent classification is **rule-based** (keyword matching + entity extraction in `intent.ts`). No LLM call needed — fast and deterministic.
+Intent classification is **rule-based** (keyword matching + entity extraction). No LLM needed — fast and deterministic.
 
 ---
 
 ## 7. API Endpoints
 
+### Chat API (Worker-direct)
+
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/chat/message` | Send message, get full JSON response |
 | `POST` | `/api/chat/stream` | Send message, get NDJSON streaming response |
-| `POST` | `/api/chat/feedback` | Submit thumbs up/down on a response |
-| `GET` | `/api/chat/session/:id` | Get conversation history for a session |
-| `GET` | `/api/chat/audit` | Get audit log of all interactions |
+| `POST` | `/api/chat/feedback` | Submit thumbs up/down |
+| `GET` | `/api/chat/session/:id` | Get conversation history |
+| `GET` | `/api/chat/audit` | Get audit log |
 
-**Auth:** Every request requires `X-API-Key` header matching the `MOLT_API_KEY` environment variable.
+### Console API (Next.js → Worker proxy)
 
-**Request body** (for message/stream):
-```json
-{
-  "message": "tell me about Acme Corp",
-  "sessionId": "optional-session-id-for-multi-turn"
-}
-```
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/console/snapshot` | Full dashboard snapshot |
+| `GET` | `/api/console/account/:id` | Account detail |
+| `POST` | `/api/console/command` | Run a command |
+| `POST` | `/api/console/simulate` | Run scenario simulation |
+| `POST` | `/api/console/diagnostics` | Run diagnostic |
+| `GET` | `/api/console/copilot` | Get copilot state |
+| `POST` | `/api/console/copilot/query` | Query copilot |
+| `POST` | `/api/console/copilot/stream` | Stream copilot response |
+| `POST` | `/api/console/copilot/action` | Execute copilot action |
+| `POST` | `/api/console/copilot/explain` | Get explanation |
+| `GET` | `/api/console/functions` | Function registry |
+| `GET` | `/api/console/agents` | Agent registry |
+
+**Auth:** `X-API-Key` header matching `MOLT_API_KEY` environment variable.
 
 ---
 
-## 8. Streaming Protocol
-
-The `/api/chat/stream` endpoint returns NDJSON (newline-delimited JSON). Each line is a complete JSON object:
+## 8. Streaming Protocol (Chat NDJSON)
 
 ```
 {"type":"token","text":"Based on "}
 {"type":"token","text":"the latest "}
-{"type":"token","text":"signals, "}
-{"type":"sources","data":[{"fact":"Revenue grew 23% YoY","source":"account:acme-corp","observedAt":"2025-06-28"}]}
-{"type":"suggestions","data":["What actions are pending for Acme?","Who are the key contacts?"]}
+{"type":"sources","data":[{"fact":"Revenue grew 23%","source":"account:acme-corp","observedAt":"2025-06-28"}]}
+{"type":"suggestions","data":["What actions are pending for Acme?"]}
 {"type":"done","meta":{"intent":"account_lookup","totalTimeMs":2847}}
 ```
 
-**Line types:**
 | Type | Payload | When |
 |---|---|---|
-| `token` | `{ text: string }` | Each token as it streams from Haiku |
-| `sources` | `{ data: Source[] }` | After response completes — facts with attribution |
-| `suggestions` | `{ data: string[] }` | Follow-up question suggestions |
-| `done` | `{ meta: { intent, totalTimeMs } }` | Final line — signals stream end |
+| `token` | `{ text: string }` | Each token streaming from Haiku |
+| `sources` | `{ data: Source[] }` | After response completes |
+| `suggestions` | `{ data: string[] }` | Follow-up suggestions |
+| `done` | `{ meta: { intent, totalTimeMs } }` | Stream end |
 
 ---
 
@@ -209,62 +280,89 @@ The `/api/chat/stream` endpoint returns NDJSON (newline-delimited JSON). Each li
 
 | Decision | Rationale |
 |---|---|
-| All chat code under `src/chat/` | Clean module boundary — easy to find, test, and reason about |
-| `bridge.ts` wraps existing services | Chat never imports from `src/handlers/` directly — decoupled from legacy code |
-| One routing block in `src/index.js` at line ~7959 | Minimal touch on the 8,200-line main file |
-| KV binding: `MOLTBOOK_ACTIVITY_KV` | Existing KV namespace, not `env.KV` — matches wrangler.toml config |
-| Feature flag: `/api/chat/` in `KNOWN_PATH_PREFIXES` | Worker recognizes chat routes without modifying core routing logic |
-| Claude 3.5 Haiku for responses | Fast (~2-3s) vs Sonnet (~7-10s). Speed matters for chat UX |
-| Rule-based intent classification | Deterministic, fast, no LLM latency. 90% accuracy is sufficient for 5 intents |
-| Sanity Studio IS the interface | No separate React app, no operator console. SDRs already live in Studio |
+| All chat code under `src/chat/` | Clean module boundary — easy to find, test, reason about |
+| `bridge.ts` wraps existing services | Chat never imports from `src/handlers/` — decoupled from legacy |
+| One routing block in `src/index.js` (~line 7959) | Minimal touch on 8,200-line main file |
+| KV binding: `MOLTBOOK_ACTIVITY_KV` | Existing namespace, matches wrangler.toml |
+| `/api/chat/` in `KNOWN_PATH_PREFIXES` | Worker recognizes chat routes without modifying core routing |
+| Claude 3.5 Haiku for chat responses | Fast (~2-3s) vs Sonnet (~7-10s). Speed matters for chat UX |
+| Rule-based intent classification | Deterministic, fast, no LLM latency. 90% accuracy sufficient |
+| Sanity Studio = primary SDR interface | SDRs already live in Studio — no context switching |
+| Operator console = power-user dashboard | Route-based App Router, SnapshotContext for shared state |
+| Dashboard route group `(dashboard)` | Transparent route group — shared layout without URL prefix |
+| 60s snapshot polling | Single fetch for all pages via React Context |
+| Dark-first design system | Enterprise ops tool — CSS custom properties, no light mode yet |
+| Confidence-aware UI | Show uncertainty states, strength bars, completion % everywhere |
 
 ---
 
 ## 10. Coordination Rules
 
-> **Every agent must follow these rules.**
-
-### Where to make changes
-- **Chat backend** → `src/chat/` or `src/routes/chatRoutes.ts`
-- **Studio plugin** → `sanity/plugins/chat-tool/`
-- **DO NOT** modify `src/index.js` except the routing block at line ~7959
-- **DO NOT** modify existing files in `src/handlers/`, `src/services/`, `src/lib/`
+> **Every agent must follow these.**
 
 ### After making changes
+
 ```bash
-# Type-check (always)
-npx tsc --noEmit
+# Agent A — chat module changes
+npx tsc --noEmit                              # type-check
+npx vitest run                                 # run tests
+node src/chat/eval/run-intent-eval.mjs         # intent eval (if intent/retrieval changed)
 
-# Run tests (after any chat module change)
-npx vitest run
+# Agent B — operator console changes
+cd apps/operator-console && npx tsc --noEmit   # type-check
+npm run dev                                    # visual check at localhost:3000
 
-# Run intent eval (after intent.ts or retrieval.ts changes)
-node src/chat/eval/run-intent-eval.mjs
+# Both — before pushing
+git fetch origin feature/chat-v1
+git pull --rebase origin feature/chat-v1
+git push origin feature/chat-v1
 ```
 
 ### Branch discipline
-- All work on `feature/chat-v1` branch
-- Commit messages: `feat:`, `fix:`, `docs:`, `test:` prefixes
+- All work on `feature/chat-v1`
+- Commit prefixes: `feat:`, `fix:`, `docs:`, `test:`, `chore:`
+- Scope: `(chat)`, `(operator-console)`, `(sanity)`, or none for cross-cutting
 - Austin merges to `main` when ready
+
+### Resolving conflicts
+- If both agents need to change a shared file (`lib/api.ts`, `lib/types.ts`), coordinate via PLAN.md comments
+- The agent who pushed first wins — the other rebases on top
 
 ---
 
-## 11. What's Next (Priority Order)
+## 11. Known Issues
+
+1. **Chat page dual implementations** — The operator console has two chat paths: `(dashboard)/chat/page.tsx` uses `streamCopilotQuery` (→ `/api/console/copilot/stream`), while `components/chat/` uses `useChat.ts` (→ `/api/chat/stream` NDJSON). These should be consolidated to use the NDJSON protocol once stable.
+
+2. **Old monolith in tree** — `components/operator-console.tsx` (~2,000 lines) is no longer imported. Delete in a cleanup commit.
+
+3. **Root page.tsx redirect** — `app/page.tsx` redirects to `/overview` because it can't be deleted (was conflicting with route group). Can be cleaned up by deleting the file.
+
+4. **`sanity build` needs RAM** — Dev sandbox doesn't have enough memory. Deploy from local machine.
+
+5. **Type gaps** — Some dashboard views rely on shape assumptions from `ConsoleSnapshot` that may not match what the Worker actually returns. Needs end-to-end testing.
+
+---
+
+## 12. What's Next (Priority Order)
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| 1 | Fix retrieval.ts field mismatches | Engineering | ✅ Done (commit `5a2a15d`) |
-| 2 | Deploy Studio with Chat Tool to sanity.io | Austin | ⏳ Waiting — `cd sanity && npm install && npm run deploy` |
-| 3 | Live smoke test chat in actual Studio | Austin + Engineering | ⏳ Blocked on #2 |
-| 4 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Engineering | ⏳ Blocked on #2 — CORS is `*` but needs live verification |
-| 5 | Live data validation — confirm GROQ dereferences (`account->companyName`) resolve in production Sanity | Engineering | ⏳ Blocked on #2 |
-| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ Blocked on #3, #4, #5 |
-| 7 | Redeploy worker from `main` with retrieval fixes | Austin | ⏳ Blocked on #6 — production worker has older retrieval code |
-| 8 | V2 planning: action execution, persistent history, semantic search | Engineering | ⏳ Future |
+| 1 | Deploy Studio with Chat Tool | Austin | ⏳ `cd sanity && npm run deploy` |
+| 2 | Live smoke test chat in actual Studio | Austin + Agent A | ⏳ Blocked on #1 |
+| 3 | End-to-end test operator console against live Worker | Agent B | ⏳ After deploy |
+| 4 | Consolidate chat page to NDJSON protocol | Agent B | ⏳ After chat stable |
+| 5 | Delete old monolith + root page.tsx | Either agent | ⏳ Cleanup |
+| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After smoke tests |
+| 7 | Redeploy worker from `main` | Austin | ⏳ After merge |
+| 8 | Command palette (Cmd+K) | Agent B | ⏳ Future |
+| 9 | Action execution from pipeline/detail | Agent B | ⏳ Future |
+| 10 | Real-time WebSocket (replace polling) | Agent B | ⏳ Future |
+| 11 | V2: persistent history, semantic search, more intents | Agent A | ⏳ Future |
 
 ---
 
-## 12. Environment & Credentials
+## 13. Environment & Credentials
 
 | Variable | Value |
 |---|---|
@@ -276,41 +374,72 @@ node src/chat/eval/run-intent-eval.mjs
 ### Deploy commands
 
 ```bash
-# Deploy Sanity Studio (from local machine — needs RAM)
+# Sanity Studio (from local machine — needs RAM)
 cd sanity && npm run deploy
 
-# Deploy Cloudflare Worker
+# Cloudflare Worker
 npx wrangler deploy
+
+# Operator Console (dev)
+cd apps/operator-console && npm run dev
 ```
 
-### Studio environment variables (in `sanity/.env`)
+### Environment variables
 
-```
+```bash
+# sanity/.env
 SANITY_STUDIO_WORKER_URL=https://website-scanner.austin-gilbert.workers.dev
-SANITY_STUDIO_WORKER_API_KEY=<the MOLT_API_KEY value>
-```
+SANITY_STUDIO_WORKER_API_KEY=<MOLT_API_KEY value>
 
-### Worker environment variables (in wrangler.toml / CF dashboard)
-
-```
-MOLT_API_KEY=<api key for X-API-Key auth>
+# Worker (wrangler.toml / CF dashboard)
+MOLT_API_KEY=<api key>
 ANTHROPIC_API_KEY=<for Claude 3.5 Haiku>
 SANITY_API_TOKEN=<for GROQ queries>
 ```
 
 ---
 
+## 14. Design System (Operator Console)
+
+Dark-first enterprise design. CSS custom properties in `globals.css`:
+
+| Token | Value | Usage |
+|---|---|---|
+| `--background` | `#0b0b0c` | Page background |
+| `--panel` | `#121214` | Sidebar, command bar |
+| `--card` | `#1a1a1d` | Card surfaces |
+| `--accent` | `#f03e2f` | Sanity red — primary actions |
+| `--accent-secondary` | `#7c5cff` | Purple — secondary elements |
+| `--highlight` | `#3da9fc` | Blue — links, focus, highlights |
+| `--success` | `#22c55e` | Green — confirmed, healthy |
+| `--warning` | `#f59e0b` | Amber — speculative, degraded |
+| `--error` | `#ef4444` | Red — errors, quarantined |
+
+Layout: `--sidebar-width: 260px`, `--command-bar-height: 64px`, `--assistant-width: 360px`
+
+Principles: data-dense not cluttered, confidence-aware everywhere, action-oriented (every view answers "what should I do next?"), progressive disclosure (table → detail → expandable sections).
+
+---
+
 ## Quick Reference
 
-**"I want to understand the chat system"** → Read `src/chat/index.ts` first, then `intent.ts` → `retrieval.ts` → `response.ts`
+**"I want to understand the chat system"** → Read `src/chat/index.ts`, then `intent.ts` → `retrieval.ts` → `response.ts`
 
-**"I want to fix a GROQ query"** → Edit `src/chat/retrieval.ts`, check field names against Sanity schemas, run `npx vitest run`
+**"I want to fix a GROQ query"** → Edit `src/chat/retrieval.ts`, check fields against Sanity schemas, run `npx vitest run`
 
-**"I want to change the UI"** → Edit files in `sanity/plugins/chat-tool/`, test locally with `cd sanity && npm run dev`
+**"I want to change the Studio chat UI"** → Edit `sanity/plugins/chat-tool/`, test with `cd sanity && npm run dev`
 
-**"I want to add a new intent"** → Add to `intent.ts` (classifier), `retrieval.ts` (GROQ query), `response.ts` (system prompt), `types.ts` (type union), then add eval cases to `intent-test-set.json`
+**"I want to add a new chat intent"** → Add to `intent.ts`, `retrieval.ts`, `response.ts`, `types.ts`, then eval cases
 
-**"I want to test the live API"** →
+**"I want to add a dashboard page"** → Create `app/(dashboard)/newpage/page.tsx`, import `useSnapshot` from `../layout`, add to `NAV` in `layout.tsx`
+
+**"I want to modify the sidebar"** → Edit `NAV` array in `(dashboard)/layout.tsx`
+
+**"I want to change design tokens"** → Edit `globals.css` `:root` block
+
+**"I want to add a new API call"** → Add to `lib/api.ts`, add route in `app/api/console/`
+
+**"I want to test the live chat API"** →
 ```bash
 curl -X POST https://website-scanner.austin-gilbert.workers.dev/api/chat/message \
   -H "Content-Type: application/json" \
