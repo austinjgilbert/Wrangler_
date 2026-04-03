@@ -1,5 +1,8 @@
-import { OperatorConsole } from '@/components/operator-console';
+import { redirect } from 'next/navigation';
 
-export default function HomePage() {
-  return <OperatorConsole />;
+// Dashboard route group handles all pages now.
+// This file cannot be deleted (mount permissions) so we redirect to /accounts
+// to avoid conflict with (dashboard)/page.tsx which also maps to /.
+export default function RootPage() {
+  redirect('/overview');
 }
