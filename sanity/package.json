@@ -7,6 +7,7 @@
     "dev": "sanity dev",
     "build": "sanity build",
     "deploy": "sanity deploy",
+    "predeploy": "npm run check",
     "start": "sanity start",
     "check": "sanity schema validate --format pretty && sanity build"
   },

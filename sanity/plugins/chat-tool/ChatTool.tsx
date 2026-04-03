@@ -23,11 +23,16 @@ import { ChatMessageBubble } from './ChatMessage';
 // Conversation Starters
 // ---------------------------------------------------------------------------
 
+/**
+ * Conversation starters mapped to the 5 core intents.
+ * These feel natural for SDRs — not technical.
+ */
 const CONVERSATION_STARTERS = [
-  'What accounts have been enriched recently?',
-  'Show me the latest technology signals',
-  'Which companies are using React?',
-  'Summarize recent account activity',
+  { text: 'What should I do today?', icon: '☀️' },        // morning_briefing
+  { text: 'Tell me about a company', icon: '🏢' },         // account_lookup
+  { text: 'Any new signals?', icon: '📡' },                // signal_check
+  { text: 'Who should I call next?', icon: '📞' },         // person_lookup
+  { text: 'Prep me for my next meeting', icon: '📋' },     // meeting_prep
 ];
 
 // ---------------------------------------------------------------------------
@@ -78,14 +83,18 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
           </Text>
           {CONVERSATION_STARTERS.map((starter) => (
             <Button
-              key={starter}
+              key={starter.text}
               mode="ghost"
-              text={starter}
               fontSize={1}
               padding={3}
-              onClick={() => onSelect(starter)}
+              onClick={() => onSelect(starter.text)}
               style={{ textAlign: 'left' }}
-            />
+            >
+              <Flex align="center" gap={2}>
+                <Text size={1}>{starter.icon}</Text>
+                <Text size={1}>{starter.text}</Text>
+              </Flex>
+            </Button>
           ))}
         </Stack>
       </Stack>
@@ -97,6 +106,10 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 // Suggestion Chips
 // ---------------------------------------------------------------------------
 
+/**
+ * Suggestion chips — clearly tappable follow-up actions.
+ * Uses primary tone with ghost mode for visual prominence without heaviness.
+ */
 function SuggestionChips({
   suggestions,
   onSelect,
@@ -107,18 +120,59 @@ function SuggestionChips({
   if (!suggestions.length) return null;
 
   return (
-    <Flex gap={2} wrap="wrap" paddingY={2} paddingX={4}>
+    <Flex gap={2} wrap="wrap" paddingY={3} paddingX={4}>
       {suggestions.map((s) => (
         <Button
           key={s}
           mode="ghost"
           tone="primary"
-          text={s}
-          fontSize={0}
-          padding={2}
+          fontSize={1}
+          padding={3}
           onClick={() => onSelect(s)}
-        />
+          style={{
+            borderRadius: '999px',
+            border: '1px solid var(--card-border-color)',
+          }}
+        >
+          <Text size={1} style={{ color: 'var(--card-link-color)' }}>
+            {s}
+          </Text>
+        </Button>
       ))}
+    </Flex>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Typing Indicator — pulsing dots animation
+// ---------------------------------------------------------------------------
+
+function TypingIndicator() {
+  return (
+    <Flex paddingY={2} paddingX={4}>
+      <Card padding={3} radius={2} tone="default" style={{ borderBottomLeftRadius: 0 }}>
+        <Flex align="center" gap={1}>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: 'var(--card-muted-fg-color, #999)',
+                display: 'inline-block',
+                animation: `chatPulse 1.4s ease-in-out ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
+          <style>{`
+            @keyframes chatPulse {
+              0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+              40% { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+        </Flex>
+      </Card>
     </Flex>
   );
 }
@@ -139,10 +193,11 @@ export function ChatToolComponent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input on mount
+  // Focus input on mount and after clearing chat
+  const isEmpty = messages.length === 0;
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [isEmpty]);
 
   const handleSend = useCallback(() => {
     if (!inputValue.trim() || isLoading) return;
@@ -152,9 +207,15 @@ export function ChatToolComponent() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Enter to send (Shift+Enter would be newline in a textarea)
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSend();
+      }
+      // Escape clears the input (not the conversation)
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setInputValue('');
       }
     },
     [handleSend],
@@ -167,6 +228,12 @@ export function ChatToolComponent() {
     },
     [sendMessage],
   );
+
+  const handleClearChat = useCallback(() => {
+    clearChat();
+    // Re-focus input after clearing
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [clearChat]);
 
   // Get suggestions from the last assistant message
   const lastAssistantMsg = [...messages]
@@ -201,12 +268,17 @@ export function ChatToolComponent() {
           {messages.length > 0 && (
             <Button
               mode="ghost"
-              text="Clear"
+              tone="default"
               fontSize={1}
               padding={2}
-              onClick={clearChat}
+              onClick={handleClearChat}
               disabled={isLoading}
-            />
+            >
+              <Flex align="center" gap={2}>
+                <Text size={1}>✨</Text>
+                <Text size={1}>New conversation</Text>
+              </Flex>
+            </Button>
           )}
         </Flex>
       </Card>
@@ -223,60 +295,70 @@ export function ChatToolComponent() {
           }}
           padding={4}
         >
-          <Stack space={1}>
-            {messages.map((msg) => (
-              <ChatMessageBubble
-                key={msg.id}
-                message={msg}
-                onFeedback={submitFeedback}
+          {/* Center messages with max-width for readability */}
+          <Box style={{ maxWidth: 720, margin: '0 auto' }}>
+            <Stack space={1}>
+              {messages.map((msg) => (
+                <ChatMessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onFeedback={submitFeedback}
+                />
+              ))}
+            </Stack>
+
+            {/* Typing indicator — pulsing dots while loading with no content yet */}
+            {isLoading && (
+              <TypingIndicator />
+            )}
+
+            {/* Suggestion chips */}
+            {!isLoading && suggestions.length > 0 && (
+              <SuggestionChips
+                suggestions={suggestions}
+                onSelect={handleStarterOrSuggestion}
               />
-            ))}
-          </Stack>
+            )}
 
-          {/* Suggestion chips */}
-          {!isLoading && suggestions.length > 0 && (
-            <SuggestionChips
-              suggestions={suggestions}
-              onSelect={handleStarterOrSuggestion}
-            />
-          )}
-
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </Box>
         </Box>
       )}
 
-      {/* Input Area */}
+      {/* Input Area — sticky bottom, always visible */}
       <Card
         padding={3}
         borderTop
         style={{ flexShrink: 0 }}
       >
-        <Flex gap={2} align="center">
-          <Box style={{ flex: 1 }}>
-            <TextInput
-              ref={inputRef}
-              placeholder={
-                isLoading ? 'Waiting for response…' : 'Ask a question…'
-              }
-              value={inputValue}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setInputValue(e.currentTarget.value)
-              }
-              onKeyDown={handleKeyDown}
-              disabled={isLoading}
-              fontSize={1}
+        <Box style={{ maxWidth: 720, margin: '0 auto' }}>
+          <Flex gap={2} align="center">
+            <Box style={{ flex: 1 }}>
+              <TextInput
+                ref={inputRef}
+                placeholder={
+                  isLoading ? 'Waiting for response…' : 'Ask a question…'
+                }
+                value={inputValue}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setInputValue(e.currentTarget.value)
+                }
+                onKeyDown={handleKeyDown}
+                disabled={isLoading}
+                fontSize={1}
+              />
+            </Box>
+            <Button
+              icon={SendIcon}
+              mode="ghost"
+              tone="primary"
+              padding={3}
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+              title="Send message (Enter)"
             />
-          </Box>
-          <Button
-            icon={SendIcon}
-            mode="ghost"
-            tone="primary"
-            padding={3}
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
-            title="Send message"
-          />
-        </Flex>
+          </Flex>
+        </Box>
       </Card>
     </Flex>
   );

@@ -153,15 +153,19 @@ function renderInline(text: string): ReactNode {
 // Source Attribution
 // ---------------------------------------------------------------------------
 
+/**
+ * Source badges — subtle so they don't compete with content.
+ * Uses default tone (gray) instead of primary.
+ */
 function SourceBadges({ sources }: { sources: Source[] }) {
   if (!sources.length) return null;
 
   return (
-    <Flex gap={2} wrap="wrap" paddingTop={2}>
+    <Flex gap={2} wrap="wrap" paddingTop={2} style={{ opacity: 0.7 }}>
       {sources.map((s, i) => (
         <Badge
           key={i}
-          tone="primary"
+          tone="default"
           fontSize={0}
           padding={1}
           title={s.fact}
@@ -228,11 +232,12 @@ export function ChatMessageBubble({ message, onFeedback }: ChatMessageProps) {
         <Card
           padding={3}
           radius={2}
-          shadow={1}
+          shadow={isUser ? 1 : 0}
           tone={isUser ? 'primary' : 'default'}
           style={{
             borderBottomRightRadius: isUser ? 0 : undefined,
             borderBottomLeftRadius: isUser ? undefined : 0,
+            border: isUser ? undefined : '1px solid var(--card-border-color)',
           }}
         >
           <Stack space={2}>
@@ -251,7 +256,7 @@ export function ChatMessageBubble({ message, onFeedback }: ChatMessageProps) {
                   : message.isStreaming && (
                       <Flex align="center" gap={2}>
                         <Spinner muted />
-                        <Text size={1} muted>
+                        <Text size={1} muted style={{ fontStyle: 'italic' }}>
                           Thinking…
                         </Text>
                       </Flex>
@@ -259,11 +264,11 @@ export function ChatMessageBubble({ message, onFeedback }: ChatMessageProps) {
               </Stack>
             )}
 
-            {/* Streaming indicator */}
+            {/* Streaming indicator — subtle dot while tokens arrive */}
             {message.isStreaming && message.content && (
-              <Flex align="center" gap={2}>
-                <Spinner muted />
-              </Flex>
+              <Text size={0} muted style={{ opacity: 0.5 }}>
+                ●
+              </Text>
             )}
 
             {/* Source attribution */}
