@@ -1,6 +1,6 @@
 # PLAN.md — Wrangler_ Chat System Coordination Document
 
-> **Read this file before making any changes.** This is the shared coordination doc for all agents (Miriad engineering, Claude Code, Claude workspace). Last updated: 2025-07-03.
+> **Read this file before making any changes.** This is the shared coordination doc for all agents (Miriad engineering, Claude Code, Claude workspace). Last updated: 2026-04-03 14:45 UTC by @dev (coordinator).
 
 ---
 
@@ -127,18 +127,22 @@
 | Deploy prep | ✅ Done | .env, scripts, gitignore, validation |
 | UI polish | ✅ Done | Starters, keyboard, auto-focus |
 | Schema audit | ✅ Done | Found field mismatches, fix in progress |
-| Retrieval field fixes | 🔄 In progress | Aligning GROQ queries with actual schema fields |
+| Retrieval field fixes | ✅ Done | GROQ queries aligned with actual schema fields (commit `5a2a15d`) |
 | Studio deploy | ⏳ Next | Austin deploys with `cd sanity && npm run deploy` |
 
 ---
 
-## 5. Known Issues / Active Fixes
+## 5. Known Issues / Active Concerns
 
-1. **retrieval.ts field mismatches** — Some GROQ queries reference fields that don't exist in Sanity schemas (`employeeCount`, `email`, `bio`, `accountName` on signals/actions). Fix in progress — aligning projections with actual schema fields.
+1. **retrieval.ts field mismatches** — ✅ FIXED (commit `5a2a15d`). GROQ queries now aligned with actual Sanity schema fields. Note: fix is on `feature/chat-v1` only — production worker still has older retrieval code until merge + redeploy.
 
 2. **`sanity build` needs more RAM** — The dev sandbox doesn't have enough memory for the Sanity Studio build. Deploy from a local machine instead.
 
 3. **Worker bundle size** — 385KB gzip. Well within Cloudflare's limits. Not a concern.
+
+4. **CORS — needs live verification** — Worker CORS is set to `*`, which should allow Studio at `sanity.io` to call `website-scanner.austin-gilbert.workers.dev`. Needs verification on actual deploy.
+
+5. **GROQ dereference validation** — Queries use patterns like `account->companyName`. These need to be confirmed against live production Sanity data (not just schema definitions).
 
 ---
 
@@ -249,12 +253,14 @@ node src/chat/eval/run-intent-eval.mjs
 
 | # | Task | Owner | Status |
 |---|---|---|---|
-| 1 | Fix retrieval.ts field mismatches | Engineering | 🔄 In progress |
-| 2 | Deploy Studio with Chat Tool to sanity.io | Austin | ⏳ Waiting |
+| 1 | Fix retrieval.ts field mismatches | Engineering | ✅ Done (commit `5a2a15d`) |
+| 2 | Deploy Studio with Chat Tool to sanity.io | Austin | ⏳ Waiting — `cd sanity && npm install && npm run deploy` |
 | 3 | Live smoke test chat in actual Studio | Austin + Engineering | ⏳ Blocked on #2 |
-| 4 | Merge `feature/chat-v1` to `main` | Austin | ⏳ Blocked on #3 |
-| 5 | Redeploy worker from `main` with chat routes | Austin | ⏳ Blocked on #4 |
-| 6 | V2 planning: action execution, persistent history, semantic search | Engineering | ⏳ Future |
+| 4 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Engineering | ⏳ Blocked on #2 — CORS is `*` but needs live verification |
+| 5 | Live data validation — confirm GROQ dereferences (`account->companyName`) resolve in production Sanity | Engineering | ⏳ Blocked on #2 |
+| 6 | Merge `feature/chat-v1` to `main` | Austin | ⏳ Blocked on #3, #4, #5 |
+| 7 | Redeploy worker from `main` with retrieval fixes | Austin | ⏳ Blocked on #6 — production worker has older retrieval code |
+| 8 | V2 planning: action execution, persistent history, semantic search | Engineering | ⏳ Future |
 
 ---
 
