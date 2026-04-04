@@ -251,8 +251,8 @@ export function useChat() {
           },
           body: JSON.stringify({
             sessionId: sessionIdRef.current,
-            messageId,
-            rating,
+            turnId: messageId,
+            feedback: rating,
           }),
         });
       } catch {

@@ -328,32 +328,41 @@ async function resolvePersonVsAccount(
       const matchPattern = tokens.map((t) => `*${t}*`).join(' ');
 
       // Check if this "person" name matches any account
+      // Use case-insensitive matching as primary strategy — LLM entity casing varies
+      const nameLower = name.toLowerCase();
+      console.log(`[chat/intent] GROQ pre-check for "${name}" (lower: "${nameLower}", pattern: "${matchPattern}")`);
+
       const account = await groqQuery(
         client,
         `*[_type == "account" && (
+          lower(name) == $nameLower ||
+          lower(companyName) == $nameLower ||
           name == $name ||
           companyName == $name ||
           lower(name) match $matchPattern ||
           lower(companyName) match $matchPattern ||
           domain match $domainPattern
-        )][0]{ _id, companyName, name }`,
+        )][0]{ _id, companyName, name, domain }`,
         {
           name,
+          nameLower,
           matchPattern,
           domainPattern: `*${normalized.replace(/\s+/g, '')}*`,
         },
       );
 
+      console.log(`[chat/intent] GROQ pre-check result: ${account ? `MATCH ${account._id} (${account.companyName || account.name})` : 'NO MATCH'}`);
+
       if (account) {
         // Found an account match — override to account_lookup
-        console.log(`[chat/intent] Entity-aware override: "${name}" matched account ${account._id} (${account.companyName || account.name})`);
         entity.type = 'account';
+        entity.resolvedId = account._id;
         return 'account_lookup';
       }
     }
   } catch (error: any) {
     // Don't fail classification if the GROQ check fails
-    console.warn(`[chat/intent] Entity-aware resolution failed: ${error.message}`);
+    console.warn(`[chat/intent] Entity-aware resolution failed:`, error.message, error.stack);
   }
 
   return intent;
