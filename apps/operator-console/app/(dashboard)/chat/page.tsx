@@ -42,6 +42,13 @@ const STARTERS = [
   { label: 'Prep me for my next meeting', intent: 'meeting_prep' },
 ] as const;
 
+function getTimeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 /* ─── Lightweight Markdown Renderer ─────────────────────────────────────── */
 
 function renderMarkdown(text: string, entities: EntityRef[] = []): React.ReactNode[] {
@@ -539,32 +546,54 @@ export default function ChatPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          /* ── Empty State ─────────────────────────────── */
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-lg space-y-6">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center mx-auto">
-                <Sparkles size={24} className="text-[var(--accent)]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--text)]">
-                  Wrangler Chat
-                </h2>
-                <p className="text-[13px] text-[var(--muted)] mt-2">
-                  Your AI-powered sales intelligence assistant. Ask about
-                  accounts, signals, pipeline, or get prepped for meetings.
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {STARTERS.map((s) => (
-                  <button
-                    key={s.intent}
-                    onClick={() => handleSend(s.label)}
-                    className="px-3 py-2 rounded-xl text-[12px] bg-[var(--card)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text)] hover:border-[var(--highlight)] hover:bg-[var(--highlight)]/5 transition-all"
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
+          /* ── Briefing-First Empty State ───────────────── */
+          <div className="flex flex-col items-center justify-center h-full" style={{ gap: 'var(--wrangler-space-6)', padding: 'var(--wrangler-space-8)' }}>
+            <h1 style={{
+              fontSize: 'var(--wrangler-font-size-2xl)',
+              fontWeight: 600,
+              color: 'var(--wrangler-text-primary)',
+            }}>
+              {getTimeGreeting()}. Ready for your briefing?
+            </h1>
+            <p style={{
+              fontSize: 'var(--wrangler-font-size-base)',
+              color: 'var(--wrangler-text-tertiary)',
+              maxWidth: '400px',
+              textAlign: 'center',
+            }}>
+              I&apos;ll analyze your accounts, signals, and pipeline to surface what matters today.
+            </p>
+            <button
+              onClick={() => handleSend('good morning')}
+              style={{
+                background: 'var(--wrangler-accent-primary)',
+                color: 'var(--wrangler-text-primary)',
+                border: 'none',
+                borderRadius: 'var(--wrangler-radius-lg)',
+                padding: 'var(--wrangler-space-3) var(--wrangler-space-6)',
+                fontSize: 'var(--wrangler-font-size-base)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'var(--wrangler-transition-fast)',
+              }}
+            >
+              Start my day
+            </button>
+            <div className="flex flex-wrap justify-center gap-2 mt-4" style={{ maxWidth: '500px' }}>
+              {STARTERS.filter(s => s.intent !== 'morning_briefing').map((s) => (
+                <button
+                  key={s.intent}
+                  onClick={() => handleSend(s.label)}
+                  className="px-3 py-2 rounded-xl text-[12px] border transition-all"
+                  style={{
+                    background: 'var(--wrangler-surface-raised)',
+                    borderColor: 'var(--wrangler-border-default)',
+                    color: 'var(--wrangler-text-secondary)',
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
           </div>
         ) : (
