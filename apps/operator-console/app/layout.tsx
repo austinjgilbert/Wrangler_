@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Sanity Intelligence OS',
-  description: 'High-performance operator console for the SDR execution engine.',
+  title: 'Wrangler_ Intelligence',
+  description: 'Chat-first command center for SDR intelligence — ask anything about your accounts, signals, and pipeline.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

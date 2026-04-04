@@ -19,6 +19,8 @@ import {
   ThumbsDown,
   ExternalLink,
   StopCircle,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -327,6 +329,40 @@ function FeedbackButtons({
   );
 }
 
+/* ─── Streaming Skeleton ───────────────────────────────────────────────── */
+
+function StreamingSkeleton() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      <div className="h-3 bg-[var(--border)]/30 rounded w-3/4" />
+      <div className="h-3 bg-[var(--border)]/20 rounded w-1/2" />
+      <div className="h-3 bg-[var(--border)]/10 rounded w-2/3" />
+    </div>
+  );
+}
+
+/* ─── Error State ──────────────────────────────────────────────────────── */
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-2">
+        <AlertTriangle size={14} className="text-[var(--error)] mt-0.5 shrink-0" />
+        <p className="text-[13px] text-[var(--muted)] leading-relaxed">
+          I couldn&apos;t retrieve that information. Try again or rephrase your question.
+        </p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/20 hover:border-[var(--accent)]/50 transition-colors cursor-pointer"
+      >
+        <RefreshCw size={12} />
+        Retry
+      </button>
+    </div>
+  );
+}
+
 /* ─── Streaming Indicator ───────────────────────────────────────────────── */
 
 function StreamingDots() {
@@ -346,14 +382,17 @@ function MessageBubble({
   onSuggestionSelect,
   onNavigate,
   onFeedback,
+  onRetry,
 }: {
   message: ChatMessage;
   onSuggestionSelect: (text: string) => void;
   onNavigate: (href: string) => void;
   onFeedback: (messageId: string, rating: 'up' | 'down') => void;
+  onRetry: () => void;
 }) {
   const isUser = message.role === 'user';
   const entities = !isUser && message.sources ? extractEntityRefs(message.sources) : [];
+  const isError = !isUser && message.content.startsWith('⚠️');
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
@@ -382,12 +421,14 @@ function MessageBubble({
         >
           {isUser ? (
             <p className="text-[13px] leading-relaxed">{message.content}</p>
+          ) : isError ? (
+            <ErrorState onRetry={onRetry} />
           ) : (
             <div className="space-y-0">
               {message.content ? (
                 renderMarkdown(message.content, entities)
               ) : message.isStreaming ? (
-                <p className="text-[13px] text-[var(--muted)]">Thinking…</p>
+                <StreamingSkeleton />
               ) : null}
               {message.isStreaming && message.content && <StreamingDots />}
             </div>
@@ -410,7 +451,7 @@ function MessageBubble({
         )}
 
         {/* Feedback */}
-        {!isUser && !message.isStreaming && message.content && (
+        {!isUser && !isError && !message.isStreaming && message.content && (
           <FeedbackButtons
             messageId={message.id}
             feedback={message.feedback}
@@ -488,6 +529,11 @@ export default function ChatPage() {
     router.push(href);
   }
 
+  function handleRetry() {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) sendMessage(lastUserMsg.content);
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Area */}
@@ -531,6 +577,7 @@ export default function ChatPage() {
                 onSuggestionSelect={handleSuggestionSelect}
                 onNavigate={handleNavigate}
                 onFeedback={submitFeedback}
+                onRetry={handleRetry}
               />
             ))}
             <div ref={messagesEndRef} />

@@ -191,6 +191,24 @@ export async function streamCopilotQuery(
   }
 }
 
+// ── Chat endpoint helpers ──────────────────────────────────────────────────
+
+export function chatStreamEndpoint(): string {
+  return resolveEndpoint('/api/chat/stream', '/api/chat/stream');
+}
+
+export function chatFeedbackEndpoint(): string {
+  return resolveEndpoint('/api/chat/feedback', '/api/chat/feedback');
+}
+
+export function chatHistoryEndpoint(): string {
+  return resolveEndpoint('/api/chat/history', '/api/chat/history');
+}
+
+export { authHeaders };
+
+// ── Function & Agent registries ────────────────────────────────────────────
+
 export async function fetchFunctionRegistry() {
   return readJson<{ functions: FunctionDefinition[]; grouped: Record<string, FunctionDefinition[]> }>(
     resolveEndpoint('/api/console/functions', '/operator/console/functions'),
