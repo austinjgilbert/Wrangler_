@@ -119,10 +119,12 @@ function buildAccountCard(
 
   const data: Record<string, any> = {
     ...optional('id', id),
-    ...optional('name', name),
+    // Frontend AccountCard expects `companyName`, not `name`
+    ...optional('companyName', name),
     ...optional('domain', domain),
     ...optional('opportunityScore', account.opportunityScore),
     ...optional('industry', account.industry),
+    ...optional('employeeCount', account.employeeCount || account.benchmarks?.estimatedEmployees),
     // Map retrieval's `completeness` to card's `profileCompleteness`
     ...optional('profileCompleteness', account.completeness ?? account.profileCompleteness),
     ...optional('technologyStack', account.technologyStack),
@@ -194,9 +196,10 @@ function buildPersonCard(
   const data: Record<string, any> = {
     ...optional('id', id),
     name,
-    // Title fallback: currentTitle || title (retrieval may already resolve this)
-    ...optional('title', person.currentTitle || person.title),
-    ...optional('company', companyName || person.company),
+    // Frontend PersonCard expects `currentTitle`, not `title`
+    ...optional('currentTitle', person.currentTitle || person.title),
+    // Frontend PersonCard expects `currentCompany`, not `company`
+    ...optional('currentCompany', companyName || person.currentCompany || person.company),
     ...optional('companyId', companyId || person.companyId),
     ...optional('seniorityLevel', person.seniorityLevel),
     ...optional('isDecisionMaker', person.isDecisionMaker),
@@ -246,6 +249,10 @@ function buildSignalCard(
 
   if (!signalType && strength === undefined) return null;
 
+  // Frontend SignalCard expects nested account object, not flat fields
+  const accountName = signal.accountName || signal.account;
+  const accountId = signal.accountId;
+
   const data: Record<string, any> = {
     ...optional('id', id),
     ...optional('signalType', signalType),
@@ -253,8 +260,11 @@ function buildSignalCard(
     ...optional('summary', signal.summary),
     ...optional('strength', strength),
     ...optional('timestamp', signal.timestamp),
-    ...optional('accountId', signal.accountId),
-    ...optional('accountName', signal.accountName || signal.account),
+    // Frontend destructures account.companyName — must be nested object
+    account: {
+      ...optional('_id', accountId),
+      ...optional('companyName', accountName),
+    },
   };
 
   return {
@@ -311,10 +321,17 @@ function buildActionCard(
     // Map retrieval's `pattern` to card's `patternMatch`
     ...optional('patternMatch', action.patternMatch || action.pattern),
     ...optional('confidence', action.confidence),
-    ...optional('accountName', accountName || action.accountName || action.account),
-    ...optional('accountId', accountId || action.accountId),
+    // Frontend ActionCard expects nested account object, not flat fields
+    account: {
+      ...optional('_id', accountId || action.accountId),
+      ...optional('companyName', accountName || action.accountName || action.account),
+    },
     ...optional('targetPerson', action.targetPerson),
-    ...optional('evidence', action.evidence),
+    ...optional('title', action.title),
+    // Frontend ActionCard expects evidence as a string, not array
+    ...optional('evidence', Array.isArray(action.evidence)
+      ? action.evidence.map((e: any) => typeof e === 'string' ? e : e.fact).join('; ')
+      : action.evidence),
   };
 
   return {
@@ -382,11 +399,36 @@ function buildBriefingCard(
       ...optional('accountName', s.accountName || s.account),
     }));
 
+  // Frontend BriefingCard expects: topAccounts[], actionItemCount, signals[]
+  // Transform backend's richer data to match frontend interface
+
+  // topAccounts: extract unique accounts from actions with scores
+  const accountMap = new Map<string, { companyName: string; opportunityScore: number; reason?: string }>();
+  for (const a of safeActions) {
+    const acctName = a.accountName || a.account;
+    if (acctName && !accountMap.has(acctName)) {
+      accountMap.set(acctName, {
+        companyName: acctName,
+        opportunityScore: a.opportunityScore ?? a.score ?? 0,
+        ...optional('reason', a.whyNow),
+      });
+    }
+  }
+  const topAccounts = Array.from(accountMap.values()).slice(0, 5);
+
+  // signals: aggregate by signal type with counts
+  const signalTypeCounts = new Map<string, number>();
+  for (const s of safeSignals) {
+    const sType = s.signalType || s.type || 'unknown';
+    signalTypeCounts.set(sType, (signalTypeCounts.get(sType) || 0) + 1);
+  }
+  const briefingSignals = Array.from(signalTypeCounts.entries()).map(([type, count]) => ({ type, count }));
+
   const data: Record<string, any> = {
     date,
-    ...optional('stats', briefingStats && Object.keys(briefingStats).length > 0 ? briefingStats : undefined),
-    topActions: miniActions,
-    overnightSignals: miniSignals,
+    topAccounts,
+    actionItemCount: safeActions.length,
+    signals: briefingSignals,
   };
 
   return {
