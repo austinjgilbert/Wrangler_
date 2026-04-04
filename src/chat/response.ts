@@ -27,7 +27,7 @@ import type {
 } from './types.ts';
 
 /** Model for response generation — Haiku for speed, Sonnet for quality */
-const RESPONSE_MODEL = 'claude-3-5-haiku-20241022';
+const RESPONSE_MODEL = 'claude-haiku-4-5-20251001';
 
 // ─── System Prompts ─────────────────────────────────────────────────────────
 

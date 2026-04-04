@@ -27,7 +27,7 @@ import type {
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 /** Model to use for intent classification — Haiku for speed */
-const INTENT_MODEL = 'claude-3-5-haiku-20241022';
+const INTENT_MODEL = 'claude-haiku-4-5-20251001';
 
 /** Maximum tokens for intent classification response */
 const INTENT_MAX_TOKENS = 512;
