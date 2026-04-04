@@ -26,13 +26,14 @@ export type EntityRef = {
 /**
  * Parse "account:acme-corp" style source strings into structured refs.
  */
-function parseSourceRef(source: string): { type: string; id: string } {
+function parseSourceRef(source: string): { type: string; id: string } | null {
+  if (!source || typeof source !== 'string') return null;
   const colonIdx = source.indexOf(':');
   if (colonIdx === -1) return { type: 'unknown', id: source };
-  return {
-    type: source.slice(0, colonIdx).toLowerCase(),
-    id: source.slice(colonIdx + 1),
-  };
+  const type = source.slice(0, colonIdx).toLowerCase().trim();
+  const id = source.slice(colonIdx + 1).trim();
+  if (!id) return null;
+  return { type, id };
 }
 
 /**
@@ -65,7 +66,9 @@ export function extractEntityRefs(sources: Source[]): EntityRef[] {
   const seen = new Set<string>();
 
   for (const s of sources) {
-    const { type, id } = parseSourceRef(s.source);
+    const parsed = parseSourceRef(s.source);
+    if (!parsed) continue;
+    const { type, id } = parsed;
     const href = entityHref(type, id);
     if (!href || seen.has(id)) continue;
     seen.add(id);

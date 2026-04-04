@@ -44,7 +44,7 @@ export function AccountCard({ data }: AccountCardProps) {
         <div className="mb-2">
           <div
             className="h-1 bg-slate-700 rounded-full overflow-hidden"
-            style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+            style={{ backgroundColor: 'var(--surface-empty)' }}
           >
             <div
               className="h-full rounded-full"

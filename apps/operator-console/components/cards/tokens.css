@@ -5,6 +5,10 @@
   --text-secondary: #a0a0a8;
   --text-tertiary: #6b6b76;
   --accent-primary: #f03e2f;
+  --accent-primary-bg: rgba(240, 62, 47, 0.1);
+  --accent-primary-border: rgba(240, 62, 47, 0.2);
+  --accent-primary-underline: rgba(240, 62, 47, 0.3);
+  --surface-empty: rgba(255, 255, 255, 0.1);
   --status-success: #22c55e;
   --status-warning: #f59e0b;
   --status-error: #ef4444;

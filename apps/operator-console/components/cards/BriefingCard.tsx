@@ -31,7 +31,7 @@ export function BriefingCard({ data }: BriefingCardProps) {
           <div
             key={idx}
             className="flex items-start gap-2 mb-2"
-            style={{ paddingLeft: '8px', borderLeft: `2px solid ${urgencyColors[action.urgency as keyof typeof urgencyColors]}` }}
+            style={{ paddingLeft: '8px', borderLeft: `2px solid ${urgencyColors[action.urgency as keyof typeof urgencyColors] ?? 'var(--text-tertiary)'}` }}
           >
             <div>
               <p style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: '500' }}>

@@ -19,7 +19,7 @@ export function EntityLink({ name, href }: EntityLinkProps) {
           color: 'var(--accent-primary)',
           cursor: 'pointer',
           textDecoration: 'underline',
-          textDecorationColor: 'rgba(240, 62, 47, 0.3)',
+          textDecorationColor: 'var(--accent-primary-underline)',
         }}
       >
         {name}

@@ -50,8 +50,15 @@ export type BriefingCardData = {
   stats?: { accounts: number; signals: number; actions: number };
 };
 
-export type CardProps = {
-  cardType: CardType;
-  data: Record<string, any>;
-  _meta?: CardMeta;
-};
+export type ConfirmationCardData = Record<string, unknown>;
+export type ResultCardData = Record<string, unknown>;
+
+/** Discriminated union — CardRenderer dispatches on `cardType` and casts `data` accordingly. */
+export type CardProps =
+  | { cardType: 'account'; data: AccountCardData; _meta?: CardMeta }
+  | { cardType: 'person'; data: PersonCardData; _meta?: CardMeta }
+  | { cardType: 'signal'; data: SignalCardData; _meta?: CardMeta }
+  | { cardType: 'action'; data: ActionCardData; _meta?: CardMeta }
+  | { cardType: 'briefing'; data: BriefingCardData; _meta?: CardMeta }
+  | { cardType: 'confirmation'; data: ConfirmationCardData; _meta?: CardMeta }
+  | { cardType: 'result'; data: ResultCardData; _meta?: CardMeta };

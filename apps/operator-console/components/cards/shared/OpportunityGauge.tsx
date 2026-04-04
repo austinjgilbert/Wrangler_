@@ -2,21 +2,24 @@ interface OpportunityGaugeProps {
   score: number;
 }
 
+/** Gradient intensity per segment — derived from --accent-primary (#f03e2f). */
+const SEGMENT_OPACITY = [0.3, 0.44, 0.58, 0.72, 0.86] as const;
+
 export function OpportunityGauge({ score }: OpportunityGaugeProps) {
-  const clampedScore = Math.min(Math.max(score, 0), 100);
+  const clampedScore = Math.min(Math.max(score ?? 0, 0), 100);
   const filledSegments = Math.ceil((clampedScore / 100) * 5);
 
   return (
     <div className="flex gap-1">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {SEGMENT_OPACITY.map((opacity, i) => (
         <div
           key={i}
           className="h-1.5 flex-1 rounded-sm"
           style={{
             backgroundColor:
               i < filledSegments
-                ? `rgba(240, 62, 47, ${0.3 + (i / 5) * 0.7})`
-                : 'rgba(255, 255, 255, 0.1)',
+                ? `color-mix(in srgb, var(--accent-primary) ${Math.round(opacity * 100)}%, transparent)`
+                : 'var(--surface-empty)',
           }}
         />
       ))}

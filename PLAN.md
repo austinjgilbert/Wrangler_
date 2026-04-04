@@ -175,10 +175,12 @@
 
 | File | Lines | Purpose |
 |---|---|---|
-| `lib/api.ts` | 162 | Client-side API — fetchSnapshot, fetchAccountDetail, runCommand, streamCopilotQuery, etc. |
+| `lib/api.ts` | ~225 | Client-side API — fetchSnapshot, fetchAccountDetail, chat endpoint helpers, authHeaders |
 | `lib/types.ts` | 582 | ConsoleSnapshot, AccountDetail, CopilotState, patterns, clusters, outcomes |
+| `lib/entity-linker.ts` | ~157 | Entity detection from sources, bold matching, navigation suggestion detection |
 | `lib/server-proxy.ts` | 38 | Server-side proxy to CF Worker (workerBaseUrl, workerHeaders, proxyToWorker) |
 | `globals.css` | 161 | Dark theme design system — surfaces, accents, semantic colors, layout tokens |
+| `components/cards/` | 19 files | Card component library — CardRenderer, 5 types, 8 shared, types, tokens |
 | `components/chat/` | ~4 files | Chat components from Agent A (chat-panel, chat-message, chat-input, suggestion-chips) |
 | `components/operator-console.tsx` | ~2000 | Old monolith (DEPRECATED — kept for reference, no longer imported) |
 
@@ -207,6 +209,13 @@
 | Deploy prep | ✅ Done | Agent A | .env, scripts, gitignore |
 | Operator console rebuild | ✅ Built | Agent B | 10 pages, ~2,900 lines, route-based |
 | Dashboard layout + context | ✅ Built | Agent B | SnapshotContext, sidebar, command bar |
+| Card component library | ✅ Built | Agent B | 19 files — CardRenderer dispatcher, 5 card types, 8 shared components |
+| Entity linking in chat | ✅ Built | Agent B | Bold text → Links, nav-aware suggestion chips, entity-linker.ts |
+| Chat error states | ✅ Built | Agent B | ErrorState w/ retry, StreamingSkeleton, ⚠️-prefix detection |
+| Chat endpoint helpers | ✅ Built | Agent B | chatStream/Feedback/History + authHeaders in api.ts |
+| App metadata | ✅ Updated | Agent B | "Wrangler_ Intelligence" — chat-first description |
+| SDK research | ✅ Done | Agent B | Keep Next.js. SDK apps lose SSR, API routes. See CLAUDEPLANS.md. |
+| SDK conversion (Task 8) | ❌ Deferred | Agent B | Not converting. Next.js stays. Lightweight SDK app possible later. |
 | Studio deploy | ⏳ Next | Austin | `cd sanity && npm run deploy` |
 | End-to-end testing | ⏳ Pending | Both | Console ↔ Worker ↔ Sanity |
 
@@ -295,6 +304,11 @@ Intent classification is **rule-based** (keyword matching + entity extraction). 
 | 60s snapshot polling | Single fetch for all pages via React Context |
 | Dark-first design system | Enterprise ops tool — CSS custom properties, no light mode yet |
 | Confidence-aware UI | Show uncertainty states, strength bars, completion % everywhere |
+| Card protocol with discriminated union | `CardProps` narrows `data` type per `cardType` — compile-time safety |
+| All card colors via CSS tokens | No hardcoded rgba() — `tokens.css` defines card-system vars |
+| CardRenderer is sole public API | Individual cards NOT exported — forces dispatch through renderer |
+| SDK conversion deferred | SDK apps lose SSR, API routes, App Router. Keep Next.js on Vercel. |
+| Entity linking via bold-text convention | Backend wraps entities in `**bold**`, frontend detects and links them |
 
 ---
 
@@ -338,11 +352,19 @@ git push origin feature/chat-v1
 
 2. **Old monolith in tree** — `components/operator-console.tsx` (~2,000 lines) is no longer imported. Delete in a cleanup commit.
 
-3. **Root page.tsx redirect** — `app/page.tsx` redirects to `/overview` because it can't be deleted (was conflicting with route group). Can be cleaned up by deleting the file.
+3. **Root page.tsx redirect** — `app/page.tsx` now redirects to `/chat` (chat-first). Was `/overview`.
 
 4. **`sanity build` needs RAM** — Dev sandbox doesn't have enough memory. Deploy from local machine.
 
 5. **Chat routes 404 on production** — ✅ RESOLVED. Worker redeployed from `feature/chat-v1`, chat endpoints now live. Verified with real query returning data in ~1s.
+
+6. **CLAUDEPLANS.md case-sensitivity** — Both `CLAUDEPLANS.md` and `claudeplans.md` are tracked in git. macOS case-insensitive FS causes persistent dirty state blocking rebases. Fix from Linux: `git rm --cached claudeplans.md`.
+
+7. **ConfirmationCard + ResultCard are stubs** — Both return `null`. Phase 4 work needed for action confirmation flow.
+
+8. **Person entity detail page missing** — `entityHref('person', id)` returns null. Person names in chat are not clickable until `/people/[id]` route exists.
+
+9. **Error detection relies on ⚠️ prefix** — If `useChat.ts` (Agent A) changes how it formats error messages, the chat page error detection breaks. Convention coupling, not a contract.
 
 ---
 
@@ -360,7 +382,12 @@ git push origin feature/chat-v1
 | 6 | Live data validation — confirm GROQ dereferences resolve | Agent A | ✅ Done — real data flowing (Buc Ees, BDA Inc) |
 | 7 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After smoke test |
 | 8 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #7 |
-| 9 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
+| 9 | Run `npx tsc --noEmit` on operator-console | Agent B | ⏳ Needs Node.js env |
+| 10 | Wire CardRenderer into chat NDJSON stream | Agent A + B | ⏳ When backend sends card events |
+| 11 | Implement ConfirmationCard + ResultCard (Phase 4) | Agent B | ⏳ After action execution is built |
+| 12 | Add person detail route `/people/[id]` | Agent B | ⏳ After person lookup is stable |
+| 13 | Fix CLAUDEPLANS.md case-sensitivity permanently | Austin | ⏳ Run `git rm --cached claudeplans.md` from Linux |
+| 14 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
 
 ---
 
