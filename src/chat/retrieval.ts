@@ -159,6 +159,31 @@ function findEntities(entities: ExtractedEntity[], type: ExtractedEntity['type']
   return entities.filter((e) => e.type === type);
 }
 
+// ─── Helper: Normalize names for fuzzy matching ────────────────────────────
+
+/**
+ * Normalize a name for fuzzy matching: lowercase, strip punctuation/hyphens/apostrophes,
+ * remove common suffixes (Inc, Corp, LLC, Ltd, Co).
+ */
+function normalizeForMatch(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[''`\-.,!?&]/g, '')  // strip punctuation, hyphens, apostrophes
+    .replace(/\b(inc|corp|llc|ltd|co|group|company|corporation)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Build a GROQ match pattern from a name — splits into tokens and wraps with wildcards.
+ * e.g., "Buc Ees" → "*buc* *ees*"
+ */
+function buildFuzzyPattern(name: string): string {
+  const normalized = normalizeForMatch(name);
+  const tokens = normalized.split(' ').filter((t) => t.length > 1);
+  return tokens.map((t) => `*${t}*`).join(' ');
+}
+
 // ─── Account Lookup Retrieval ──────────────────────────────────────────────
 
 /**
@@ -197,13 +222,20 @@ async function retrieveForAccountLookup(
   }
 
   if (!account && accountEntity) {
-    // Try exact name match first
+    // Try exact name match first, then fuzzy match with normalized names
+    const fuzzyPattern = buildFuzzyPattern(accountEntity.text);
+    const normalizedName = normalizeForMatch(accountEntity.text);
+    // Build a domain-style pattern (strip spaces/punctuation for domain matching)
+    const domainPattern = `*${normalizedName.replace(/\s+/g, '')}*`;
+
     account = await groqQuery(
       client,
       `*[_type == "account" && (
         name == $name ||
         companyName == $name ||
-        domain match $namePattern
+        lower(name) match $fuzzyPattern ||
+        lower(companyName) match $fuzzyPattern ||
+        domain match $domainPattern
       )][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
@@ -214,7 +246,8 @@ async function retrieveForAccountLookup(
       }`,
       {
         name: accountEntity.text,
-        namePattern: `*${accountEntity.text.toLowerCase().replace(/\s+/g, '')}*`,
+        fuzzyPattern,
+        domainPattern,
       },
     );
   }
@@ -460,10 +493,16 @@ async function retrieveForSignalCheck(
     );
     if (account) accountId = account._id;
   } else if (accountEntity) {
+    const fuzzyPattern = buildFuzzyPattern(accountEntity.text);
     const account = await groqQuery(
       client,
-      '*[_type == "account" && (name == $name || companyName == $name)][0]{ _id }',
-      { name: accountEntity.text },
+      `*[_type == "account" && (
+        name == $name ||
+        companyName == $name ||
+        lower(name) match $fuzzyPattern ||
+        lower(companyName) match $fuzzyPattern
+      )][0]{ _id }`,
+      { name: accountEntity.text, fuzzyPattern },
     );
     if (account) accountId = account._id;
   }
@@ -687,16 +726,24 @@ async function retrieveForMeetingPrep(
   }
 
   if (!account && accountEntity) {
+    const fuzzyPattern = buildFuzzyPattern(accountEntity.text);
+    const domainPattern = `*${normalizeForMatch(accountEntity.text).replace(/\s+/g, '')}*`;
     account = await groqQuery(
       client,
-      `*[_type == "account" && (name == $name || companyName == $name)][0]{
+      `*[_type == "account" && (
+        name == $name ||
+        companyName == $name ||
+        lower(name) match $fuzzyPattern ||
+        lower(companyName) match $fuzzyPattern ||
+        domain match $domainPattern
+      )][0]{
         _id, _type, _updatedAt, _createdAt,
         companyName, name, domain, rootDomain,
         opportunityScore, industry,
         "employeeCount": benchmarks.estimatedEmployees, // NOTE: string in schema, may need parseInt
         profileCompleteness, technologyStack
       }`,
-      { name: accountEntity.text },
+      { name: accountEntity.text, fuzzyPattern, domainPattern },
     );
   }
 
