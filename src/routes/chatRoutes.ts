@@ -131,7 +131,7 @@ export async function handleChatFeedback(request: Request, requestId: string, en
   try {
     const body = (await request.json()) as Record<string, any>;
     const sessionId = String(body.sessionId || '').trim();
-    const turnId = String(body.turnId || '').trim();
+    const turnId = String(body.turnId || body.messageId || '').trim();
     const feedback = String(body.feedback || '').trim();
     const text = body.text ? String(body.text).trim() : undefined;
 

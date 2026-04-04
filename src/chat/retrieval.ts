@@ -36,7 +36,7 @@ const MAX_ACTIONS = 10;
 const MAX_PEOPLE = 10;
 
 /** How far back to look for "recent" signals (in days) */
-const RECENT_SIGNAL_DAYS = 7;
+const RECENT_SIGNAL_DAYS = 30;
 
 // ─── Main Retrieval Router ─────────────────────────────────────────────────
 
@@ -535,7 +535,30 @@ async function retrieveForSignalCheck(
     ).catch(() => ({})),
   ]);
 
-  const safeSignals = Array.isArray(signals) ? signals : [];
+  let safeSignals = Array.isArray(signals) ? signals : [];
+
+  // If no signals found in the time window, fetch most recent regardless of date
+  if (safeSignals.length === 0) {
+    const fallbackSignals = await groqQuery(
+      client,
+      `*[_type == "signal"] | order(timestamp desc)[0...${MAX_SIGNALS}]{
+        _id, _type, _updatedAt,
+        signalType, strength, timestamp,
+        summary, source,
+        "accountName": account->companyName
+      }`,
+    ).catch(() => []);
+
+    if (Array.isArray(fallbackSignals) && fallbackSignals.length > 0) {
+      safeSignals = fallbackSignals;
+    }
+  }
+
+  // Get total signal count so the user knows signals exist even if none are recent
+  const totalSignalCount = await groqQuery(
+    client,
+    `count(*[_type == "signal"])`,
+  ).catch(() => 0);
 
   // Compute signal type breakdown
   const typeCounts: Record<string, number> = {};
@@ -561,6 +584,7 @@ async function retrieveForSignalCheck(
         technology: technologyEntity?.text || null,
       },
       totalCount: signalStats?.total || safeSignals.length,
+      totalSignalCount: totalSignalCount || 0,
       typeCounts,
       signals: safeSignals.map((s: any) => ({
         type: s.signalType,

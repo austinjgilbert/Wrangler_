@@ -172,10 +172,15 @@ export function buildUserPrompt(
 // ─── Source Attribution ─────────────────────────────────────────────────────
 
 /**
- * Extract source attributions by matching response claims to retrieval sources.
+ * Extract source attributions by matching response content to retrieval sources.
  *
- * Uses a simple heuristic: if a source's fact text (or a significant substring)
- * appears in the response, include that source.
+ * Strategy: Extract key entity names (account names, signal types, action types)
+ * from each source and check if they appear in the LLM response. The retrieval
+ * layer already curates relevant sources, so matching should be generous.
+ *
+ * Fallback: if no sources match via entity/term matching, include ALL retrieval
+ * sources — since the LLM was instructed to only use data from the <data> block,
+ * all retrieved sources are relevant.
  */
 export function extractSourceAttributions(
   responseText: string,
@@ -190,20 +195,38 @@ export function extractSourceAttributions(
   const seen = new Set<string>();
 
   for (const source of retrievalResult.sources) {
-    // Check if key terms from the fact appear in the response
-    const factTerms = source.fact
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((t) => t.length > 3);
+    if (seen.has(source.source)) continue;
 
-    // Require at least 40% of significant terms to match
-    const matchCount = factTerms.filter((term) => responseLower.includes(term)).length;
-    const matchRatio = factTerms.length > 0 ? matchCount / factTerms.length : 0;
+    // Extract key terms: names, types, scores from the fact
+    // e.g., "Top action: run_targeted_research for Buc Ees (score: 43)"
+    // Key terms: "buc ees", "run_targeted_research"
+    const factLower = source.fact.toLowerCase();
 
-    if (matchRatio >= 0.4 && !seen.has(source.fact)) {
-      seen.add(source.fact);
+    // Extract entity names (after "for", "Account:", "Person:", "Signal:", "Company:", "Action:")
+    const entityMatches = factLower.match(/(?:for|account:|person:|signal:|company:|action:|meeting prep for:)\s+([^(]+)/g);
+    const entityNames = (entityMatches || [])
+      .map((m) => m.replace(/^(?:for|account:|person:|signal:|company:|action:|meeting prep for:)\s+/i, '').trim())
+      .filter((n) => n.length > 2);
+
+    // Check if any entity name appears in the response
+    const entityMatch = entityNames.some((name) => responseLower.includes(name));
+
+    // Also check for key data terms (signal types, action types, scores)
+    const dataTerms = factLower
+      .split(/[\s:(),]+/)
+      .filter((t) => t.length > 3 && !/^(top|action|signal|account|person|for|the|and|with|score)$/.test(t));
+    const dataMatch = dataTerms.filter((t) => responseLower.includes(t)).length >= 2;
+
+    if (entityMatch || dataMatch) {
+      seen.add(source.source);
       matched.push(source);
     }
+  }
+
+  // Fallback: if no sources matched but we have sources, include all of them.
+  // The retrieval layer already curated relevant sources for this query.
+  if (matched.length === 0 && retrievalResult.sources.length > 0) {
+    return retrievalResult.sources;
   }
 
   return matched;
