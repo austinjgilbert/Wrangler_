@@ -200,7 +200,13 @@ export async function classifyIntent(
       retries: 1,
     });
 
-    const parsed = JSON.parse(result.content);
+    // Strip markdown code fences if the LLM wraps its response in ```json ... ```
+    let jsonContent = result.content.trim();
+    if (jsonContent.startsWith('```')) {
+      jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+
+    const parsed = JSON.parse(jsonContent);
 
     // Validate the parsed response
     let intent = validateIntent(parsed.intent);
