@@ -1,0 +1,25 @@
+{
+  "name": "molt-chat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy"
+  },
+  "dependencies": {
+    "@sanity/sdk": "^2.8.0",
+    "@sanity/sdk-react": "^2.8.0",
+    "@sanity/ui": "^2.0.0",
+    "@sanity/icons": "^3.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanity": "^5.1.0",
+    "styled-components": "^6.3.9"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.3.3"
+  }
+}
