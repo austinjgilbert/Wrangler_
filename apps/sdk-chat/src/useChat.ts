@@ -26,6 +26,7 @@ export interface ChatMessage {
   content: string;
   sources?: Source[];
   suggestions?: string[];
+  cards?: any[];
   feedback?: 'up' | 'down' | null;
   isStreaming?: boolean;
   meta?: Record<string, unknown>;
@@ -181,6 +182,17 @@ export function useChat() {
                   prev.map((m) =>
                     m.id === assistantId
                       ? { ...m, suggestions: event.data }
+                      : m,
+                  ),
+                );
+                break;
+
+              case 'card':
+                // Append card to message's card array
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, cards: [...(m.cards || []), event] }
                       : m,
                   ),
                 );

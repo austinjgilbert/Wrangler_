@@ -8,6 +8,7 @@
 import { SanityApp } from '@sanity/sdk-react'
 import { ThemeProvider, studioTheme } from '@sanity/ui'
 import { ChatView } from './ChatView'
+import './tokens.css'
 
 const config = [{ projectId: 'nlqb7zmk', dataset: 'production' }]
 

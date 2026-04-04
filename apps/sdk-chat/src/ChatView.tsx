@@ -69,6 +69,10 @@ function SendIcon() {
 // ---------------------------------------------------------------------------
 
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
+  const secondaryStarters = CONVERSATION_STARTERS.filter(
+    (s) => s.text !== 'What should I do today?',
+  );
+
   return (
     <Flex
       direction="column"
@@ -77,25 +81,50 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
       style={{ flex: 1 }}
       padding={4}
     >
-      <Stack space={4} style={{ maxWidth: 480, textAlign: 'center' }}>
-        <Heading size={2}>💬 Chat with your data</Heading>
-        <Text size={1} muted>
-          Ask questions about accounts, people, technologies, and signals in
-          your dataset.
+      <Stack space={5} style={{ maxWidth: 480, textAlign: 'center' }}>
+        {/* Brand heading */}
+        <Heading size={3}>
+          Wrangler
+          <span style={{ color: 'var(--wrangler-accent-primary, #6366f1)' }}>
+            _
+          </span>
+        </Heading>
+
+        <Text size={2} muted>
+          Good morning. Ready for your briefing?
         </Text>
 
-        <Stack space={2} paddingTop={3}>
-          <Text size={0} weight="bold" muted>
-            Try asking:
-          </Text>
-          {CONVERSATION_STARTERS.map((starter) => (
+        {/* Primary CTA — briefing */}
+        <Button
+          mode="default"
+          tone="primary"
+          fontSize={2}
+          padding={4}
+          onClick={() => onSelect('good morning')}
+          style={{ borderRadius: 8 }}
+        >
+          <Flex align="center" justify="center" gap={2}>
+            <Text size={2}>☀️</Text>
+            <Text size={2} weight="bold">
+              Start my day
+            </Text>
+          </Flex>
+        </Button>
+
+        {/* Secondary starters */}
+        <Flex gap={2} wrap="wrap" justify="center" paddingTop={2}>
+          {secondaryStarters.map((starter) => (
             <Button
               key={starter.text}
               mode="ghost"
+              tone="default"
               fontSize={1}
               padding={3}
               onClick={() => onSelect(starter.text)}
-              style={{ textAlign: 'left' }}
+              style={{
+                borderRadius: '999px',
+                border: '1px solid var(--wrangler-border-default, var(--card-border-color))',
+              }}
             >
               <Flex align="center" gap={2}>
                 <Text size={1}>{starter.icon}</Text>
@@ -103,7 +132,7 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
               </Flex>
             </Button>
           ))}
-        </Stack>
+        </Flex>
       </Stack>
     </Flex>
   );
@@ -303,8 +332,8 @@ export function ChatView() {
           }}
           padding={4}
         >
-          {/* Center messages with max-width for readability */}
-          <Box style={{ maxWidth: 720, margin: '0 auto' }}>
+          {/* Center messages — cards can break out to full width */}
+          <Box style={{ maxWidth: 720, margin: '0 auto', overflow: 'visible' }}>
             <Stack space={1}>
               {messages.map((msg) => (
                 <ChatMessageBubble

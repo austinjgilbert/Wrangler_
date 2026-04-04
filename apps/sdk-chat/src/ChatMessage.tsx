@@ -20,6 +20,7 @@ import {
   Spinner,
 } from '@sanity/ui';
 import type { ChatMessage as ChatMessageType, Source } from './useChat';
+import { CardRenderer } from './components/cards';
 
 // ---------------------------------------------------------------------------
 // Simple Markdown Renderer
@@ -226,70 +227,106 @@ interface ChatMessageProps {
   onFeedback: (id: string, rating: 'up' | 'down') => void;
 }
 
-export function ChatMessageBubble({ message, onFeedback }: ChatMessageProps) {
-  const isUser = message.role === 'user';
-
+/**
+ * User message — right-aligned bubble with background.
+ */
+function UserMessage({ message }: { message: ChatMessageType }) {
   return (
-    <Flex justify={isUser ? 'flex-end' : 'flex-start'} paddingY={1}>
-      <Box style={{ maxWidth: '80%', minWidth: '40%' }}>
+    <Flex justify="flex-end" paddingY={1}>
+      <Box style={{ maxWidth: '80%' }}>
         <Card
           padding={3}
           radius={2}
-          shadow={isUser ? 1 : 0}
-          tone={isUser ? 'primary' : 'default'}
-          style={{
-            borderBottomRightRadius: isUser ? 0 : undefined,
-            borderBottomLeftRadius: isUser ? undefined : 0,
-            border: isUser ? undefined : '1px solid var(--card-border-color)',
-          }}
+          shadow={1}
+          tone="primary"
+          style={{ borderBottomRightRadius: 0 }}
         >
           <Stack space={2}>
-            {/* Role label */}
             <Text size={0} weight="bold" muted>
-              {isUser ? 'You' : 'Assistant'}
+              You
             </Text>
-
-            {/* Message content */}
-            {isUser ? (
-              <Text size={1}>{message.content}</Text>
-            ) : (
-              <Stack space={2}>
-                {message.content
-                  ? renderMarkdown(message.content)
-                  : message.isStreaming && (
-                      <Flex align="center" gap={2}>
-                        <Spinner muted />
-                        <Text size={1} muted style={{ fontStyle: 'italic' }}>
-                          Thinking…
-                        </Text>
-                      </Flex>
-                    )}
-              </Stack>
-            )}
-
-            {/* Streaming indicator — subtle dot while tokens arrive */}
-            {message.isStreaming && message.content && (
-              <Text size={0} muted style={{ opacity: 0.5 }}>
-                ●
-              </Text>
-            )}
-
-            {/* Source attribution */}
-            {message.sources && message.sources.length > 0 && (
-              <SourceBadges sources={message.sources} />
-            )}
-
-            {/* Feedback (assistant only, not streaming) */}
-            {!isUser && !message.isStreaming && message.content && (
-              <FeedbackButtons
-                messageId={message.id}
-                feedback={message.feedback}
-                onFeedback={onFeedback}
-              />
-            )}
+            <Text size={1}>{message.content}</Text>
           </Stack>
         </Card>
       </Box>
     </Flex>
   );
+}
+
+/**
+ * Assistant message — full-width, no bubble chrome.
+ * Content flows directly into the layout. Cards break out to full width.
+ */
+function AssistantMessage({
+  message,
+  onFeedback,
+}: {
+  message: ChatMessageType;
+  onFeedback: (id: string, rating: 'up' | 'down') => void;
+}) {
+  return (
+    <Box paddingY={2} style={{ width: '100%' }}>
+      <Stack space={3}>
+        {/* Text content — no background, no border, no bubble */}
+        {message.content ? (
+          <Stack space={2}>{renderMarkdown(message.content)}</Stack>
+        ) : (
+          message.isStreaming && (
+            <Flex align="center" gap={2}>
+              <Spinner muted />
+              <Text size={1} muted style={{ fontStyle: 'italic' }}>
+                Thinking…
+              </Text>
+            </Flex>
+          )
+        )}
+
+        {/* Streaming indicator — subtle dot while tokens arrive */}
+        {message.isStreaming && message.content && (
+          <Text size={0} muted style={{ opacity: 0.5 }}>
+            ●
+          </Text>
+        )}
+
+        {/* Card components — rendered at full container width */}
+        {message.cards && message.cards.length > 0 && (
+          <Stack
+            space={3}
+            style={{
+              /* Break out of 720px parent to use full available width */
+              marginLeft: -16,
+              marginRight: -16,
+              width: 'calc(100% + 32px)',
+            }}
+          >
+            {message.cards.map((card, i) => (
+              <CardRenderer key={i} {...card} />
+            ))}
+          </Stack>
+        )}
+
+        {/* Source attribution */}
+        {message.sources && message.sources.length > 0 && (
+          <SourceBadges sources={message.sources} />
+        )}
+
+        {/* Feedback (not while streaming) */}
+        {!message.isStreaming && message.content && (
+          <FeedbackButtons
+            messageId={message.id}
+            feedback={message.feedback}
+            onFeedback={onFeedback}
+          />
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+export function ChatMessageBubble({ message, onFeedback }: ChatMessageProps) {
+  if (message.role === 'user') {
+    return <UserMessage message={message} />;
+  }
+
+  return <AssistantMessage message={message} onFeedback={onFeedback} />;
 }

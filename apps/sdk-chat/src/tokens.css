@@ -1,0 +1,46 @@
+:root {
+  /* Surfaces */
+  --wrangler-surface-ground: #101112;
+  --wrangler-surface-raised: #1a1b1e;
+  --wrangler-surface-overlay: #222326;
+  --wrangler-surface-sunken: #0a0b0c;
+  
+  /* Borders */
+  --wrangler-border-default: #2a2b2e;
+  --wrangler-border-subtle: #1e1f22;
+  --wrangler-border-strong: #3a3b3e;
+  
+  /* Text */
+  --wrangler-text-primary: #e8e9ea;
+  --wrangler-text-secondary: #9a9ba0;
+  --wrangler-text-muted: #6a6b70;
+  --wrangler-text-accent: #6366f1;
+  
+  /* Accent */
+  --wrangler-accent-primary: #6366f1;
+  --wrangler-accent-primary-muted: rgba(99, 102, 241, 0.15);
+  --wrangler-accent-secondary: #8b5cf6;
+  
+  /* Status */
+  --wrangler-status-success: #22c55e;
+  --wrangler-status-warning: #f59e0b;
+  --wrangler-status-error: #ef4444;
+  --wrangler-status-info: #3b82f6;
+  
+  /* Confidence */
+  --wrangler-confidence-high: #22c55e;
+  --wrangler-confidence-medium: #f59e0b;
+  --wrangler-confidence-low: #ef4444;
+  --wrangler-confidence-unknown: #6a6b70;
+  
+  /* Signal strength */
+  --wrangler-signal-strong: #22c55e;
+  --wrangler-signal-moderate: #f59e0b;
+  --wrangler-signal-weak: #ef4444;
+  --wrangler-signal-noise: #6a6b70;
+  
+  /* Score gradients */
+  --wrangler-score-high: #22c55e;
+  --wrangler-score-medium: #f59e0b;
+  --wrangler-score-low: #ef4444;
+}
