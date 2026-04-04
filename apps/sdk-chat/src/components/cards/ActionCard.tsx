@@ -22,13 +22,15 @@ interface ActionData {
     companyName: string;
   };
   evidence: string;
-  recommendedStep: string;
+  whyNow?: string;
+  confidence?: number;
   title?: string;
 }
 
 interface ActionCardProps {
   data: ActionData;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,8 +124,8 @@ export function ActionCardSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function ActionCard({ data, _meta }: ActionCardProps) {
-  const { actionType, urgency, account, evidence, recommendedStep, title } =
+export function ActionCard({ data, _meta, _source }: ActionCardProps) {
+  const { actionType, urgency, account, evidence, whyNow, title } =
     data;
 
   return (
@@ -176,11 +178,11 @@ export function ActionCard({ data, _meta }: ActionCardProps) {
             <Text size={0} weight="bold" muted>
               Recommended
             </Text>
-            <Text size={1}>{recommendedStep}</Text>
+            <Text size={1}>{whyNow}</Text>
           </Stack>
         </Card>
 
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );

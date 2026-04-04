@@ -52,6 +52,14 @@ interface StreamDone {
   meta?: Record<string, unknown>;
 }
 
+interface StreamCard {
+  type: 'card';
+  cardType: string;
+  data: any;
+  _meta?: any;
+  _source?: any;
+}
+
 type StreamEvent = StreamToken | StreamSources | StreamSuggestions | StreamDone;
 
 // ---------------------------------------------------------------------------

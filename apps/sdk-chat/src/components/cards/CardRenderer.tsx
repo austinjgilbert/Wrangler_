@@ -17,7 +17,16 @@ import { PersonCard } from './PersonCard';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Rendering hints from the NDJSON stream — controls how the card is displayed */
 export interface CardMeta {
+  display: 'inline' | 'expanded' | 'summary' | 'link';
+  navigable?: boolean;
+  href?: string;
+  position?: 'after_text' | 'standalone';
+}
+
+/** Source attribution metadata — confidence, provenance, freshness */
+export interface SourceAttribution {
   confidence?: number;
   source?: string;
   observedAt?: string;
@@ -27,13 +36,14 @@ export interface CardProps {
   cardType: string;
   data: any;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
 // Card Registry
 // ---------------------------------------------------------------------------
 
-const CARD_COMPONENTS: Record<string, React.ComponentType<{ data: any; _meta?: CardMeta }>> = {
+const CARD_COMPONENTS: Record<string, React.ComponentType<{ data: any; _meta?: CardMeta; _source?: SourceAttribution }>> = {
   account: AccountCard,
   briefing: BriefingCard,
   signal: SignalCard,
@@ -79,22 +89,22 @@ function ConfidenceDot({ confidence }: { confidence: number }) {
 // Meta Bar — confidence dot, source badge, timestamp
 // ---------------------------------------------------------------------------
 
-export function MetaBar({ _meta }: { _meta?: CardMeta }) {
-  if (!_meta) return null;
+export function MetaBar({ _source }: { _source?: SourceAttribution }) {
+  if (!_source) return null;
 
   return (
     <Flex align="center" gap={2} paddingTop={2} style={{ opacity: 0.7 }}>
-      {_meta.confidence != null && (
-        <ConfidenceDot confidence={_meta.confidence} />
+      {_source.confidence != null && (
+        <ConfidenceDot confidence={_source.confidence} />
       )}
-      {_meta.source && (
+      {_source.source && (
         <Badge tone="default" fontSize={0} padding={1}>
-          {_meta.source}
+          {_source.source}
         </Badge>
       )}
-      {_meta.observedAt && (
+      {_source.observedAt && (
         <Text size={0} muted>
-          {new Date(_meta.observedAt).toLocaleDateString()}
+          {new Date(_source.observedAt).toLocaleDateString()}
         </Text>
       )}
     </Flex>
@@ -105,7 +115,7 @@ export function MetaBar({ _meta }: { _meta?: CardMeta }) {
 // Fallback — generic JSON display for unknown card types
 // ---------------------------------------------------------------------------
 
-function FallbackCard({ cardType, data, _meta }: CardProps) {
+function FallbackCard({ cardType, data, _meta, _source }: CardProps) {
   return (
     <Card
       padding={3}
@@ -129,7 +139,7 @@ function FallbackCard({ cardType, data, _meta }: CardProps) {
             maxHeight: 200,
             overflow: 'auto',
             fontSize: 12,
-            fontFamily: 'var(--font-family-code, monospace)',
+            fontFamily: 'var(--wrangler-font-data, monospace)',
             background: 'var(--wrangler-surface-sunken)',
             padding: 8,
             borderRadius: 4,
@@ -139,7 +149,7 @@ function FallbackCard({ cardType, data, _meta }: CardProps) {
             {JSON.stringify(data, null, 2)}
           </pre>
         </Box>
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );
@@ -149,12 +159,12 @@ function FallbackCard({ cardType, data, _meta }: CardProps) {
 // Main Renderer
 // ---------------------------------------------------------------------------
 
-export function CardRenderer({ cardType, data, _meta }: CardProps) {
+export function CardRenderer({ cardType, data, _meta, _source }: CardProps) {
   const Component = CARD_COMPONENTS[cardType];
 
   if (!Component) {
-    return <FallbackCard cardType={cardType} data={data} _meta={_meta} />;
+    return <FallbackCard cardType={cardType} data={data} _meta={_meta} _source={_source} />;
   }
 
-  return <Component data={data} _meta={_meta} />;
+  return <Component data={data} _meta={_meta} _source={_source} />;
 }

@@ -1,46 +1,75 @@
 :root {
-  /* Surfaces */
-  --wrangler-surface-ground: #101112;
-  --wrangler-surface-raised: #1a1b1e;
-  --wrangler-surface-overlay: #222326;
-  --wrangler-surface-sunken: #0a0b0c;
-  
-  /* Borders */
-  --wrangler-border-default: #2a2b2e;
-  --wrangler-border-subtle: #1e1f22;
-  --wrangler-border-strong: #3a3b3e;
-  
-  /* Text */
-  --wrangler-text-primary: #e8e9ea;
-  --wrangler-text-secondary: #9a9ba0;
-  --wrangler-text-muted: #6a6b70;
-  --wrangler-text-accent: #6366f1;
-  
-  /* Accent */
-  --wrangler-accent-primary: #6366f1;
-  --wrangler-accent-primary-muted: rgba(99, 102, 241, 0.15);
-  --wrangler-accent-secondary: #8b5cf6;
-  
-  /* Status */
-  --wrangler-status-success: #22c55e;
-  --wrangler-status-warning: #f59e0b;
-  --wrangler-status-error: #ef4444;
-  --wrangler-status-info: #3b82f6;
-  
-  /* Confidence */
-  --wrangler-confidence-high: #22c55e;
-  --wrangler-confidence-medium: #f59e0b;
-  --wrangler-confidence-low: #ef4444;
-  --wrangler-confidence-unknown: #6a6b70;
-  
-  /* Signal strength */
-  --wrangler-signal-strong: #22c55e;
-  --wrangler-signal-moderate: #f59e0b;
-  --wrangler-signal-weak: #ef4444;
-  --wrangler-signal-noise: #6a6b70;
-  
-  /* Score gradients */
-  --wrangler-score-high: #22c55e;
-  --wrangler-score-medium: #f59e0b;
-  --wrangler-score-low: #ef4444;
+  /* ── Surfaces ── */
+  --wrangler-surface-ground: #0b0b0c;
+  --wrangler-surface-base: #111113;
+  --wrangler-surface-raised: #1a1a1d;
+  --wrangler-surface-overlay: #232326;
+  --wrangler-surface-elevated: #2c2c30;
+  --wrangler-surface-input: #16161a;
+
+  /* ── Borders ── */
+  --wrangler-border-subtle: #1f1f23;
+  --wrangler-border-default: #2a2a2f;
+  --wrangler-border-strong: #3a3a40;
+  --wrangler-border-accent: #f03e2f;
+  --wrangler-border-focus: #3da9fc;
+
+  /* ── Text ── */
+  --wrangler-text-primary: #ededef;
+  --wrangler-text-secondary: #a0a0a8;
+  --wrangler-text-tertiary: #6b6b74;
+  --wrangler-text-ghost: #45454d;
+  --wrangler-text-inverse: #0b0b0c;
+
+  /* ── Brand / Accent ── */
+  --wrangler-accent-primary: #f03e2f;
+  --wrangler-accent-primary-hover: #ff5242;
+  --wrangler-accent-primary-muted: rgba(240, 62, 47, 0.12);
+  --wrangler-accent-secondary: #7c5cff;
+  --wrangler-accent-secondary-hover: #9278ff;
+  --wrangler-accent-secondary-muted: rgba(124, 92, 255, 0.12);
+  --wrangler-accent-highlight: #3da9fc;
+  --wrangler-accent-highlight-hover: #5cbaff;
+  --wrangler-accent-highlight-muted: rgba(61, 169, 252, 0.12);
+
+  /* ── Status ── */
+  --wrangler-status-success: #34d399;
+  --wrangler-status-success-muted: rgba(52, 211, 153, 0.12);
+  --wrangler-status-warning: #fbbf24;
+  --wrangler-status-warning-muted: rgba(251, 191, 36, 0.12);
+  --wrangler-status-danger: #f03e2f;
+  --wrangler-status-danger-muted: rgba(240, 62, 47, 0.12);
+  --wrangler-status-info: #3da9fc;
+  --wrangler-status-info-muted: rgba(61, 169, 252, 0.12);
+  --wrangler-status-neutral: #6b6b74;
+
+  /* ── Confidence ── */
+  --wrangler-confidence-high: #34d399;
+  --wrangler-confidence-medium: #fbbf24;
+  --wrangler-confidence-low: #f97316;
+  --wrangler-confidence-unknown: #6b6b74;
+
+  /* ── Signal Strength ── */
+  --wrangler-signal-hot: #f03e2f;
+  --wrangler-signal-warm: #f97316;
+  --wrangler-signal-cool: #fbbf24;
+  --wrangler-signal-cold: #6b6b74;
+
+  /* ── Opportunity Score Tiers ── */
+  --wrangler-score-excellent: #34d399;
+  --wrangler-score-good: #3da9fc;
+  --wrangler-score-moderate: #fbbf24;
+  --wrangler-score-low: #f97316;
+  --wrangler-score-minimal: #6b6b74;
+
+  /* ── Backward compat aliases (used in card stubs) ── */
+  --wrangler-score-high: var(--wrangler-score-excellent);
+  --wrangler-score-medium: var(--wrangler-score-moderate);
+  --wrangler-status-error: var(--wrangler-status-danger);
+  --wrangler-signal-strong: var(--wrangler-signal-hot);
+  --wrangler-signal-moderate: var(--wrangler-signal-warm);
+  --wrangler-signal-weak: var(--wrangler-signal-cool);
+  --wrangler-signal-noise: var(--wrangler-signal-cold);
+  --wrangler-text-muted: var(--wrangler-text-tertiary);
+  --wrangler-text-accent: var(--wrangler-accent-primary);
 }

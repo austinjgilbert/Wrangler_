@@ -16,9 +16,9 @@ import { MetaBar } from './CardRenderer';
 // ---------------------------------------------------------------------------
 
 interface PersonData {
-  fullName: string;
+  name: string;
   currentTitle?: string;
-  companyName?: string;
+  currentCompany?: string;
   seniorityLevel?: string;
   linkedinUrl?: string;
   email?: string;
@@ -29,6 +29,7 @@ interface PersonData {
 interface PersonCardProps {
   data: PersonData;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +65,7 @@ export function PersonEntityLink({ data }: { data: PersonData }) {
   return (
     <Flex align="center" gap={2} style={{ display: 'inline-flex' }}>
       <Text size={1} weight="bold">
-        {data.fullName}
+        {data.name}
       </Text>
       {data.currentTitle && (
         <Text size={0} muted>
@@ -135,16 +136,16 @@ export function PersonCardSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function PersonCard({ data, _meta }: PersonCardProps) {
+export function PersonCard({ data, _meta, _source }: PersonCardProps) {
   // Fall back to entity link if insufficient data
   if (!shouldRenderAsCard(data)) {
     return <PersonEntityLink data={data} />;
   }
 
   const {
-    fullName,
+    name,
     currentTitle,
-    companyName,
+    currentCompany,
     seniorityLevel,
     linkedinUrl,
     email,
@@ -153,7 +154,7 @@ export function PersonCard({ data, _meta }: PersonCardProps) {
   } = data;
 
   // Initials for avatar placeholder
-  const initials = fullName
+  const initials = name
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -197,7 +198,7 @@ export function PersonCard({ data, _meta }: PersonCardProps) {
           <Stack space={1} style={{ flex: 1 }}>
             <Flex align="center" gap={2}>
               <Text size={1} weight="bold">
-                {fullName}
+                {name}
               </Text>
               {seniorityLevel && (
                 <Badge
@@ -210,9 +211,9 @@ export function PersonCard({ data, _meta }: PersonCardProps) {
               )}
             </Flex>
             {currentTitle && <Text size={1}>{currentTitle}</Text>}
-            {companyName && (
+            {currentCompany && (
               <Text size={0} muted>
-                {companyName}
+                {currentCompany}
               </Text>
             )}
           </Stack>
@@ -253,7 +254,7 @@ export function PersonCard({ data, _meta }: PersonCardProps) {
           </Flex>
         )}
 
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Box, Card, Flex, Stack, Text, Badge } from '@sanity/ui';
-import type { CardMeta } from './CardRenderer';
+import type { CardMeta, SourceAttribution } from './CardRenderer';
 import { MetaBar } from './CardRenderer';
 
 // ---------------------------------------------------------------------------
@@ -17,14 +17,14 @@ import { MetaBar } from './CardRenderer';
 interface AccountData {
   companyName: string;
   domain: string;
-  opportunityScore: number;
-  industry: string;
-  employeeCount: string;
-  profileCompleteness: {
+  opportunityScore?: number;
+  industry?: string;
+  employeeCount?: string;
+  profileCompleteness?: {
     score: number;
-    missingFields: string[];
+    missingFields?: string[];
   };
-  technologyStack: {
+  technologyStack?: {
     cms?: string[];
     frameworks?: string[];
     analytics?: string[];
@@ -36,6 +36,7 @@ interface AccountData {
 interface AccountCardProps {
   data: AccountData;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,11 +172,41 @@ export function AccountCardSkeleton() {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Guard — only render as card if we have meaningful data
+// ---------------------------------------------------------------------------
+
+export function shouldRenderAsCard(data: AccountData): boolean {
+  const hasScore = (data.opportunityScore ?? 0) > 0;
+  const hasTechStack = data.technologyStack
+    ? Object.values(data.technologyStack).some(v => v && v.length > 0)
+    : false;
+  return hasScore || hasTechStack;
+}
+
+export function AccountEntityLink({ data }: { data: AccountData }) {
+  return (
+    <Flex align="center" gap={2} padding={2}>
+      <Text size={1} weight="semibold" style={{ color: 'var(--wrangler-accent-primary)' }}>
+        {data.companyName || data.domain || 'Unknown Account'}
+      </Text>
+      {data.domain && (
+        <Text size={0} muted>{data.domain}</Text>
+      )}
+    </Flex>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function AccountCard({ data, _meta }: AccountCardProps) {
+export function AccountCard({ data, _meta, _source }: AccountCardProps) {
+  if (!shouldRenderAsCard(data)) {
+    return <AccountEntityLink data={data} />;
+  }
+
   const {
     companyName,
     domain,
@@ -246,7 +277,7 @@ export function AccountCard({ data, _meta }: AccountCardProps) {
           </Text>
         )}
 
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );

@@ -29,6 +29,7 @@ interface SignalData {
 interface SignalCardProps {
   data: SignalData;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +115,7 @@ export function SignalCardSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function SignalCard({ data, _meta }: SignalCardProps) {
+export function SignalCard({ data, _meta, _source }: SignalCardProps) {
   const { signalType, strength, summary, account, timestamp, source } = data;
 
   return (
@@ -177,7 +178,7 @@ export function SignalCard({ data, _meta }: SignalCardProps) {
           </Text>
         </Flex>
 
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );

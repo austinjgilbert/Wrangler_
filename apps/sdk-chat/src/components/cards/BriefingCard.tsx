@@ -36,6 +36,7 @@ interface BriefingData {
 interface BriefingCardProps {
   data: BriefingData;
   _meta?: CardMeta;
+  _source?: SourceAttribution;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,7 +91,7 @@ export function BriefingCardSkeleton() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function BriefingCard({ data, _meta }: BriefingCardProps) {
+export function BriefingCard({ data, _meta, _source }: BriefingCardProps) {
   const { date, topAccounts, actionItemCount, signals, summary } = data;
 
   return (
@@ -174,7 +175,7 @@ export function BriefingCard({ data, _meta }: BriefingCardProps) {
           )}
         </Flex>
 
-        <MetaBar _meta={_meta} />
+        <MetaBar _source={_source} />
       </Stack>
     </Card>
   );
