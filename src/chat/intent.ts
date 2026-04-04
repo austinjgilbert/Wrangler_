@@ -596,12 +596,30 @@ export function classifyIntentRuleBased(
     }
   }
 
-  // Extract account names from "about X" or "for X" patterns
-  const aboutPattern = /\b(?:about|for|on)\s+([A-Z][A-Za-z0-9\s&.-]{1,30})(?:\s*[?.!,]|$)/g;
+  // Extract account names from "about X" or "for X" or "with X" patterns
+  const aboutPattern = /\b(?:about|for|on|with)\s+([A-Z][A-Za-z0-9\s&.-]{1,30})(?:\s*[?.!,]|$)/g;
   let aboutMatch: RegExpExecArray | null;
   while ((aboutMatch = aboutPattern.exec(query)) !== null) {
-    const name = aboutMatch[1].trim();
+    let name = aboutMatch[1].trim();
+    // Strip trailing time/context words that got captured
+    name = name.replace(/\s+(?:today|tomorrow|yesterday|this|next|last|at|on|in|the|a|an|my|our|their)\b.*$/i, '').trim();
     // Only add if it looks like a company name and isn't already captured
+    if (
+      name.length > 2 &&
+      !entities.some((e) => e.text.toLowerCase() === name.toLowerCase()) &&
+      !/^(my|the|a|an|this|that|today|me|us)$/i.test(name)
+    ) {
+      entities.push({ text: name, type: 'account' });
+    }
+  }
+
+  // Extract company names from meeting context: "meeting with X", "call with X"
+  const meetingWithPattern = /\b(?:meeting|call|chat|demo|discovery|sync)\s+with\s+([A-Z][A-Za-z0-9\s&.-]{1,30})(?:\s+(?:today|tomorrow|at|on|in|this|next)\b|\s*[?.!,]|$)/gi;
+  let mwMatch: RegExpExecArray | null;
+  while ((mwMatch = meetingWithPattern.exec(query)) !== null) {
+    let name = mwMatch[1].trim();
+    // Strip trailing time/context words
+    name = name.replace(/\s+(?:today|tomorrow|yesterday|this|next|last|at|on|in|the|a|an|my|our|their)\b.*$/i, '').trim();
     if (
       name.length > 2 &&
       !entities.some((e) => e.text.toLowerCase() === name.toLowerCase()) &&
