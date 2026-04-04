@@ -271,3 +271,42 @@ textarea {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ═══ Responsive Breakpoints ══════════════════════════════════════════════ */
+
+/* Tablet: collapse sidebar */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+  .dashboard-sidebar {
+    display: none;
+  }
+  .dashboard-assistant {
+    display: none;
+  }
+}
+
+/* Mobile: tighter spacing, fixed input */
+@media (max-width: 768px) {
+  .chat-messages {
+    padding-left: var(--wrangler-space-3);
+    padding-right: var(--wrangler-space-3);
+  }
+  .chat-input-bar {
+    padding-left: var(--wrangler-space-3);
+    padding-right: var(--wrangler-space-3);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+  .chat-suggestions {
+    flex-wrap: wrap;
+  }
+  .chat-sources {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

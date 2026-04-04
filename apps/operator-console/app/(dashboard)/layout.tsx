@@ -106,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SnapshotContext.Provider value={ctx}>
       <div className="flex h-screen overflow-hidden bg-[var(--background)]">
         {/* ── Sidebar ────────────────────────────────────── */}
-        <aside className="w-[var(--sidebar-width)] shrink-0 border-r border-[var(--border)] bg-[var(--panel)] flex flex-col">
+        <aside className="dashboard-sidebar w-[var(--sidebar-width)] shrink-0 border-r border-[var(--border)] bg-[var(--panel)] flex flex-col">
           {/* Logo */}
           <div className="h-[var(--command-bar-height)] flex items-center px-5 border-b border-[var(--border-subtle)]">
             <span className="text-sm font-semibold tracking-tight text-[var(--text)]">
@@ -249,7 +249,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Assistant Panel */}
             {assistantOpen && (
-              <aside className="w-[var(--assistant-width)] shrink-0 border-l border-[var(--border)] bg-[var(--panel)] flex flex-col overflow-hidden">
+              <aside className="dashboard-assistant w-[var(--assistant-width)] shrink-0 border-l border-[var(--border)] bg-[var(--panel)] flex flex-col overflow-hidden">
                 <div className="h-12 flex items-center justify-between px-4 border-b border-[var(--border-subtle)]">
                   <span className="text-[13px] font-medium text-[var(--text)]">Assistant</span>
                   <button

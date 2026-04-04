@@ -276,7 +276,7 @@ function SuggestionChips({
   if (!suggestions.length) return null;
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="chat-suggestions mt-3 flex flex-wrap gap-2">
       {suggestions.map((s, i) => {
         const navHref = suggestionNavHref(s, entities);
         return (
@@ -616,7 +616,7 @@ export default function ChatPage() {
           </div>
         ) : (
           /* ── Message List ────────────────────────────── */
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+          <div className="chat-messages max-w-3xl mx-auto px-4 py-6 space-y-6">
             {messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
@@ -633,7 +633,7 @@ export default function ChatPage() {
       </div>
 
       {/* ── Input Bar ──────────────────────────────────── */}
-      <div className="shrink-0 border-t border-[var(--border)] bg-[var(--panel)] px-4 py-3">
+      <div className="chat-input-bar shrink-0 border-t border-[var(--border)] bg-[var(--panel)] px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           {messages.length > 0 && (
             <button
