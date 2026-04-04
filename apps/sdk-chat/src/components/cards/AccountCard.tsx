@@ -24,6 +24,7 @@ interface AccountData {
     score: number;
     missingFields?: string[];
   };
+  recentSignalCount?: number;
   technologyStack?: {
     cms?: string[];
     frameworks?: string[];
@@ -182,7 +183,8 @@ export function shouldRenderAsCard(data: AccountData): boolean {
   const hasTechStack = data.technologyStack
     ? Object.values(data.technologyStack).some(v => v && v.length > 0)
     : false;
-  return hasScore || hasTechStack;
+  const hasSignals = (data.recentSignalCount ?? 0) > 0;
+  return hasScore || hasTechStack || hasSignals;
 }
 
 export function AccountEntityLink({ data }: { data: AccountData }) {

@@ -60,7 +60,7 @@ interface StreamCard {
   _source?: any;
 }
 
-type StreamEvent = StreamToken | StreamSources | StreamSuggestions | StreamDone;
+type StreamEvent = StreamToken | StreamSources | StreamSuggestions | StreamCard | StreamDone;
 
 // ---------------------------------------------------------------------------
 // Config — SDK App uses SANITY_APP_* prefix
@@ -200,7 +200,7 @@ export function useChat() {
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
-                      ? { ...m, cards: [...(m.cards || []), event] }
+                      ? { ...m, cards: [...(m.cards || []), { cardType: event.cardType, data: event.data, _meta: event._meta, _source: event._source }] }
                       : m,
                   ),
                 );
