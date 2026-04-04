@@ -174,17 +174,45 @@ type CardProps = {
 ```
 
 **Steps:**
-1. Create `apps/operator-console/components/cards/` directory
-2. Create `CardRenderer.tsx` — takes `cardType` + `data` + `_meta`, renders the right card
+1. Create `apps/operator-console/components/cards/` directory with this structure:
+   ```
+   /components/cards/
+     CardRenderer.tsx       ← Takes {type, cardType, _meta, data} → dispatches to correct card
+     AccountCard.tsx        ← Pure component: AccountCardData → JSX
+     PersonCard.tsx
+     SignalCard.tsx
+     ActionCard.tsx
+     BriefingCard.tsx
+     ConfirmationCard.tsx   ← Phase 4 stub (empty for now)
+     ResultCard.tsx         ← Phase 4 stub (empty for now)
+     shared/
+       OpportunityGauge.tsx  ← Segmented bar, reused in Account + Action cards
+       ConfidenceDot.tsx     ← Color-coded dot, reused everywhere
+       SignalBadge.tsx       ← Signal type icon + strength, reused in Signal + Briefing
+       SeniorityBadge.tsx    ← Color-coded pill for person seniority level
+       TechPill.tsx          ← Individual tech stack pill
+       PriorityIndicator.tsx ← Left border + icon for action priority
+       EntityLink.tsx        ← Clickable entity name with hover preview
+       CardSkeleton.tsx      ← Shimmer loading placeholder
+     types.ts               ← TypeScript interfaces matching card protocol spec
+     tokens.css             ← Card-specific CSS custom properties
+   ```
+2. **Key rules:**
+   - Every card component is a **pure function**: `(data: AccountCardData, meta: CardMeta) => JSX.Element`. No hooks depending on router, no global state, no context providers.
+   - Use **token names** from the design system: `var(--surface-raised)` not `#1a1a1d`. If tokens aren't in `globals.css` yet, add them from the design spec below.
+   - `CardRenderer` is the **only component the chat layer imports**. It dispatches to the right card type.
+   - **Graceful degradation is inline**: `{data.industry && <span>{data.industry}</span>}`. No separate "has data" / "no data" branches.
+   - TypeScript interfaces in `types.ts` must match the card protocol spec exactly.
 3. Create stub components for each card type:
    - `AccountCard.tsx` — name, domain, opportunityScore (required), industry/techStack/completeness (enhanced)
    - `PersonCard.tsx` — name, title (required), company/seniority/linkedin (enhanced)
    - `SignalCard.tsx` — signalType, strength, timestamp (required), summary/source (enhanced)
    - `ActionCard.tsx` — actionType, whyNow, urgency (required), evidence/account (enhanced)
    - `BriefingCard.tsx` — date, topActions, overnightSignals (required)
-4. Each card should use the design tokens from `globals.css` (dark theme)
-5. Each card should handle missing enhanced fields gracefully (collapse, don't show "Unknown")
-6. Add a `_meta.navigable` check — if true, wrap the card in a clickable link to `_meta.href`
+   - `ConfirmationCard.tsx` — empty stub with TODO comment
+   - `ResultCard.tsx` — empty stub with TODO comment
+4. Each card should handle missing enhanced fields gracefully (collapse, don't show "Unknown")
+5. Add a `_meta.navigable` check — if true, wrap the card in a clickable link to `_meta.href`
 
 **Design tokens to use:**
 ```css
