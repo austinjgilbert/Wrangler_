@@ -1,6 +1,6 @@
 # PLAN.md — Wrangler_ Coordination Document
 
-> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 16:00 UTC by @dev (coordinator).
+> **Read this file before making any changes.** Single source of truth for all agents working on this repo. Last updated: 2026-04-03 22:00 UTC by @dev (coordinator).
 
 ---
 
@@ -78,7 +78,7 @@
 | Chat routes | TypeScript | `src/routes/chatRoutes.ts` — 238 lines, 5 endpoints |
 | Studio plugin | React/TypeScript | `sanity/plugins/chat-tool/` — 4 files, ~950 lines |
 | Operator console | Next.js 16 / React 19 | `apps/operator-console/` — App Router, Tailwind, Radix UI |
-| LLM | Claude 3.5 Haiku | Fast responses (~2-3s), rule-based intent classification |
+| LLM | Claude 3.5 Haiku | Intent classification + response generation. 5–8s with LLM classification. Code fence bug fixed (commit 3c9b957). |
 | Conversation state | Cloudflare KV | `MOLTBOOK_ACTIVITY_KV` binding |
 | Auth | API key | `X-API-Key` header validated against `MOLT_API_KEY` |
 
@@ -199,7 +199,7 @@
 | Component | Status | Owner | Notes |
 |---|---|---|---|
 | Chat backend (5 intents) | ✅ LIVE | Agent A | Deployed, real Sanity data flowing |
-| Intent classifier | ✅ 90% accuracy | Agent A | 45/50 test queries pass |
+| Intent classifier | ✅ 5/5 intents passing | Agent A | LLM pipeline activated — commit 3c9b957 fixed JSON.parse (code fence bug) |
 | Multi-turn conversations | ✅ Built | Agent A | KV-backed, pronoun resolution |
 | Streaming responses | ✅ Real NDJSON | Agent A | Token-by-token from Haiku |
 | Source attribution | ✅ Built | Agent A | Every response includes sources |
@@ -215,6 +215,7 @@
 | Chat endpoint helpers | ✅ Built | Agent B | chatStream/Feedback/History + authHeaders in api.ts |
 | App metadata | ✅ Updated | Agent B | "Wrangler_ Intelligence" — chat-first description |
 | SDK research | ✅ Done | Agent B | Keep Next.js. SDK apps lose SSR, API routes. See CLAUDEPLANS.md. |
+| SDK App scaffold | ✅ Pushed | Agent B | `apps/sdk-chat/` committed at fcbcffb — ready for testing |
 | SDK conversion (Task 8) | ❌ Deferred | Agent B | Not converting. Next.js stays. Lightweight SDK app possible later. |
 | Studio deploy | ⏳ Next | Austin | `cd sanity && npm run deploy` |
 | End-to-end testing | ⏳ Pending | Both | Console ↔ Worker ↔ Sanity |
@@ -231,7 +232,7 @@
 | `person_lookup` | "who is Sarah Chen?" | Contact details, role, associated signals |
 | `meeting_prep` | "prep me for my Acme meeting" | Account brief, key people, talking points |
 
-Intent classification is **rule-based** (keyword matching + entity extraction). No LLM needed — fast and deterministic.
+Intent classification uses **LLM-based classification** (Claude 3.5 Haiku) with entity extraction. The LLM pipeline was broken from day one — markdown code fences in the JSON response caused `JSON.parse` to throw. Commit `3c9b957` strips code fences before parsing, activating the full pipeline. All prior fixes (GROQ pre-check, entity extraction, source attribution) are now live. Latency: **5–8s** with LLM classification (vs ~1s rule-based).
 
 ---
 
@@ -297,7 +298,8 @@ Intent classification is **rule-based** (keyword matching + entity extraction). 
 | KV binding: `MOLTBOOK_ACTIVITY_KV` | Existing namespace, matches wrangler.toml |
 | `/api/chat/` in `KNOWN_PATH_PREFIXES` | Worker recognizes chat routes without modifying core routing |
 | Claude 3.5 Haiku for chat responses | Fast (~2-3s) vs Sonnet (~7-10s). Speed matters for chat UX |
-| Rule-based intent classification | Deterministic, fast, no LLM latency. 90% accuracy sufficient |
+| LLM intent classification (Claude 3.5 Haiku) | Activated by commit 3c9b957 — strips markdown code fences before JSON.parse. 5/5 intents passing. Latency 5–8s; optimization is next priority. |
+| ~~Rule-based intent classification~~ | ~~Deterministic, fast, no LLM latency. 90% accuracy sufficient~~ — superseded by LLM classifier |
 | Sanity Studio = primary SDR interface | SDRs already live in Studio — no context switching |
 | Operator console = power-user dashboard | Route-based App Router, SnapshotContext for shared state |
 | Dashboard route group `(dashboard)` | Transparent route group — shared layout without URL prefix |
@@ -366,28 +368,35 @@ git push origin feature/chat-v1
 
 9. **Error detection relies on ⚠️ prefix** — If `useChat.ts` (Agent A) changes how it formats error messages, the chat page error detection breaks. Convention coupling, not a contract.
 
+10. **Attribute limit error in usage logging (non-blocking)** — `Error: 2087 exceeds limit of 2000` appears in audit/usage logging when attribute payloads are too large. This is a separate issue in the logging layer and does **not** block chat functionality. Chat responses work correctly. Fix: truncate or paginate the logged attributes before writing to KV/Sanity.
+
 ---
 
 ## 12. What's Next (Priority Order)
 
-> **Critical discovery (2026-04-03):** Chat endpoints return 404 on production. The Worker was redeployed from `main` which doesn't have chat code. Austin must deploy Worker from `feature/chat-v1` (or merge first).
+> **Status (2026-04-03 overnight sprint):** 5/5 intents now passing. Root cause: LLM intent classifier was broken from day one — markdown code fences in the JSON response caused `JSON.parse` to throw, silently falling back to rule-based. Commit `3c9b957` strips code fences before parsing, activating the full LLM pipeline. All prior fixes (GROQ pre-check, entity extraction, source attribution) are now live. SDK App scaffold pushed at `apps/sdk-chat/` (commit `fcbcffb`).
 
 | # | Task | Owner | Status |
 |---|---|---|---|
 | 1 | **Deploy Worker from feature/chat-v1** | Austin | ✅ Done — chat routes live, verified ~1s response |
 | 2 | Deploy Studio with Chat Tool | Austin | ✅ Done — Chat Tool should be visible in Studio |
-| 3 | Austin verifies Chat tab appears in Studio | Austin | ⏳ Next |
-| 4 | Live smoke test chat in actual Studio UI | Austin + Agent A | ⏳ Blocked on #3 |
+| 3 | Austin verifies Chat tab appears in Studio | Austin | ✅ Done |
+| 4 | Live smoke test chat in actual Studio UI | Austin + Agent A | ✅ Done — 5/5 intents passing |
 | 5 | CORS verification — Studio (sanity.io) → Worker (workers.dev) | Agent A | ✅ Done — all origins work, headers correct |
 | 6 | Live data validation — confirm GROQ dereferences resolve | Agent A | ✅ Done — real data flowing (Buc Ees, BDA Inc) |
-| 7 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After smoke test |
-| 8 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #7 |
-| 9 | Run `npx tsc --noEmit` on operator-console | Agent B | ⏳ Needs Node.js env |
-| 10 | Wire CardRenderer into chat NDJSON stream | Agent A + B | ⏳ When backend sends card events |
-| 11 | Implement ConfirmationCard + ResultCard (Phase 4) | Agent B | ⏳ After action execution is built |
-| 12 | Add person detail route `/people/[id]` | Agent B | ⏳ After person lookup is stable |
-| 13 | Fix CLAUDEPLANS.md case-sensitivity permanently | Austin | ⏳ Run `git rm --cached claudeplans.md` from Linux |
-| 14 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
+| 7 | Fix LLM classifier (code fence bug) | Agent A | ✅ Done — commit 3c9b957 |
+| 8 | SDK App scaffold | Agent B | ✅ Done — `apps/sdk-chat/` at commit fcbcffb |
+| 9 | **SDK App testing** — wire up to live Worker, verify all 5 intents | Agent B | ⏳ Next |
+| 10 | **Latency optimization** — 5–8s with LLM classification; explore caching or parallel classification | Agent A | ⏳ Next |
+| 11 | **Phase 3 rich cards** — wire CardRenderer into chat NDJSON stream | Agent A + B | ⏳ Next |
+| 12 | Fix attribute limit error in usage logging (2087 > 2000) | Agent A | ⏳ Non-blocking — fix when convenient |
+| 13 | Merge `feature/chat-v1` to `main` | Austin | ⏳ After SDK smoke test |
+| 14 | Redeploy worker from `main` with all fixes | Austin | ⏳ Blocked on #13 |
+| 15 | Run `npx tsc --noEmit` on operator-console | Agent B | ⏳ Needs Node.js env |
+| 16 | Implement ConfirmationCard + ResultCard (Phase 4) | Agent B | ⏳ After action execution is built |
+| 17 | Add person detail route `/people/[id]` | Agent B | ⏳ After person lookup is stable |
+| 18 | Fix CLAUDEPLANS.md case-sensitivity permanently | Austin | ⏳ Run `git rm --cached claudeplans.md` from Linux |
+| 19 | V2 planning: action execution, persistent history, semantic search | Agent A | ⏳ Future |
 
 ---
 
