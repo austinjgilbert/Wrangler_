@@ -330,7 +330,11 @@ async function resolvePersonVsAccount(
       // Check if this "person" name matches any account
       // Use case-insensitive matching as primary strategy — LLM entity casing varies
       const nameLower = name.toLowerCase();
-      console.log(`[chat/intent] GROQ pre-check for "${name}" (lower: "${nameLower}", pattern: "${matchPattern}")`);
+      
+      // Diagnostic: count total accounts visible to this client
+      const countResult = await groqQuery(client, `count(*[_type == "account"])`).catch(() => -1);
+      console.log(`[chat/intent] GROQ pre-check for "${name}" (lower: "${nameLower}", pattern: "${matchPattern}", visible accounts: ${countResult})`);
+
 
       const account = await groqQuery(
         client,
