@@ -25,6 +25,8 @@ import type {
   RetrievalResult,
   SourceAttribution,
 } from './types.ts';
+import { buildCardEvents } from './cards.ts';
+import type { CardEvent } from './cards.ts';
 
 /** Model for response generation — Haiku for speed, Sonnet for quality */
 const RESPONSE_MODEL = 'claude-haiku-4-5-20251001';
@@ -391,6 +393,12 @@ export function generateStreamingResponse(
         const words = llmResult.content.split(/(?<=\s)/);
         for (const word of words) {
           emit({ type: 'token', text: word });
+        }
+
+        // Emit card events (rich data cards for the frontend)
+        const cardEvents = buildCardEvents(intent.intent, retrievalResult);
+        for (const card of cardEvents) {
+          emit(card);
         }
 
         // Emit sources
