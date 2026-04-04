@@ -605,8 +605,8 @@ export function classifyIntentRuleBased(
     }
   }
 
-  // Extract account names from "about X" or "for X" or "with X" patterns
-  const aboutPattern = /\b(?:about|for|on|with)\s+([A-Z][A-Za-z0-9\s&.-]{1,30})(?:\s*[?.!,]|$)/g;
+  // Extract account names from "about X" or "for X" or "with X" or "of X" patterns
+  const aboutPattern = /\b(?:about|for|on|with|of)\s+([A-Z][A-Za-z0-9\s&.-]{1,30})(?:\s*[?.!,]|$)/g;
   let aboutMatch: RegExpExecArray | null;
   while ((aboutMatch = aboutPattern.exec(query)) !== null) {
     let name = aboutMatch[1].trim();
