@@ -1,15 +1,18 @@
+/* Card system tokens — derived from --wrangler-* root tokens.
+   These provide fallback values so cards work standalone. */
+
 .card-system {
-  --surface-raised: #1a1a1d;
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --text-primary: #f0f0f0;
-  --text-secondary: #a0a0a8;
-  --text-tertiary: #6b6b76;
-  --accent-primary: #f03e2f;
+  --surface-raised: var(--wrangler-surface-raised, #1a1a1d);
+  --border-subtle: var(--wrangler-border-subtle, rgba(255, 255, 255, 0.05));
+  --text-primary: var(--wrangler-text-primary, #f0f0f0);
+  --text-secondary: var(--wrangler-text-secondary, #a0a0a8);
+  --text-tertiary: var(--wrangler-text-tertiary, #6b6b76);
+  --accent-primary: var(--wrangler-accent-primary, #f03e2f);
   --accent-primary-bg: rgba(240, 62, 47, 0.1);
   --accent-primary-border: rgba(240, 62, 47, 0.2);
   --accent-primary-underline: rgba(240, 62, 47, 0.3);
-  --surface-empty: rgba(255, 255, 255, 0.1);
-  --status-success: #22c55e;
-  --status-warning: #f59e0b;
-  --status-error: #ef4444;
+  --surface-empty: var(--wrangler-border-subtle, rgba(255, 255, 255, 0.1));
+  --status-success: var(--wrangler-status-success, #22c55e);
+  --status-warning: var(--wrangler-status-warning, #f59e0b);
+  --status-error: var(--wrangler-status-error, #ef4444);
 }

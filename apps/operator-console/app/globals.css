@@ -1,54 +1,135 @@
 @import "tailwindcss";
 
-/* Operator Intelligence App — Enterprise dark design system
-   Inspired by Sanity Studio, Linear, Vercel, Stripe */
+/* ═══════════════════════════════════════════════════════════════════
+   Wrangler_ Design Token System
+   Enterprise dark-first design system for SDR intelligence.
+   All tokens use --wrangler- prefix. Legacy aliases preserved below.
+   ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Surfaces */
-  --background: #0b0b0c;
-  --panel: #121214;
-  --card: #1a1a1d;
-  --card-hover: #1e1e21;
-  --border: #2a2a2e;
-  --border-subtle: #222224;
+  /* ── Surfaces (4-tier depth) ─────────────────────────────────── */
+  --wrangler-surface-ground: #0b0b0c;
+  --wrangler-surface-base: #121214;
+  --wrangler-surface-raised: #1a1a1d;
+  --wrangler-surface-overlay: #222226;
 
-  /* Accents */
-  --accent: #f03e2f;
+  /* ── Borders (3-tier) ────────────────────────────────────────── */
+  --wrangler-border-subtle: rgba(255, 255, 255, 0.05);
+  --wrangler-border-default: rgba(255, 255, 255, 0.1);
+  --wrangler-border-strong: rgba(255, 255, 255, 0.15);
+  --wrangler-border-focus: #3da9fc;
+
+  /* ── Text (5-tier) ───────────────────────────────────────────── */
+  --wrangler-text-primary: #f0f0f0;
+  --wrangler-text-secondary: #a0a0a8;
+  --wrangler-text-tertiary: #6b6b76;
+  --wrangler-text-muted: #4a4a54;
+  --wrangler-text-inverse: #0b0b0c;
+
+  /* ── Accent ──────────────────────────────────────────────────── */
+  --wrangler-accent-primary: #f03e2f;
+  --wrangler-accent-secondary: #7c5cff;
+  --wrangler-accent-highlight: #3da9fc;
+  --wrangler-accent-success: #22c55e;
+
+  /* ── Status ──────────────────────────────────────────────────── */
+  --wrangler-status-success: #22c55e;
+  --wrangler-status-warning: #f59e0b;
+  --wrangler-status-error: #ef4444;
+  --wrangler-status-info: #3da9fc;
+
+  /* ── Confidence (data quality indicators) ────────────────────── */
+  --wrangler-confidence-high: #22c55e;
+  --wrangler-confidence-medium: #f59e0b;
+  --wrangler-confidence-low: #ef4444;
+  --wrangler-confidence-unknown: #6b6b76;
+
+  /* ── Signal strength gradient ────────────────────────────────── */
+  --wrangler-signal-strong: #f03e2f;
+  --wrangler-signal-moderate: #f59e0b;
+  --wrangler-signal-weak: #3da9fc;
+
+  /* ── Score tiers (opportunity scores) ────────────────────────── */
+  --wrangler-score-hot: #f03e2f;
+  --wrangler-score-warm: #f59e0b;
+  --wrangler-score-cool: #3da9fc;
+  --wrangler-score-cold: #6b6b76;
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --wrangler-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --wrangler-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --wrangler-font-size-xs: 0.75rem;
+  --wrangler-font-size-sm: 0.8125rem;
+  --wrangler-font-size-base: 0.875rem;
+  --wrangler-font-size-lg: 1rem;
+  --wrangler-font-size-xl: 1.25rem;
+  --wrangler-font-size-2xl: 1.5rem;
+
+  /* ── Spacing (4px grid) ──────────────────────────────────────── */
+  --wrangler-space-1: 4px;
+  --wrangler-space-2: 8px;
+  --wrangler-space-3: 12px;
+  --wrangler-space-4: 16px;
+  --wrangler-space-5: 20px;
+  --wrangler-space-6: 24px;
+  --wrangler-space-8: 32px;
+  --wrangler-space-10: 40px;
+  --wrangler-space-12: 48px;
+
+  /* ── Radius ──────────────────────────────────────────────────── */
+  --wrangler-radius-sm: 4px;
+  --wrangler-radius-md: 8px;
+  --wrangler-radius-lg: 12px;
+  --wrangler-radius-xl: 16px;
+  --wrangler-radius-full: 9999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --wrangler-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --wrangler-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --wrangler-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* ── Transitions ─────────────────────────────────────────────── */
+  --wrangler-transition-fast: 150ms ease;
+  --wrangler-transition-normal: 250ms ease;
+  --wrangler-transition-slow: 350ms ease;
+  --wrangler-transition-spring: 250ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ═══ Legacy Aliases (backward compat — map to new tokens) ═══ */
+  --background: var(--wrangler-surface-ground);
+  --panel: var(--wrangler-surface-base);
+  --card: var(--wrangler-surface-raised);
+  --card-hover: var(--wrangler-surface-overlay);
+  --border: var(--wrangler-border-default);
+  --border-subtle: var(--wrangler-border-subtle);
+  --accent: var(--wrangler-accent-primary);
   --accent-hover: #e63526;
   --accent-muted: rgba(240, 62, 47, 0.12);
-  --accent-secondary: #7c5cff;
+  --accent-secondary: var(--wrangler-accent-secondary);
   --accent-secondary-muted: rgba(124, 92, 255, 0.12);
-  --highlight: #3da9fc;
+  --highlight: var(--wrangler-accent-highlight);
   --highlight-muted: rgba(61, 169, 252, 0.12);
-
-  /* Semantic */
-  --success: #22c55e;
+  --success: var(--wrangler-status-success);
   --success-muted: rgba(34, 197, 94, 0.12);
   --success-bg: rgba(34, 197, 94, 0.12);
-  --warning: #f59e0b;
+  --warning: var(--wrangler-status-warning);
   --warning-muted: rgba(245, 158, 11, 0.12);
   --warning-bg: rgba(245, 158, 11, 0.12);
-  --error: #ef4444;
+  --error: var(--wrangler-status-error);
   --error-muted: rgba(239, 68, 68, 0.12);
-  --danger: #ef4444;
+  --danger: var(--wrangler-status-error);
   --danger-bg: rgba(239, 68, 68, 0.12);
-  /* Aliases for compatibility */
-  --surface: var(--card);
-  --surface-muted: var(--panel);
-
-  /* Text */
-  --text: #e5e7eb;
-  --text-secondary: #9ca3af;
-  --muted: #6b7280;
-
-  /* Layout */
+  --surface: var(--wrangler-surface-raised);
+  --surface-muted: var(--wrangler-surface-base);
+  --text: var(--wrangler-text-primary);
+  --text-secondary: var(--wrangler-text-secondary);
+  --muted: var(--wrangler-text-tertiary);
   --sidebar-width: 260px;
   --command-bar-height: 64px;
   --assistant-width: 360px;
-  --card-radius: 8px;
-  --card-radius-lg: 12px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --card-radius: var(--wrangler-radius-md);
+  --card-radius-lg: var(--wrangler-radius-lg);
+  --shadow-sm: var(--wrangler-shadow-sm);
+  --shadow-md: var(--wrangler-shadow-md);
 }
 
 * {
@@ -157,4 +238,36 @@ textarea {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
+}
+
+/* ═══ Wrangler_ Keyframe Animations ═══════════════════════════════ */
+
+@keyframes wrangler-card-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wrangler-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes wrangler-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes wrangler-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes wrangler-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wrangler-stagger-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
