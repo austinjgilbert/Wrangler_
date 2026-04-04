@@ -339,11 +339,29 @@ function FeedbackButtons({
 /* ─── Streaming Skeleton ───────────────────────────────────────────────── */
 
 function StreamingSkeleton() {
+  const shimmerStyle = {
+    height: '14px',
+    borderRadius: 'var(--wrangler-radius-sm)',
+    background: `linear-gradient(90deg, var(--wrangler-surface-raised) 25%, var(--wrangler-surface-overlay) 50%, var(--wrangler-surface-raised) 75%)`,
+    backgroundSize: '200% 100%',
+    animation: 'wrangler-shimmer 1.5s ease-in-out infinite',
+  };
+
   return (
-    <div className="space-y-2 animate-pulse">
-      <div className="h-3 bg-[var(--border)]/30 rounded w-3/4" />
-      <div className="h-3 bg-[var(--border)]/20 rounded w-1/2" />
-      <div className="h-3 bg-[var(--border)]/10 rounded w-2/3" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wrangler-space-3)', padding: 'var(--wrangler-space-4) 0' }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: 'var(--wrangler-space-2)' }}>
+        <span style={{
+          width: '6px', height: '6px', borderRadius: '50%',
+          background: 'var(--wrangler-accent-primary)',
+          animation: 'wrangler-pulse 1.5s ease-in-out infinite',
+        }} />
+        <span style={{ fontSize: 'var(--wrangler-font-size-xs)', color: 'var(--wrangler-text-muted)' }}>
+          Analyzing...
+        </span>
+      </div>
+      <div style={{ ...shimmerStyle, width: '60%' }} />
+      <div style={{ ...shimmerStyle, width: '80%' }} />
+      <div style={{ ...shimmerStyle, width: '45%' }} />
     </div>
   );
 }
