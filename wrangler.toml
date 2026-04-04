@@ -4,6 +4,10 @@ name = "website-scanner"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Rate limiting (KV — top-level so all envs inherit)
 # Moltbook activity: GET/POST /moltbook/api/activity (preview namespace created; for production run: npx wrangler kv namespace create MOLTBOOK_ACTIVITY and set id)
 kv_namespaces = [
