@@ -120,4 +120,118 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
 
 ## Changes Made
 <!-- Claude Code: log your changes here so the Miriad agents know what happened -->
+- `95b271f` — Task 1 (default route to /chat), Task 2 (entity links), Task 3 (nav-aware suggestions) — all done in one commit
+
+---
+
+# Phase 2 Tasks — SDK App Conversion + Hardening
+
+> **Context:** The app needs to become a Sanity App SDK application. Meanwhile, there are hardening tasks that don't conflict with the backend bug fixes @engineering is working on. These are all in `apps/operator-console/` — Agent B territory.
+
+---
+
+## Task 5: Research Sanity App SDK Architecture
+
+**Goal:** Understand what's needed to convert the Operator Console from plain Next.js to a Sanity App SDK app that deploys to `sanity.io`.
+
+**Research questions:**
+1. What does a Sanity App SDK project structure look like? (`sanity.cli.ts`, entry point, build system)
+2. Can an App SDK app use Next.js App Router, or does it need a different framework?
+3. How does auth work? (SDK apps get Sanity auth for free — how do we access the token?)
+4. How do we call the Cloudflare Worker from inside an SDK app? (direct fetch with auth headers?)
+5. What's the deploy command and config? (`npx sanity deploy` with `app.id`)
+
+**Steps:**
+1. Read https://www.sanity.io/docs/app-sdk/sdk-quickstart
+2. Read https://www.sanity.io/docs/app-sdk/sdk-deployment
+3. Read https://github.com/sanity-io/sdk
+4. Check if there are example apps that use a chat/dashboard pattern
+5. Write a summary at the bottom of this file under "SDK Research Findings"
+
+**Do NOT create any files yet.** Just research and document findings.
+
+**Commit:** None — research only, document in this file.
+
+---
+
+## Task 6: Build Self-Contained Card Component Library
+
+**Goal:** Create the card component scaffolding that will render rich data cards in chat responses. These must be pure components with no dependency on the app shell.
+
+**Reference:** Read `/docs/design/card-protocol-spec.md` and `/docs/design/00-design-vision.md` in the repo (these are on the Miriad board, not in the repo — ask Austin or check the design specs below).
+
+**Card protocol:** Each card receives:
+```typescript
+type CardProps = {
+  cardType: 'account' | 'person' | 'signal' | 'action' | 'briefing';
+  data: Record<string, any>;
+  _meta?: {
+    display: 'inline' | 'expanded' | 'summary';
+    navigable?: boolean;
+    href?: string;
+  };
+};
+```
+
+**Steps:**
+1. Create `apps/operator-console/components/cards/` directory
+2. Create `CardRenderer.tsx` — takes `cardType` + `data` + `_meta`, renders the right card
+3. Create stub components for each card type:
+   - `AccountCard.tsx` — name, domain, opportunityScore (required), industry/techStack/completeness (enhanced)
+   - `PersonCard.tsx` — name, title (required), company/seniority/linkedin (enhanced)
+   - `SignalCard.tsx` — signalType, strength, timestamp (required), summary/source (enhanced)
+   - `ActionCard.tsx` — actionType, whyNow, urgency (required), evidence/account (enhanced)
+   - `BriefingCard.tsx` — date, topActions, overnightSignals (required)
+4. Each card should use the design tokens from `globals.css` (dark theme)
+5. Each card should handle missing enhanced fields gracefully (collapse, don't show "Unknown")
+6. Add a `_meta.navigable` check — if true, wrap the card in a clickable link to `_meta.href`
+
+**Design tokens to use:**
+```css
+--surface-raised: #1a1a1d    /* card background */
+--border-subtle: #ffffff0d    /* card border */
+--text-primary: #f0f0f0       /* main text */
+--text-secondary: #a0a0a8     /* labels */
+--text-tertiary: #6b6b76      /* metadata */
+--accent-primary: #f03e2f     /* primary actions */
+--status-success: #22c55e     /* high confidence, complete */
+--status-warning: #f59e0b     /* medium confidence, partial */
+--status-error: #ef4444       /* low confidence, needs attention */
+```
+
+**Commit prefix:** `feat(operator-console):`
+
+---
+
+## Task 7: Add Error States and Loading Skeletons to Chat
+
+**Goal:** The chat page needs proper error handling — not fake fallback responses that look like real answers.
+
+**Steps:**
+1. In `apps/operator-console/app/(dashboard)/chat/page.tsx`:
+   - Add a timeout (10s) — if no real tokens arrive, show an error state
+   - Error state text: "I couldn't retrieve that information. Try again or rephrase your question."
+   - Style in `--text-tertiary` color
+   - Add a "Retry" chip below the error message
+2. Add a streaming skeleton/shimmer animation while waiting for first token
+3. If the NDJSON stream returns an error event, display it clearly — don't hide it
+
+**Commit prefix:** `feat(operator-console):`
+
+---
+
+## Task 8: Sanity App SDK Conversion (after Task 5 research)
+
+**Goal:** Convert the Operator Console to a Sanity App SDK application.
+
+**Prerequisites:** Task 5 research must be complete first.
+
+**Steps:** (will be defined based on Task 5 findings)
+
+**Commit prefix:** `feat(operator-console):`
+
+---
+
+## SDK Research Findings
+<!-- Claude Code: document your SDK research here -->
 
